@@ -3,6 +3,7 @@ package postgres
 import (
 	"sqvue/internal/db"
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -210,9 +211,20 @@ func formatValue(v any) string {
 			return "NULL"
 		}
 		return strconv.FormatFloat(f8.Float64, 'f', -1, 64)
+	case map[string]any, []any, []string:
+		// jsonb / array columns decode to these shapes; render as JSON
+		return marshalJSON(x)
 	default:
 		return fmt.Sprintf("%v", x)
 	}
+}
+
+func marshalJSON(v any) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return fmt.Sprintf("%v", v)
+	}
+	return string(b)
 }
 
 func init() {

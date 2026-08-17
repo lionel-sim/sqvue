@@ -200,16 +200,23 @@ func Render(m Model) string {
 	}
 
 	if len(m.columns) > 0 {
+		widths := layoutColumns(m.width, m.columns, m.rows)
 		for i, col := range m.columns {
 			if i > 0 {
 				b.WriteString(" | ")
 			}
-			b.WriteString(col.Name)
+			b.WriteString(formatCell(col.Name, widths[i]))
 		}
 		b.WriteString("\n")
 
 		for _, row := range m.rows {
-			b.WriteString(strings.Join(row, " | ") + "\n")
+			for i, cell := range row {
+				if i > 0 {
+					b.WriteString(" | ")
+				}
+				b.WriteString(formatCell(cell, widths[i]))
+			}
+			b.WriteString("\n")
 		}
 	} else {
 		b.WriteString("(no rows to display)\n")
@@ -219,6 +226,102 @@ func Render(m Model) string {
 	b.WriteString(rightAlign(m.width, "Status: "+m.status))
 
 	return b.String()
+}
+
+const (
+	maxColWidth  = 40
+	minColWidth  = 2
+	colSep       = " | "
+)
+
+// layoutColumns distributes the terminal width across columns, proportional to
+// their natural content width. Returns a width per column; -1 means "no
+// truncation" when the terminal width is unknown. Widths may exceed the natural
+// width of a column's content so padded cells align the separators.
+func layoutColumns(width int, cols []db.Column, rows [][]string) []int {
+	widths := make([]int, len(cols))
+	if len(cols) == 0 {
+		return widths
+	}
+	if width <= 0 {
+		for i := range widths {
+			widths[i] = -1
+		}
+		return widths
+	}
+
+	avail := width - len(colSep)*(len(cols)-1)
+	if avail <= 0 {
+		return widths
+	}
+
+	natural := make([]int, len(cols))
+	total := 0
+	for i, c := range cols {
+		n := len(c.Name)
+		for _, r := range rows {
+			if i < len(r) && len(r[i]) > n {
+				n = len(r[i])
+			}
+		}
+		if n > maxColWidth {
+			n = maxColWidth
+		}
+		if n < minColWidth {
+			n = minColWidth
+		}
+		natural[i] = n
+		total += n
+	}
+
+	if total <= avail {
+		return natural
+	}
+
+	remaining := avail
+	for i, n := range natural {
+		w := n * avail / total
+		if w < minColWidth {
+			w = minColWidth
+		}
+		if w > n {
+			w = n
+		}
+		widths[i] = w
+		remaining -= w
+	}
+	for remaining > 0 {
+		for i := range widths {
+			if remaining <= 0 {
+				break
+			}
+			if widths[i] < natural[i] {
+				widths[i]++
+				remaining--
+			}
+		}
+	}
+	return widths
+}
+
+// formatCell truncates s to width (with an ellipsis) or pads it to width so
+// columns stay aligned. Content that fits exactly is left as-is, and a
+// negative width returns s unchanged.
+func formatCell(s string, w int) string {
+	if w < 0 {
+		return s
+	}
+	if w == 0 {
+		return ""
+	}
+	r := []rune(s)
+	if len(r) > w {
+		if w == 1 {
+			return "…"
+		}
+		return string(r[:w-1]) + "…"
+	}
+	return s + strings.Repeat(" ", w-len(r))
 }
 
 func rightAlign(width int, s string) string {

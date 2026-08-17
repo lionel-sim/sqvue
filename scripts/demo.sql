@@ -1,3 +1,4 @@
+drop table if exists inventory;
 drop table if exists reviews;
 drop table if exists products;
 drop table if exists categories;
@@ -44,6 +45,22 @@ create table reviews (
     created_at timestamptz not null default now()
 );
 
+create table inventory (
+    id            serial primary key,
+    sku           text not null,
+    name          text not null,
+    category      text,
+    price         numeric(10, 2) not null,
+    cost          numeric(10, 2),
+    quantity      int not null,
+    reorder_level int not null default 10,
+    in_stock      boolean not null default true,
+    warehouse     text,
+    tags          text[],
+    metadata      jsonb,
+    updated_at    timestamptz not null default now()
+);
+
 insert into users (email, name) values
     ('ada@example.com', 'Ada Lovelace'),
     ('alan@example.com', 'Alan Turing'),
@@ -88,3 +105,18 @@ select
         else 'sample review ' || i
     end
 from generate_series(1, 80) as i;
+
+insert into inventory (sku, name, category, price, cost, quantity, reorder_level, in_stock, warehouse, tags, metadata)
+select
+    'SKU-' || lpad(i::text, 5, '0'),
+    'Warehouse item number ' || i,
+    (array['peripherals', 'cables', 'storage', 'power', 'mounts'])[(i % 5) + 1],
+    round((random() * 200 + 5)::numeric, 2),
+    round((random() * 150 + 3)::numeric, 2),
+    (i * 7) % 120,
+    (i % 25) + 1,
+    (i % 3) <> 0,
+    (array['A1', 'B2', 'C3', 'D4'])[(i % 4) + 1],
+    array['bulk', 'imported', 'clearance'],
+    jsonb_build_object('batch', i % 50, 'pallet', 'P-' || (i % 12), 'fragile', (i % 4) = 0)
+from generate_series(1, 200) as i;
