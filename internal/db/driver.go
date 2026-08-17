@@ -10,6 +10,7 @@ const (
 
 type ConnectConfig struct {
 	DbType   DbType
+	DSN      string // full connection string; takes precedence over the fields below
 	Host     string
 	Port     int
 	User     string
@@ -81,7 +82,7 @@ func NewClient(ctx context.Context, connString string) (Driver, error) {
 	}
 	cfg := ConnectConfig{
 		DbType: DbTypePostgres,
-		// Parse connString to fill other fields as needed
+		DSN:    connString,
 	}
 	if err := driver.Connect(ctx, cfg); err != nil {
 		return nil, err

@@ -12,6 +12,7 @@ import (
 
 	"sqvue/internal/config"
 	"sqvue/internal/db"
+	_ "sqvue/internal/db/postgres"
 	"sqvue/internal/tui"
 )
 
