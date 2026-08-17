@@ -1,10 +1,10 @@
 package postgres
 
 import (
-	"sqvue/internal/db"
 	"context"
 	"encoding/json"
 	"fmt"
+	"sqvue/internal/db"
 	"strconv"
 
 	"github.com/jackc/pgx/v5"
