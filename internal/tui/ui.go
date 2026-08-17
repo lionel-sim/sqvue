@@ -46,6 +46,7 @@ type Model struct {
 	pageSize int
 	loading  bool
 	lastErr  error
+	width    int
 
 	keys keymap.Map
 }
@@ -67,6 +68,9 @@ func (m Model) Init() tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keys.Quit):
@@ -202,6 +206,7 @@ func Render(m Model) string {
 			}
 			b.WriteString(col.Name)
 		}
+		b.WriteString("\n")
 
 		for _, row := range m.rows {
 			b.WriteString(strings.Join(row, " | ") + "\n")
@@ -211,7 +216,14 @@ func Render(m Model) string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString("Status: " + m.status)
+	b.WriteString(rightAlign(m.width, "Status: "+m.status))
 
 	return b.String()
+}
+
+func rightAlign(width int, s string) string {
+	if width <= len(s) {
+		return s
+	}
+	return strings.Repeat(" ", width-len(s)) + s
 }
