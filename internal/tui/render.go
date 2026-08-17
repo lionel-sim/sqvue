@@ -7,9 +7,18 @@ import (
 )
 
 const (
-	maxColWidth = 40
-	minColWidth = 2
-	colSep      = " | "
+	maxColWidth     = 40
+	minColWidth     = 2
+	colSep          = " | "
+	tableListHeader = 1
+	tableListHeight = 4
+	gapAfterList    = 1
+	columnsHeader   = 1
+	maxPageSize     = 50
+	footerRows      = 2
+	// reservedRows counts every fixed line above and below the data rows:
+	// list header, list, blank gap, column header, and the footer.
+	reservedRows = tableListHeader + tableListHeight + gapAfterList + columnsHeader + footerRows
 )
 
 // =========================================================================
@@ -19,12 +28,12 @@ const (
 func Render(m Model) string {
 	var b strings.Builder
 
-	renderTableList(&b, m.tables, m.selected)
+	renderTableList(&b, m.tables, m.selected, m.scroll)
 	b.WriteString("\n")
 	if m.loading {
 		b.WriteString("Loading...\n")
 	} else {
-		renderRows(&b, m.columns, m.rows, m.width)
+		renderRows(&b, m.columns, m.rows, m.width, m.height-reservedRows)
 	}
 	b.WriteString("\n")
 	b.WriteString(rightAlign(m.width, "Status: "+m.status))
@@ -32,29 +41,38 @@ func Render(m Model) string {
 	return b.String()
 }
 
-func renderTableList(b *strings.Builder, tables []db.Table, selected int) {
+func renderTableList(b *strings.Builder, tables []db.Table, selected, offset int) {
 	b.WriteString("Tables (j/k to navigate, pgup/pgdown to page, q to quit)\n")
 	if len(tables) == 0 {
 		b.WriteString("  (no tables found)\n")
 		return
 	}
-	for i, t := range tables {
+	end := offset + tableListHeight
+	if end > len(tables) {
+		end = len(tables)
+	}
+	for i := offset; i < end; i++ {
 		prefix := "  "
 		if i == selected {
 			prefix = "> "
 		}
-		b.WriteString(prefix + t.String() + "\n")
+		b.WriteString(prefix + tables[i].String() + "\n")
 	}
 }
 
-func renderRows(b *strings.Builder, columns []db.Column, rows [][]string, width int) {
+// renderRows writes the column header and up to maxRows data rows. A negative
+// maxRows (terminal height unknown) shows all rows without clipping.
+func renderRows(b *strings.Builder, columns []db.Column, rows [][]string, width, maxRows int) {
 	if len(columns) == 0 {
 		b.WriteString("(no rows to display)\n")
 		return
 	}
 	widths := layoutColumns(width, columns, rows)
 	b.WriteString(formatRow(columnNames(columns), widths) + "\n")
-	for _, row := range rows {
+	for i, row := range rows {
+		if maxRows >= 0 && i >= maxRows {
+			break
+		}
 		b.WriteString(formatRow(row, widths) + "\n")
 	}
 }

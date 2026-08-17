@@ -12,9 +12,8 @@ import (
 )
 
 type Options struct {
-	Client   db.Driver
-	PageSize int
-	Timeout  time.Duration
+	Client  db.Driver
+	Timeout time.Duration
 }
 
 type Model struct {
@@ -22,6 +21,7 @@ type Model struct {
 	timeout  time.Duration
 	tables   []db.Table
 	selected int
+	scroll   int
 
 	columns []db.Column
 	rows    [][]string
@@ -33,6 +33,7 @@ type Model struct {
 	loading  bool
 	lastErr  error
 	width    int
+	height   int
 
 	keys keymap.Map
 }
@@ -42,7 +43,7 @@ func New(opts Options) Model {
 		client:   opts.Client,
 		timeout:  opts.Timeout,
 		status:   "loading tables...",
-		pageSize: opts.PageSize,
+		pageSize: maxPageSize,
 		loading:  true,
 		keys:     keymap.Default(),
 	}
@@ -67,8 +68,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleWindowSize(msg tea.WindowSizeMsg) (Model, tea.Cmd) {
+	oldSize := m.pageSize
 	m.width = msg.Width
+	m.height = msg.Height
+	if msg.Height > 0 {
+		m.pageSize = m.computedPageSize()
+	}
+	if m.pageSize != oldSize && len(m.tables) > 0 {
+		return m.startLoadRows()
+	}
 	return m, nil
+}
+
+func (m Model) computedPageSize() int {
+	return clamp(m.height-reservedRows, 1, maxPageSize)
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
@@ -97,8 +110,24 @@ func (m Model) moveSelection(delta int) (Model, tea.Cmd) {
 		return m, nil
 	}
 	m.selected = target
+	m.scroll = keepInView(m.selected, m.scroll, tableListHeight, len(m.tables))
 	m.page = 0
 	return m.startLoadRows()
+}
+
+// keepInView returns the scroll offset that keeps selected within a window of
+// the given height, scrolling the list as the selection moves past its edges.
+func keepInView(selected, offset, height, count int) int {
+	if count <= height {
+		return 0
+	}
+	if selected < offset {
+		return selected
+	}
+	if selected >= offset+height {
+		return selected - height + 1
+	}
+	return offset
 }
 
 func (m Model) changePage(delta int) (Model, tea.Cmd) {
@@ -118,6 +147,7 @@ func (m Model) handleTablesLoaded(msg tablesLoadedMsg) (Model, tea.Cmd) {
 	m.status = fmt.Sprintf("found %d tables", len(m.tables))
 	if len(m.tables) > 0 {
 		m.selected = 0
+		m.scroll = 0
 		m.page = 0
 		return m.startLoadRows()
 	}

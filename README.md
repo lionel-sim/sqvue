@@ -44,11 +44,10 @@ You can also run directly from source with `make run` or `go run ./...`.
 
 ### Flags
 
-| Flag          | Default   | Description                  |
-| ------------- | --------- | ---------------------------- |
-| `--conn`      |           | Postgres connection string   |
-| `--page-size` | `50`      | Rows per page                |
-| `--timeout`   | `5s`      | Query timeout                |
+| Flag          | Default | Description                     |
+| ------------- | ------- | ------------------------------- |
+| `--conn`      |         | Postgres connection string      |
+| `--timeout`   | `5s`    | Query timeout                   |
 
 ### Key bindings
 

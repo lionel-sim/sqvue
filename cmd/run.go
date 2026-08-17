@@ -18,13 +18,11 @@ import (
 
 var (
 	connFlag    string
-	pageSize    int
 	timeoutFlag time.Duration
 )
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&connFlag, "conn", "", "Postgres connection string (or set DATABASE_URL)")
-	rootCmd.PersistentFlags().IntVar(&pageSize, "page-size", 50, "rows per page")
 	rootCmd.PersistentFlags().DurationVar(&timeoutFlag, "timeout", 5*time.Second, "query timeout")
 
 	rootCmd.RunE = run
@@ -33,7 +31,6 @@ func init() {
 func run(cmd *cobra.Command, args []string) error {
 	cfg := config.DBProfile{
 		ConnString: firstNonEmpty(connFlag, os.Getenv("DATABASE_URL")),
-		PageSize:   pageSize,
 		Timeout:    timeoutFlag,
 	}
 	if err := cfg.Validate(); err != nil {
@@ -50,9 +47,8 @@ func run(cmd *cobra.Command, args []string) error {
 	defer client.Close()
 
 	m := tui.New(tui.Options{
-		Client:   client,
-		PageSize: cfg.PageSize,
-		Timeout:  cfg.Timeout,
+		Client:  client,
+		Timeout: cfg.Timeout,
 	})
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
