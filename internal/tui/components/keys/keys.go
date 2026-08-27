@@ -4,12 +4,14 @@ import "github.com/charmbracelet/bubbles/key"
 
 // Map holds all key bindings used across the TUI.
 type Map struct {
-	Quit     key.Binding
-	Refresh  key.Binding
-	Up       key.Binding
-	Down     key.Binding
-	PageUp   key.Binding
-	PageDown key.Binding
+	Quit             key.Binding
+	Refresh          key.Binding
+	Up               key.Binding
+	Down             key.Binding
+	PageUp           key.Binding
+	PageDown         key.Binding
+	ShowDescriptions key.Binding
+	ShowValues       key.Binding
 }
 
 // Default returns the default key bindings for navigation and quitting.
@@ -38,6 +40,14 @@ func Default() Map {
 		PageDown: key.NewBinding(
 			key.WithKeys("pgdown", "f"),
 			key.WithHelp("PgDn/f", "next page"),
+		),
+		ShowDescriptions: key.NewBinding(
+			key.WithKeys("d"),
+			key.WithHelp("d", "show columns"),
+		),
+		ShowValues: key.NewBinding(
+			key.WithKeys("y"),
+			key.WithHelp("y", "show rows"),
 		),
 	}
 }

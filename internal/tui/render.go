@@ -32,17 +32,21 @@ func Render(m Model) string {
 	b.WriteString("\n")
 	if m.loading {
 		b.WriteString("Loading...\n")
+	} else if m.mode == modeDescriptions {
+		renderDescriptions(&b, m.tableInfo.Columns, m.width, m.height-reservedRows)
 	} else {
 		renderRows(&b, m.columns, m.rows, m.width, m.height-reservedRows)
 	}
 	b.WriteString("\n")
-	b.WriteString(rightAlign(m.width, "Status: "+m.status))
+	// Right-align one column short of the edge so the final character isn't
+	// clipped by terminals at the bottom-right corner.
+	b.WriteString(rightAlign(m.width-1, "Status: "+m.status))
 
 	return b.String()
 }
 
 func renderTableList(b *strings.Builder, tables []db.Table, selected, offset int) {
-	b.WriteString("Tables (j/k to navigate, pgup/pgdown to page, q to quit)\n")
+	b.WriteString("Tables (j/k navigate, pgup/pgdown page, d=columns y=rows, q quit)\n")
 	if len(tables) == 0 {
 		b.WriteString("  (no tables found)\n")
 		return
@@ -83,6 +87,51 @@ func columnNames(cols []db.Column) []string {
 		names[i] = c.Name
 	}
 	return names
+}
+
+// renderDescriptions renders column metadata (name, type, nullability,
+// default, primary key) using the same column layout machinery as the rows.
+func renderDescriptions(b *strings.Builder, cols []db.Column, width, maxRows int) {
+	if len(cols) == 0 {
+		b.WriteString("(no columns to display)\n")
+		return
+	}
+	headers := []db.Column{
+		{Name: "column"},
+		{Name: "type"},
+		{Name: "nullable"},
+		{Name: "default"},
+		{Name: "primary"},
+	}
+	rows := make([][]string, len(cols))
+	for i, c := range cols {
+		def := ""
+		if c.Default != nil {
+			def = *c.Default
+		}
+		rows[i] = []string{
+			c.Name,
+			c.DataType,
+			yesNo(c.Nullable),
+			def,
+			yesNo(c.IsPrimary),
+		}
+	}
+	widths := layoutColumns(width, headers, rows)
+	b.WriteString(formatRow(columnNames(headers), widths) + "\n")
+	for i, row := range rows {
+		if maxRows >= 0 && i >= maxRows {
+			break
+		}
+		b.WriteString(formatRow(row, widths) + "\n")
+	}
+}
+
+func yesNo(v bool) string {
+	if v {
+		return "yes"
+	}
+	return "no"
 }
 
 func formatRow(cells []string, widths []int) string {

@@ -109,8 +109,14 @@ func (d *Driver) ListTables(ctx context.Context, schema string) ([]db.Table, err
 }
 
 func (d *Driver) DescribeTable(ctx context.Context, schema, table string) (db.TableInfo, error) {
-	// TODO
-	return db.TableInfo{}, nil
+	if d.pool == nil {
+		return db.TableInfo{}, fmt.Errorf("not connected")
+	}
+	cols, err := d.columnMetadata(ctx, schema, table)
+	if err != nil {
+		return db.TableInfo{}, err
+	}
+	return db.TableInfo{Schema: schema, Name: table, Columns: cols}, nil
 }
 
 func (d *Driver) Query(ctx context.Context, q db.Query) (db.Result, error) {

@@ -51,14 +51,16 @@ You can also run directly from source with `make run` or `go run ./...`.
 
 ### Key bindings
 
-| Key              | Action           |
-| ---------------- | ---------------- |
-| `j` / `↓`        | Next table       |
-| `k` / `↑`        | Previous table   |
-| `f` / `PgDn`     | Next page        |
-| `b` / `PgUp`     | Previous page    |
-| `r`              | Refresh tables   |
-| `q` / `Esc` / `Ctrl+C` | Quit         |
+| Key              | Action                |
+| ---------------- | --------------------- |
+| `j` / `↓`        | Next table            |
+| `k` / `↑`        | Previous table        |
+| `f` / `PgDn`     | Next page             |
+| `b` / `PgUp`     | Previous page         |
+| `d`              | Show column descriptions |
+| `y`              | Show row values       |
+| `r`              | Refresh tables        |
+| `q` / `Esc` / `Ctrl+C` | Quit              |
 
 ## Project layout
 

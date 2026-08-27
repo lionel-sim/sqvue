@@ -28,3 +28,21 @@ func TestRenderRowsClips(t *testing.T) {
 		t.Fatalf("want 11 lines (no clip), got %d", len(lines))
 	}
 }
+
+func TestRenderDescriptions(t *testing.T) {
+	cols := []db.Column{
+		{Name: "id", DataType: "integer", IsPrimary: true},
+		{Name: "name", DataType: "text", Nullable: true, Default: strPtr("'anon'")},
+	}
+	var b strings.Builder
+	renderDescriptions(&b, cols, 60, -1)
+
+	out := b.String()
+	for _, want := range []string{"column", "type", "nullable", "default", "primary", "id", "integer", "yes", "name", "'anon'"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("descriptions output missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func strPtr(s string) *string { return &s }

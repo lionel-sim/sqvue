@@ -16,15 +16,25 @@ type Options struct {
 	Timeout time.Duration
 }
 
+type viewMode int
+
+const (
+	modeValues viewMode = iota
+	modeDescriptions
+)
+
 type Model struct {
 	client   db.Driver
 	timeout  time.Duration
 	tables   []db.Table
 	selected int
 	scroll   int
+	mode     viewMode
 
 	columns []db.Column
 	rows    [][]string
+
+	tableInfo db.TableInfo
 
 	status string
 
@@ -63,6 +73,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleTablesLoaded(msg)
 	case rowsLoadedMsg:
 		return m.handleRowsLoaded(msg)
+	case descriptionsLoadedMsg:
+		return m.handleDescriptionsLoaded(msg)
 	}
 	return m, nil
 }
@@ -75,7 +87,7 @@ func (m Model) handleWindowSize(msg tea.WindowSizeMsg) (Model, tea.Cmd) {
 		m.pageSize = m.computedPageSize()
 	}
 	if m.pageSize != oldSize && len(m.tables) > 0 {
-		return m.startLoadRows()
+		return m.startLoad()
 	}
 	return m, nil
 }
@@ -100,6 +112,27 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.changePage(+1)
 	case key.Matches(msg, m.keys.PageUp):
 		return m.changePage(-1)
+	case key.Matches(msg, m.keys.ShowDescriptions):
+		return m.showDescriptions()
+	case key.Matches(msg, m.keys.ShowValues):
+		return m.showValues()
+	}
+	return m, nil
+}
+
+func (m Model) showDescriptions() (Model, tea.Cmd) {
+	if m.mode != modeDescriptions {
+		m.mode = modeDescriptions
+		return m.startLoadDescriptions()
+	}
+	return m, nil
+}
+
+func (m Model) showValues() (Model, tea.Cmd) {
+	if m.mode != modeValues {
+		m.mode = modeValues
+		m.page = 0
+		return m.startLoadRows()
 	}
 	return m, nil
 }
@@ -112,7 +145,7 @@ func (m Model) moveSelection(delta int) (Model, tea.Cmd) {
 	m.selected = target
 	m.scroll = keepInView(m.selected, m.scroll, tableListHeight, len(m.tables))
 	m.page = 0
-	return m.startLoadRows()
+	return m.startLoad()
 }
 
 // keepInView returns the scroll offset that keeps selected within a window of
@@ -131,6 +164,9 @@ func keepInView(selected, offset, height, count int) int {
 }
 
 func (m Model) changePage(delta int) (Model, tea.Cmd) {
+	if m.mode != modeValues {
+		return m, nil
+	}
 	if m.page+delta < 0 {
 		return m, nil
 	}
@@ -149,6 +185,7 @@ func (m Model) handleTablesLoaded(msg tablesLoadedMsg) (Model, tea.Cmd) {
 		m.selected = 0
 		m.scroll = 0
 		m.page = 0
+		m.mode = modeValues
 		return m.startLoadRows()
 	}
 	return m, nil
@@ -163,6 +200,18 @@ func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 	m.rows = msg.rows
 	if t := m.currentTable(); t != nil {
 		m.status = fmt.Sprintf("%s page %d (%d rows)", t.String(), m.page+1, len(m.rows))
+	}
+	return m, nil
+}
+
+func (m Model) handleDescriptionsLoaded(msg descriptionsLoadedMsg) (Model, tea.Cmd) {
+	m.loading = false
+	if msg.err != nil {
+		return m.fail("describe failed", msg.err)
+	}
+	m.tableInfo = msg.info
+	if t := m.currentTable(); t != nil {
+		m.status = fmt.Sprintf("%s (%d columns)", t.String(), len(msg.info.Columns))
 	}
 	return m, nil
 }

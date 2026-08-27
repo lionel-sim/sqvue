@@ -12,4 +12,8 @@ type (
 		rows    [][]string
 		err     error
 	}
+	descriptionsLoadedMsg struct {
+		info db.TableInfo
+		err  error
+	}
 )
