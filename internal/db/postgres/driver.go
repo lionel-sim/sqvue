@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sqvue/internal/db"
 	"strconv"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -120,8 +121,47 @@ func (d *Driver) DescribeTable(ctx context.Context, schema, table string) (db.Ta
 }
 
 func (d *Driver) Query(ctx context.Context, q db.Query) (db.Result, error) {
-	// Implementation here...
-	return db.Result{}, nil
+	if d.pool == nil {
+		return db.Result{}, fmt.Errorf("not connected")
+	}
+	start := time.Now()
+	rows, err := d.pool.Query(ctx, q.SQL, q.Args...)
+	if err != nil {
+		return db.Result{}, err
+	}
+	defer rows.Close()
+
+	fieldDescriptions := rows.FieldDescriptions()
+	columns := make([]string, len(fieldDescriptions))
+	for i, fd := range fieldDescriptions {
+		columns[i] = string(fd.Name)
+	}
+
+	var out [][]any
+	values := make([]any, len(columns))
+	scanTargets := make([]any, len(columns))
+	for i := range values {
+		scanTargets[i] = &values[i]
+	}
+
+	for rows.Next() {
+		if err := rows.Scan(scanTargets...); err != nil {
+			return db.Result{}, err
+		}
+		row := make([]any, len(values))
+		copy(row, values)
+		out = append(out, row)
+	}
+
+	rowsAffected := rows.CommandTag().RowsAffected()
+	durationMs := time.Since(start).Milliseconds()
+
+	return db.Result{
+		Columns:      columns,
+		Rows:         out,
+		RowsAffected: rowsAffected,
+		DurationMs:   durationMs,
+	}, rows.Err()
 }
 
 func (d *Driver) Rows(ctx context.Context, tbl db.Table, limit, offset int) ([]db.Column, [][]string, error) {
