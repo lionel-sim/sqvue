@@ -1,6 +1,6 @@
 # Roadmap
 
-Current status: core Postgres driver paths are working. The CLI, driver registry, and a basic Bubble Tea TUI are in place; `ListTables`, `Rows`, and conn-string support are implemented and smoke-tested against a local Postgres.
+Current status: Phase 1 is complete. The PostgreSQL CLI supports DSNs and individual connection flags, schema and table browsing, paginated row and column views, row counts, and ad-hoc SQL queries in the Bubble Tea TUI.
 
 ## Phase 1 — Make PostgreSQL fully functional
 
