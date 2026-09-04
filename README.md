@@ -130,9 +130,11 @@ or Postgres password file instead.
 | `s`              | Switch schema         |
 | `/`              | Filter table list     |
 | `:`              | Run an SQL query      |
+| `Enter`          | Focus displayed rows  |
 | `?`              | Show keyboard help    |
 | `r`              | Refresh tables        |
-| `q` / `Esc` / `Ctrl+C` | Quit              |
+| `Esc`            | Return from rows to table picker, or quit |
+| `q` / `Ctrl+C`   | Quit                  |
 
 Press `c` in a row or SQL-result view to open the column picker. Use `j`/`k`
 to choose a column, Space to show or hide it, and Enter or Esc to return.

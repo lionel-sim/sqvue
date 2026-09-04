@@ -62,6 +62,26 @@ func TestUpdateQuitKey(t *testing.T) {
 	}
 }
 
+func TestEnterFocusesGridAndEscapeReturnsToTablePicker(t *testing.T) {
+	m := testModel()
+	m.rows = [][]string{{"one"}}
+
+	m, _ = update(m, tea.KeyMsg{Type: tea.KeyEnter})
+	if !m.focused {
+		t.Fatal("expected Enter to focus the data grid")
+	}
+
+	m, _ = update(m, keyMsg("j"))
+	if m.selected != 0 {
+		t.Fatalf("selected table changed while grid was focused: %d", m.selected)
+	}
+
+	m, _ = update(m, tea.KeyMsg{Type: tea.KeyEsc})
+	if m.focused {
+		t.Fatal("expected Esc to return focus to the table picker")
+	}
+}
+
 func TestHelpOverlay(t *testing.T) {
 	m := testModel()
 	m, _ = update(m, keyMsg("?"))

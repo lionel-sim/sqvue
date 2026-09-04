@@ -33,6 +33,7 @@ type Model struct {
 
 	browserState
 	resultState
+	gridState
 	overlayState
 	viewportState
 	loadState
@@ -64,6 +65,11 @@ type resultState struct {
 	visibleColumns   []bool
 	visibleColumnKey string
 	queryState
+}
+
+// gridState tracks whether keyboard input is directed at the displayed rows.
+type gridState struct {
+	focused bool
 }
 
 // queryState retains an ad-hoc query result so it can be paged locally.
@@ -212,7 +218,20 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.activeOverlay = overlayHelp
 		return m, nil
 	case key.Matches(msg, m.keys.Quit):
+		if m.focused && msg.String() == "esc" {
+			m.focused = false
+			return m, nil
+		}
 		return m, tea.Quit
+	case key.Matches(msg, m.keys.Confirm):
+		if m.mode == modeValues && len(m.rows) > 0 {
+			m.focused = true
+		}
+		return m, nil
+	case m.focused:
+		// Grid navigation is added separately; until then, prevent row-focused
+		// input from changing the selected table.
+		return m, nil
 	case key.Matches(msg, m.keys.Refresh):
 		m.loading = true
 		m.status = "reloading tables..."
