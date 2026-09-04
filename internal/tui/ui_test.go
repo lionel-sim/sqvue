@@ -62,6 +62,13 @@ func TestUpdateQuitKey(t *testing.T) {
 	}
 }
 
+func TestEscapeDoesNotQuitOutsideOfGridFocus(t *testing.T) {
+	_, cmd := testModel().Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if cmd != nil {
+		t.Fatal("expected Esc to leave the application running")
+	}
+}
+
 func TestEnterFocusesGridAndEscapeReturnsToTablePicker(t *testing.T) {
 	m := testModel()
 	m.rows = [][]string{{"one"}}

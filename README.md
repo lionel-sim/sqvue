@@ -139,7 +139,7 @@ or Postgres password file instead.
 | `Enter`          | Focus displayed rows, or show selected-row details |
 | `?`              | Show keyboard help    |
 | `r`              | Refresh tables        |
-| `Esc`            | Return from rows to table picker, or quit |
+| `Esc`            | Return from rows to table picker, or close an overlay |
 | `q` / `Ctrl+C`   | Quit                  |
 
 Press `c` in a row or SQL-result view to open the column picker. Use `j`/`k`

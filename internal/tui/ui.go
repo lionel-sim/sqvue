@@ -236,11 +236,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Help):
 		m.activeOverlay = overlayHelp
 		return m, nil
+	case msg.String() == "esc" && m.focused:
+		m.focused = false
+		return m, nil
 	case key.Matches(msg, m.keys.Quit):
-		if m.focused && msg.String() == "esc" {
-			m.focused = false
-			return m, nil
-		}
 		return m, tea.Quit
 	case key.Matches(msg, m.keys.Confirm):
 		if m.focused {

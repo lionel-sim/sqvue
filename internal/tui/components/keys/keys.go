@@ -34,7 +34,7 @@ type Map struct {
 func Default() Map {
 	return Map{
 		Quit: key.NewBinding(
-			key.WithKeys("q", "ctrl+c", "esc"),
+			key.WithKeys("q", "ctrl+c"),
 			key.WithHelp("q", "quit"),
 		),
 		Refresh: key.NewBinding(
