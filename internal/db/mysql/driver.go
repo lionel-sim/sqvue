@@ -244,7 +244,43 @@ func (d *Driver) columnMetadata(ctx context.Context, schema, table string) ([]db
 		}
 		columns = append(columns, column)
 	}
-	return columns, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	foreignKeys, err := d.foreignKeyMetadata(ctx, schema, table)
+	if err != nil {
+		return nil, err
+	}
+	for i := range columns {
+		if foreignKey, ok := foreignKeys[columns[i].Name]; ok {
+			columns[i].ForeignKey = &foreignKey
+		}
+	}
+	return columns, nil
+}
+
+func (d *Driver) foreignKeyMetadata(ctx context.Context, schema, table string) (map[string]db.ForeignKey, error) {
+	rows, err := d.db.QueryContext(ctx, `
+		select column_name, referenced_table_schema, referenced_table_name, referenced_column_name
+		from information_schema.key_column_usage
+		where table_schema = ?
+		  and table_name = ?
+		  and referenced_table_name is not null`, schema, table)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	foreignKeys := make(map[string]db.ForeignKey)
+	for rows.Next() {
+		var column string
+		var foreignKey db.ForeignKey
+		if err := rows.Scan(&column, &foreignKey.Schema, &foreignKey.Table, &foreignKey.Column); err != nil {
+			return nil, err
+		}
+		foreignKeys[column] = foreignKey
+	}
+	return foreignKeys, rows.Err()
 }
 
 func rowOrder(columns []db.Column) string {

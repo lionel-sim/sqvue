@@ -312,7 +312,56 @@ func (d *Driver) columnMetadata(ctx context.Context, schema, table string) ([]db
 		c.IsPrimary = isPrimary
 		cols = append(cols, c)
 	}
-	return cols, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	foreignKeys, err := d.foreignKeyMetadata(ctx, schema, table)
+	if err != nil {
+		return nil, err
+	}
+	for i := range cols {
+		if foreignKey, ok := foreignKeys[cols[i].Name]; ok {
+			cols[i].ForeignKey = &foreignKey
+		}
+	}
+	return cols, nil
+}
+
+func (d *Driver) foreignKeyMetadata(ctx context.Context, schema, table string) (map[string]db.ForeignKey, error) {
+	rows, err := d.pool.Query(ctx, `
+		select kcu.column_name, ccu.table_schema, ccu.table_name, ccu.column_name
+		from information_schema.table_constraints tc
+		join information_schema.key_column_usage kcu
+		  on kcu.constraint_catalog = tc.constraint_catalog
+		 and kcu.constraint_schema = tc.constraint_schema
+		 and kcu.constraint_name = tc.constraint_name
+		join information_schema.referential_constraints rc
+		  on rc.constraint_catalog = tc.constraint_catalog
+		 and rc.constraint_schema = tc.constraint_schema
+		 and rc.constraint_name = tc.constraint_name
+		join information_schema.key_column_usage ccu
+		  on ccu.constraint_catalog = rc.unique_constraint_catalog
+		 and ccu.constraint_schema = rc.unique_constraint_schema
+		 and ccu.constraint_name = rc.unique_constraint_name
+		 and ccu.ordinal_position = kcu.position_in_unique_constraint
+		where tc.constraint_type = 'FOREIGN KEY'
+		  and tc.table_schema = $1
+		  and tc.table_name = $2`, schema, table)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	foreignKeys := make(map[string]db.ForeignKey)
+	for rows.Next() {
+		var column string
+		var foreignKey db.ForeignKey
+		if err := rows.Scan(&column, &foreignKey.Schema, &foreignKey.Table, &foreignKey.Column); err != nil {
+			return nil, err
+		}
+		foreignKeys[column] = foreignKey
+	}
+	return foreignKeys, rows.Err()
 }
 
 func formatValue(v any) string {

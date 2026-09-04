@@ -17,7 +17,12 @@ func TestDriverBrowsesAndQueriesSQLite(t *testing.T) {
 	t.Cleanup(func() { _ = driver.Close() })
 
 	for _, statement := range []string{
-		`create table categories (id integer primary key, name text not null, note text default 'none')`,
+		`create table categories (
+			id integer primary key,
+			parent_id integer references categories(id),
+			name text not null,
+			note text default 'none'
+		)`,
 		`insert into categories (name) values ('books'), ('games'), ('music')`,
 		`create view category_names as select name from categories`,
 	} {
@@ -46,7 +51,7 @@ func TestDriverBrowsesAndQueriesSQLite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DescribeTable() error = %v", err)
 	}
-	if len(info.Columns) != 3 || !info.Columns[0].IsPrimary || info.Columns[0].Nullable || info.Columns[1].Nullable || info.Columns[2].Default == nil || *info.Columns[2].Default != "'none'" {
+	if len(info.Columns) != 4 || !info.Columns[0].IsPrimary || info.Columns[0].Nullable || !info.Columns[1].Nullable || info.Columns[1].ForeignKey == nil || *info.Columns[1].ForeignKey != (db.ForeignKey{Schema: "main", Table: "categories", Column: "id"}) || info.Columns[2].Nullable || info.Columns[3].Default == nil || *info.Columns[3].Default != "'none'" {
 		t.Fatalf("columns = %#v", info.Columns)
 	}
 
@@ -54,7 +59,7 @@ func TestDriverBrowsesAndQueriesSQLite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Rows() error = %v", err)
 	}
-	if len(columns) != 3 || len(rows) != 2 || rows[0][1] != "books" || rows[1][1] != "games" {
+	if len(columns) != 4 || len(rows) != 2 || rows[0][2] != "books" || rows[1][2] != "games" {
 		t.Fatalf("Rows() = columns %#v, rows %#v", columns, rows)
 	}
 

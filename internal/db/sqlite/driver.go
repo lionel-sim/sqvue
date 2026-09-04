@@ -247,7 +247,39 @@ func (d *Driver) columnMetadata(ctx context.Context, schema, table string) ([]db
 		}
 		columns = append(columns, column)
 	}
-	return columns, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	foreignKeys, err := d.foreignKeyMetadata(ctx, schema, table)
+	if err != nil {
+		return nil, err
+	}
+	for i := range columns {
+		if foreignKey, ok := foreignKeys[columns[i].Name]; ok {
+			columns[i].ForeignKey = &foreignKey
+		}
+	}
+	return columns, nil
+}
+
+func (d *Driver) foreignKeyMetadata(ctx context.Context, schema, table string) (map[string]db.ForeignKey, error) {
+	query := fmt.Sprintf("pragma %s.foreign_key_list(%s)", quoteIdent(schema), quoteIdent(table))
+	rows, err := d.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	foreignKeys := make(map[string]db.ForeignKey)
+	for rows.Next() {
+		var id, sequence int
+		var foreignTable, column, foreignColumn, onUpdate, onDelete, match string
+		if err := rows.Scan(&id, &sequence, &foreignTable, &column, &foreignColumn, &onUpdate, &onDelete, &match); err != nil {
+			return nil, err
+		}
+		foreignKeys[column] = db.ForeignKey{Schema: schema, Table: foreignTable, Column: foreignColumn}
+	}
+	return foreignKeys, rows.Err()
 }
 
 func rowOrder(table db.Table, columns []db.Column) string {

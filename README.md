@@ -7,7 +7,7 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 ## Features
 
 - Browse schemas, tables, and views with keyboard navigation; views are marked in the table list
-- Filter the table list, inspect column metadata, and choose visible columns
+- Filter the table list, inspect column and foreign-key metadata, and choose visible columns
 - Page through row data with total-row counts and type-aware value rendering
 - Run ad-hoc SQL queries and page through their results
 - Use a discoverable keyboard-help modal and compact footer controls
@@ -16,7 +16,7 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 
 ## Status
 
-Work in progress. PostgreSQL support is functional: sqvue can connect with a DSN or individual connection flags; browse schemas, tables, and views; inspect column metadata and paginated row data; and run ad-hoc SQL in the TUI.
+Work in progress. PostgreSQL, SQLite, and MySQL are supported: sqvue can connect with a DSN or individual connection flags; browse schemas, tables, and views; inspect column and foreign-key metadata and paginated row data; and run ad-hoc SQL in the TUI.
 
 Additional database drivers, exporting, streaming large results, and CI remain planned. See [roadmap.md](roadmap.md) for the current plan.
 

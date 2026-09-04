@@ -53,11 +53,19 @@ func (t Table) String() string {
 }
 
 type Column struct {
-	Name      string
-	DataType  string
-	Nullable  bool
-	Default   *string
-	IsPrimary bool
+	Name       string
+	DataType   string
+	Nullable   bool
+	Default    *string
+	IsPrimary  bool
+	ForeignKey *ForeignKey
+}
+
+// ForeignKey identifies the referenced column for a foreign-key column.
+type ForeignKey struct {
+	Schema string
+	Table  string
+	Column string
 }
 
 type TableInfo struct {

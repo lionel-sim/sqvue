@@ -35,16 +35,32 @@ func TestRenderRowsClips(t *testing.T) {
 func TestRenderDescriptions(t *testing.T) {
 	cols := []db.Column{
 		{Name: "id", DataType: "integer", IsPrimary: true},
-		{Name: "name", DataType: "text", Nullable: true, Default: strPtr("'anon'")},
+		{Name: "owner_id", DataType: "integer", Nullable: true, Default: strPtr("'anon'"), ForeignKey: &db.ForeignKey{Schema: "public", Table: "owners", Column: "id"}},
 	}
 	var b strings.Builder
-	renderDescriptions(&b, cols, 60, -1)
+	renderDescriptions(&b, cols, 100, -1)
 
 	out := b.String()
-	for _, want := range []string{"column", "type", "nullable", "default", "primary", "id", "integer", "yes", "name", "'anon'"} {
+	for _, want := range []string{"column", "type", "nullable", "default", "primary", "references", "id", "integer", "yes", "owner_id", "'anon'", "public.owners.id"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("descriptions output missing %q:\n%s", want, out)
 		}
+	}
+}
+
+func TestColumnNamesMarksForeignKeys(t *testing.T) {
+	names := columnNames([]db.Column{
+		{Name: "id"},
+		{Name: "owner_id", ForeignKey: &db.ForeignKey{Table: "owners", Column: "id"}},
+	})
+	if got := strings.Join(names, ","); got != "id,owner_id [FK]" {
+		t.Fatalf("column names = %q", got)
+	}
+}
+
+func TestForeignKeyLabelOmitsEmptyParts(t *testing.T) {
+	if got := foreignKeyLabel(&db.ForeignKey{Table: "owners"}); got != "owners" {
+		t.Fatalf("foreignKeyLabel() = %q, want owners", got)
 	}
 }
 

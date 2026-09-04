@@ -60,12 +60,15 @@ func columnNames(cols []db.Column) []string {
 	names := make([]string, len(cols))
 	for i, c := range cols {
 		names[i] = c.Name
+		if c.ForeignKey != nil {
+			names[i] += " [FK]"
+		}
 	}
 	return names
 }
 
-// renderDescriptions renders column metadata (name, type, nullability,
-// default, primary key) using the same column layout machinery as the rows.
+// renderDescriptions renders column metadata using the same column layout
+// machinery as the rows.
 func renderDescriptions(b *strings.Builder, cols []db.Column, width, maxRows int) {
 	if len(cols) == 0 {
 		b.WriteString("(no columns to display)\n")
@@ -77,6 +80,7 @@ func renderDescriptions(b *strings.Builder, cols []db.Column, width, maxRows int
 		{Name: "nullable"},
 		{Name: "default"},
 		{Name: "primary"},
+		{Name: "references"},
 	}
 	rows := make([][]string, len(cols))
 	for i, c := range cols {
@@ -84,7 +88,7 @@ func renderDescriptions(b *strings.Builder, cols []db.Column, width, maxRows int
 		if c.Default != nil {
 			def = *c.Default
 		}
-		rows[i] = []string{c.Name, c.DataType, yesNo(c.Nullable), def, yesNo(c.IsPrimary)}
+		rows[i] = []string{c.Name, c.DataType, yesNo(c.Nullable), def, yesNo(c.IsPrimary), foreignKeyLabel(c.ForeignKey)}
 	}
 	widths := layoutColumns(width, headers, rows)
 	b.WriteString(formatRow(columnNames(headers), widths) + "\n")
@@ -94,6 +98,24 @@ func renderDescriptions(b *strings.Builder, cols []db.Column, width, maxRows int
 		}
 		b.WriteString(formatRow(row, widths) + "\n")
 	}
+}
+
+func foreignKeyLabel(foreignKey *db.ForeignKey) string {
+	if foreignKey == nil {
+		return ""
+	}
+
+	parts := make([]string, 0, 3)
+	if foreignKey.Schema != "" {
+		parts = append(parts, foreignKey.Schema)
+	}
+	if foreignKey.Table != "" {
+		parts = append(parts, foreignKey.Table)
+	}
+	if foreignKey.Column != "" {
+		parts = append(parts, foreignKey.Column)
+	}
+	return strings.Join(parts, ".")
 }
 
 func yesNo(v bool) string {

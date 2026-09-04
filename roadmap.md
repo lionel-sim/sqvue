@@ -7,7 +7,7 @@ Current status: Phase 1 is complete and Phase 2 is underway. sqvue supports Post
 Finish the Postgres driver so the TUI is actually usable end-to-end.
 
 - [x] Implement `ListTables` — query `information_schema.tables` (tables, views)
-- [x] Implement `DescribeTable` — column metadata: name, type, nullability, default, primary key
+- [x] Implement `DescribeTable` — column metadata: name, type, nullability, default, primary key, foreign-key target
 - [x] Implement `Rows` — paginated `SELECT ... LIMIT/OFFSET` with type-aware rendering
 - [x] Implement `Query` — arbitrary SQL with args, returning columns + rows + affected count
 - [x] Parse the connection string properly in `NewClient` (DSN pass-through via `ConnectConfig`)
@@ -21,6 +21,7 @@ Finish the Postgres driver so the TUI is actually usable end-to-end.
   - [x] Compact table selector — show the selected schema once in the header and mark views distinctly
   - [x] Table filter — type-ahead search over the table list
   - [x] Column metadata view for the selected table (via `DescribeTable`)
+  - [x] Foreign-key indicators in table headers and referenced targets in the metadata view
   - [x] Ad-hoc SQL mode — input prompt to run raw SQL through `Query` and page through results
   - [x] Inline error handling for per-query failures without killing the session
   - [x] QoL: total row count in the status bar, table type marker (view/table), footer key bar
