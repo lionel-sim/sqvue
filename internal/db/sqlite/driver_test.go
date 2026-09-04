@@ -97,7 +97,7 @@ func TestQuoteIdent(t *testing.T) {
 func TestBrowseWhereUsesParameterizedOperators(t *testing.T) {
 	where, args, err := sqliteBrowseWhere([]db.RowFilter{
 		{Column: "name", Operator: db.FilterEqual, Value: "Ada"},
-		{Column: "note", Operator: db.FilterContains, Value: "vip"},
+		{Column: "note", Operator: db.FilterContains, Value: "vip%_"},
 		{Column: "code", Operator: db.FilterLike, Value: "A_%"},
 		{Column: "rank", Operator: db.FilterGreater, Value: "10"},
 		{Column: "rank", Operator: db.FilterLess, Value: "20"},
@@ -107,11 +107,11 @@ func TestBrowseWhereUsesParameterizedOperators(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sqliteBrowseWhere() error = %v", err)
 	}
-	wantWhere := " where \"name\" = ? and cast(\"note\" as text) like ? and cast(\"code\" as text) like ? and \"rank\" > ? and \"rank\" < ? and \"deleted_at\" is null and \"email\" is not null"
+	wantWhere := " where \"name\" = ? and lower(cast(\"note\" as text)) like lower(?) escape '\\' and cast(\"code\" as text) like ? and \"rank\" > ? and \"rank\" < ? and \"deleted_at\" is null and \"email\" is not null"
 	if where != wantWhere {
 		t.Fatalf("where = %q, want %q", where, wantWhere)
 	}
-	if len(args) != 5 || args[0] != "Ada" || args[1] != "%vip%" || args[2] != "A_%" || args[3] != "10" || args[4] != "20" {
+	if len(args) != 5 || args[0] != "Ada" || args[1] != "%vip\\%\\_%" || args[2] != "A_%" || args[3] != "10" || args[4] != "20" {
 		t.Fatalf("args = %#v", args)
 	}
 }

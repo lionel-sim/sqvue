@@ -352,8 +352,8 @@ func postgresBrowseWhere(filters []db.RowFilter) (string, []any, error) {
 			parts = append(parts, column+" = "+placeholder)
 			args = append(args, filter.Value)
 		case db.FilterContains:
-			parts = append(parts, "cast("+column+" as text) ilike "+placeholder)
-			args = append(args, "%"+filter.Value+"%")
+			parts = append(parts, "cast("+column+" as text) ilike "+placeholder+" escape E'\\\\'")
+			args = append(args, "%"+escapeLikeLiteral(filter.Value)+"%")
 		case db.FilterLike:
 			parts = append(parts, "cast("+column+" as text) like "+placeholder)
 			args = append(args, filter.Value)
@@ -375,6 +375,10 @@ func postgresBrowseWhere(filters []db.RowFilter) (string, []any, error) {
 		}
 	}
 	return " where " + strings.Join(parts, " and "), args, nil
+}
+
+func escapeLikeLiteral(value string) string {
+	return strings.NewReplacer("\\", "\\\\", "%", "\\%", "_", "\\_").Replace(value)
 }
 
 func rowOrder(tbl db.Table, cols []db.Column) string {

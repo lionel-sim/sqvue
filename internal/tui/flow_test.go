@@ -12,6 +12,7 @@ import (
 )
 
 type fakeDriver struct {
+	dbType        db.DbType
 	schemas       []db.Schema
 	tables        []db.Table
 	cols          []db.Column
@@ -28,7 +29,12 @@ type fakeDriver struct {
 	lastQuery     string
 }
 
-func (f *fakeDriver) DbType() db.DbType                               { return db.DbTypePostgres }
+func (f *fakeDriver) DbType() db.DbType {
+	if f.dbType != "" {
+		return f.dbType
+	}
+	return db.DbTypePostgres
+}
 func (f *fakeDriver) Connect(context.Context, db.ConnectConfig) error { return nil }
 func (f *fakeDriver) Close() error                                    { return nil }
 func (f *fakeDriver) Ping(context.Context) error                      { return nil }

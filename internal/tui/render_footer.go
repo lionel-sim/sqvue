@@ -24,6 +24,7 @@ func renderFooter(m Model) string {
 	bindings := "s schema | / filter | j/k navigate | d columns | y rows | q quit"
 	focus := "Focus: tables"
 	if m.focused {
+		bindings = "/ filter rows | x clear | j/k navigate | y copy | q quit"
 		focus = "Focus: rows"
 	}
 	if m.countPrefix > 0 {

@@ -297,7 +297,7 @@ func TestGridFilterOperatorPickerSelectsOperator(t *testing.T) {
 	if m.browseFilterOperator != db.FilterContains {
 		t.Fatalf("operator = %q, want contains", m.browseFilterOperator)
 	}
-	if got := m.browseFilterInput.Prompt; got != "Filter name contains " {
+	if got := m.browseFilterInput.Prompt; got != "Filter name contains (case-insensitive) " {
 		t.Fatalf("filter prompt = %q", got)
 	}
 }
@@ -337,6 +337,60 @@ func TestBrowseFilterOperatorsIncludeILikeOnlyForPostgres(t *testing.T) {
 	operators := m.browseFilterOperators()
 	if len(operators) != len(standardBrowseFilterOperators)+1 || operators[3] != db.FilterILike {
 		t.Fatalf("Postgres operators = %#v", operators)
+	}
+	m.client = &fakeDriver{dbType: db.DbTypeSQLite}
+	for _, operator := range m.browseFilterOperators() {
+		if operator == db.FilterILike {
+			t.Fatal("ILike available for SQLite")
+		}
+	}
+}
+
+func TestBrowseFilterActionsDoNotLeaveSQLMode(t *testing.T) {
+	m := testModel()
+	m.focused = true
+	m.queryActive = true
+	m.rows = [][]string{{"query result"}}
+	for _, key := range []string{"/", "x"} {
+		got, cmd := update(m, keyMsg(key))
+		if cmd != nil || !got.queryActive || got.rows[0][0] != "query result" {
+			t.Fatalf("%s changed SQL mode: %#v", key, got)
+		}
+	}
+}
+
+func TestNewBrowseContextResetsPagingState(t *testing.T) {
+	m := testModel()
+	m.browseFilters = []db.RowFilter{{Column: "id", Operator: db.FilterEqual, Value: "1"}}
+	m.pendingRowMoves = 4
+	m.hasNextPage = true
+	m.page = 2
+	m, _ = m.clearBrowseFilters()
+	if m.pendingRowMoves != 0 || m.hasNextPage || m.page != 0 {
+		t.Fatalf("stale browse state = pending %d, next %t, page %d", m.pendingRowMoves, m.hasNextPage, m.page)
+	}
+}
+
+func TestFilteredStatusDoesNotUseUnfilteredCount(t *testing.T) {
+	m := testModel()
+	m.rows = [][]string{{"1"}}
+	m.browseFilters = []db.RowFilter{{Column: "id", Operator: db.FilterEqual, Value: "1"}}
+	m.rowCounts[m.tables[0].String()] = 99
+	m.setRowsStatus(m.tables[0])
+	if strings.Contains(m.status, "of 99") {
+		t.Fatalf("filtered status uses unfiltered count: %q", m.status)
+	}
+}
+
+func TestGridForeignKeyNavigationRejectsNull(t *testing.T) {
+	m := testModel()
+	m.schemas = []db.Schema{{Name: "public"}}
+	m.focused = true
+	m.columns = []db.Column{{Name: "owner_id", ForeignKey: &db.ForeignKey{Schema: "public", Table: "owners", Column: "id"}}}
+	m.rows = [][]string{{"NULL"}}
+	m, _ = update(m, keyMsg("o"))
+	if m.status != "cannot open a NULL reference" {
+		t.Fatalf("status = %q", m.status)
 	}
 }
 

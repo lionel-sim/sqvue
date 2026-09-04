@@ -33,6 +33,22 @@ func TestRenderRowsClips(t *testing.T) {
 	}
 }
 
+func TestBrowseFilterPickerFitsTerminalAndShowsFocusedBindings(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 80, 8
+	m.focused = true
+	m.activeOverlay = overlayBrowseFilterOperator
+	m.browseFilterColumn = "name"
+	m.client = &fakeDriver{}
+	view := m.View()
+	if len(strings.Split(view, "\n")) != m.height {
+		t.Fatalf("picker rendered %d lines for height %d", len(strings.Split(view, "\n")), m.height)
+	}
+	if !strings.Contains(view, "/ filter rows | x clear") {
+		t.Fatalf("focused footer = %q", view)
+	}
+}
+
 func TestRenderVisibleRowsHighlightsActiveRow(t *testing.T) {
 	columns := []db.Column{{Name: "name"}}
 	rows := [][]string{{"books"}, {"games"}}

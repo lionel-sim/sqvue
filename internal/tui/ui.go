@@ -337,10 +337,21 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 	}
 	count := m.consumeGridCount()
+	if m.loading && (key.Matches(msg, m.keys.Down) || key.Matches(msg, m.keys.Up) || key.Matches(msg, m.keys.PageDown) || key.Matches(msg, m.keys.PageUp)) {
+		return m, nil
+	}
 	switch {
 	case key.Matches(msg, m.keys.BrowseFilter):
+		if m.queryActive {
+			m.status = "row filters are unavailable for SQL results"
+			return m, nil
+		}
 		return m.openBrowseFilter()
 	case key.Matches(msg, m.keys.ClearBrowseFilter):
+		if m.queryActive {
+			m.status = "row filters are unavailable for SQL results"
+			return m, nil
+		}
 		return m.clearBrowseFilters()
 	case key.Matches(msg, m.keys.Down):
 		return m.moveGridRows(count)
@@ -380,9 +391,15 @@ func (m Model) clearBrowseFilters() (Model, tea.Cmd) {
 		return m, nil
 	}
 	m.browseFilters = nil
+	m.resetBrowseContext()
+	return m.startLoadRows()
+}
+
+func (m *Model) resetBrowseContext() {
 	m.page = 0
 	m.rowCursor = 0
-	return m.startLoadRows()
+	m.pendingRowMoves = 0
+	m.hasNextPage = false
 }
 
 func (m Model) openBrowseFilter() (Model, tea.Cmd) {
@@ -430,8 +447,7 @@ func (m Model) handleBrowseFilterOperatorKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.browseFilterOperator = m.browseFilterOperators()[m.browseFilterCursor]
 		if m.browseFilterOperator == db.FilterIsNull || m.browseFilterOperator == db.FilterIsNotNull {
 			m.browseFilters = append(m.browseFilters, db.RowFilter{Column: m.browseFilterColumn, Operator: m.browseFilterOperator})
-			m.page = 0
-			m.rowCursor = 0
+			m.resetBrowseContext()
 			m.activeOverlay = overlayNone
 			return m.startLoadRows()
 		}
@@ -450,8 +466,7 @@ func (m Model) handleBrowseFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	}
 	if key.Matches(msg, m.keys.Confirm) {
 		m.browseFilters = append(m.browseFilters, db.RowFilter{Column: m.browseFilterColumn, Operator: m.browseFilterOperator, Value: m.browseFilterInput.Value()})
-		m.page = 0
-		m.rowCursor = 0
+		m.resetBrowseContext()
 		m.activeOverlay = overlayNone
 		m.browseFilterInput.Blur()
 		return m.startLoadRows()
@@ -468,7 +483,7 @@ func (m *Model) updateBrowseFilterPrompt(column string) {
 func browseFilterOperatorLabel(operator db.FilterOperator) string {
 	switch operator {
 	case db.FilterContains:
-		return "contains"
+		return "contains (case-insensitive)"
 	case db.FilterLike:
 		return "like"
 	case db.FilterILike:
@@ -584,6 +599,10 @@ func (m Model) followActiveForeignKey() (Model, tea.Cmd) {
 
 	foreignKey := column.ForeignKey
 	value := m.activeCellValue()
+	if value == "NULL" {
+		m.status = "cannot open a NULL reference"
+		return m, nil
+	}
 	schema := foreignKey.Schema
 	if schema == "" {
 		schema = m.currentSchema()
@@ -602,8 +621,7 @@ func (m Model) followActiveForeignKey() (Model, tea.Cmd) {
 			m.focused = true
 			m.selected = i
 			m.scroll = keepInView(m.selected, m.scroll, tableListHeight, len(m.tables))
-			m.page = 0
-			m.rowCursor = 0
+			m.resetBrowseContext()
 			m.cellCursor = 0
 			m.mode = modeValues
 			m.browseFilters = []db.RowFilter{{Column: foreignKey.Column, Operator: db.FilterEqual, Value: value}}
@@ -744,8 +762,7 @@ func (m Model) moveSelection(delta int) (Model, tea.Cmd) {
 	}
 	m.selected = target
 	m.scroll = keepInView(m.selected, m.scroll, tableListHeight, len(m.tables))
-	m.page = 0
-	m.rowCursor = 0
+	m.resetBrowseContext()
 	m.cellCursor = 0
 	m.browseFilters = nil
 	return m.startLoad()
@@ -849,7 +866,7 @@ func (m *Model) applyFilter() {
 	}
 	m.selected = 0
 	m.scroll = 0
-	m.page = 0
+	m.resetBrowseContext()
 }
 
 func (m Model) currentSchema() string {
@@ -999,8 +1016,10 @@ func (m *Model) setRowsStatus(t db.Table) {
 	status := fmt.Sprintf("%s page %d (%d rows", t.String(), m.page+1, len(m.rows))
 	if count, ok := m.browseRowCounts[m.browseCountKey(t)]; len(m.browseFilters) > 0 && ok {
 		status += fmt.Sprintf(" of %d", count)
-	} else if count, ok := m.rowCounts[t.String()]; ok {
-		status += fmt.Sprintf(" of %d", count)
+	} else if len(m.browseFilters) == 0 {
+		if count, ok := m.rowCounts[t.String()]; ok {
+			status += fmt.Sprintf(" of %d", count)
+		}
 	}
 	status += ")"
 	if len(m.browseFilters) > 0 {
@@ -1115,8 +1134,8 @@ func (m Model) helpKeyMap() keymap.Map {
 	keys.CopyCell.SetEnabled(m.focused)
 	keys.CopyRow.SetEnabled(m.focused)
 	keys.OpenReference.SetEnabled(m.focused)
-	keys.BrowseFilter.SetEnabled(m.focused)
-	keys.ClearBrowseFilter.SetEnabled(m.focused && len(m.browseFilters) > 0)
+	keys.BrowseFilter.SetEnabled(m.focused && !m.queryActive)
+	keys.ClearBrowseFilter.SetEnabled(m.focused && !m.queryActive && len(m.browseFilters) > 0)
 
 	keys.SQL.SetEnabled(!m.focused)
 	keys.Columns.SetEnabled(!m.focused)
