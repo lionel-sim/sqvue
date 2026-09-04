@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/ansi"
 
 	"sqvue/internal/db"
 	keymap "sqvue/internal/tui/components/keys"
@@ -169,6 +170,8 @@ func (m Model) handleWindowSize(msg tea.WindowSizeMsg) (Model, tea.Cmd) {
 	oldSize := m.pageSize
 	m.width = msg.Width
 	m.height = msg.Height
+	m.filterInput.Width = inputWidth(msg.Width, m.filterInput.Prompt)
+	m.sqlInput.Width = inputWidth(msg.Width, m.sqlInput.Prompt)
 	if msg.Height > 0 {
 		m.pageSize = m.computedPageSize()
 	}
@@ -180,6 +183,10 @@ func (m Model) handleWindowSize(msg tea.WindowSizeMsg) (Model, tea.Cmd) {
 		return m.startLoad()
 	}
 	return m, nil
+}
+
+func inputWidth(terminalWidth int, prompt string) int {
+	return max(1, terminalWidth-ansi.StringWidth(prompt))
 }
 
 func (m Model) computedPageSize() int {

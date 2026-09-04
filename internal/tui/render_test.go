@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/ansi"
 
 	"sqvue/internal/db"
@@ -85,6 +86,20 @@ func TestRenderTableListUsesSchemaHeaderAndMarksViews(t *testing.T) {
 	}
 	if !strings.Contains(out, "sales_summary [view]") {
 		t.Fatalf("table list does not mark views: %q", out)
+	}
+}
+
+func TestSQLInputUsesAvailableTerminalWidth(t *testing.T) {
+	m := testModel()
+	m, _ = m.handleWindowSize(tea.WindowSizeMsg{Width: 80, Height: 20})
+	m.activeOverlay = overlaySQL
+
+	out := ansi.Strip(m.View())
+	if !strings.Contains(out, "SQL> SELECT * FROM ...") {
+		t.Fatalf("SQL input placeholder was truncated: %q", out)
+	}
+	if m.sqlInput.Width != 75 {
+		t.Fatalf("SQL input width = %d, want 75", m.sqlInput.Width)
 	}
 }
 
