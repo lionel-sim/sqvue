@@ -42,7 +42,7 @@ func TestRowOrder(t *testing.T) {
 	if got := rowOrder(db.Table{Type: "table"}, []db.Column{{Name: "payload"}}); got != "ctid" {
 		t.Fatalf("table fallback = %q", got)
 	}
-	if got := rowOrder(db.Table{Type: "view"}, []db.Column{{Name: "payload"}}); got != "" {
+	if got := rowOrder(db.Table{Type: "view"}, []db.Column{{Name: "payload"}}); got != "row_to_json(sqvue_row)::text" {
 		t.Fatalf("view fallback = %q", got)
 	}
 	if got := rowOrder(db.Table{Type: "table"}, []db.Column{{Name: "tenant", IsPrimary: true}, {Name: "id", IsPrimary: true}}); got != `"tenant", "id"` {

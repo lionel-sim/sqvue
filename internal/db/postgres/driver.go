@@ -214,7 +214,7 @@ func (d *Driver) Rows(ctx context.Context, tbl db.Table, limit, offset int) ([]d
 	}
 
 	ident := pgx.Identifier{tbl.Schema, tbl.Name}.Sanitize()
-	query := fmt.Sprintf("select * from %s", ident)
+	query := fmt.Sprintf("select * from %s as sqvue_row", ident)
 	if orderBy := rowOrder(tbl, cols); orderBy != "" {
 		query += " order by " + orderBy
 	}
@@ -258,7 +258,7 @@ func rowOrder(tbl db.Table, cols []db.Column) string {
 	if tbl.Type == "table" {
 		return "ctid"
 	}
-	return ""
+	return "row_to_json(sqvue_row)::text"
 }
 
 func (d *Driver) CountRows(ctx context.Context, tbl db.Table) (int64, error) {
