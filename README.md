@@ -4,15 +4,19 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 
 ## Features
 
-- Navigate tables and page through row data with keyboard shortcuts
+- Browse schemas, tables, and views with keyboard navigation
+- Filter the table list, inspect column metadata, and choose visible columns
+- Page through row data with total-row counts and type-aware value rendering
+- Run ad-hoc SQL queries and page through their results
+- Use a discoverable keyboard-help modal and compact footer controls
 - Pluggable database driver abstraction with a registry pattern
 - Built on [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Cobra](https://github.com/spf13/cobra)
 
 ## Status
 
-Work in progress. PostgreSQL support is functional: sqvue can list tables and views in the `public` schema, browse paginated row data, and display column metadata. The driver also supports arbitrary SQL queries through its internal API.
+Work in progress. PostgreSQL support is functional: sqvue can connect with a DSN or individual connection flags; browse schemas, tables, and views; inspect column metadata and paginated row data; and run ad-hoc SQL in the TUI.
 
-Schema selection, SQL mode in the TUI, alternate connection flags, and additional database drivers are still planned. See [roadmap.md](roadmap.md) for the current plan.
+Additional database drivers, exporting, streaming large results, saved connections, and CI remain planned. See [roadmap.md](roadmap.md) for the current plan.
 
 ## Requirements
 
@@ -86,7 +90,7 @@ internal/
   db/           Driver interface, metadata types, and driver registry
     postgres/   Postgres implementation (pgx)
   logging/      Log setup helpers
-  theme/        UI theme (placeholder)
+  theme/        Shared Lip Gloss UI styles
   tui/          Bubble Tea model and rendering
     components/ Reusable UI components (key bindings)
 ```
