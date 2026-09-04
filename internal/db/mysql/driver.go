@@ -184,14 +184,71 @@ func (d *Driver) RowsByColumn(ctx context.Context, table db.Table, column, value
 }
 
 func (d *Driver) BrowseRows(ctx context.Context, req db.BrowseRequest) ([]db.Column, [][]string, error) {
-	if len(req.Filters) == 0 {
-		return d.Rows(ctx, req.Table, req.Limit, req.Offset)
+	columns, err := d.columnMetadata(ctx, req.Table.Schema, req.Table.Name)
+	if err != nil {
+		return nil, nil, err
 	}
-	if len(req.Filters) == 1 && req.Filters[0].Operator == db.FilterEqual {
-		filter := req.Filters[0]
-		return d.RowsByColumn(ctx, req.Table, filter.Column, filter.Value, req.Limit)
+	where, args, err := mysqlBrowseWhere(req.Filters)
+	if err != nil {
+		return nil, nil, err
 	}
-	return nil, nil, fmt.Errorf("unsupported browse filter")
+	query := fmt.Sprintf("select * from %s", qualifiedName(req.Table.Schema, req.Table.Name)) + where
+	if orderBy := rowOrder(columns); orderBy != "" {
+		query += " order by " + orderBy
+	}
+	query += " limit ? offset ?"
+	args = append(args, req.Limit, req.Offset)
+	rows, err := d.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	values := make([]any, len(columns))
+	scanTargets := make([]any, len(columns))
+	for i := range values {
+		scanTargets[i] = &values[i]
+	}
+	var result [][]string
+	for rows.Next() {
+		if err := rows.Scan(scanTargets...); err != nil {
+			return nil, nil, err
+		}
+		row := make([]string, len(values))
+		for i, value := range values {
+			row[i] = formatValue(value)
+		}
+		result = append(result, row)
+	}
+	return columns, result, rows.Err()
+}
+
+func (d *Driver) CountBrowseRows(ctx context.Context, req db.BrowseRequest) (int64, error) {
+	if d.db == nil {
+		return 0, fmt.Errorf("not connected")
+	}
+	where, args, err := mysqlBrowseWhere(req.Filters)
+	if err != nil {
+		return 0, err
+	}
+	var count int64
+	err = d.db.QueryRowContext(ctx, fmt.Sprintf("select count(*) from %s", qualifiedName(req.Table.Schema, req.Table.Name))+where, args...).Scan(&count)
+	return count, err
+}
+
+func mysqlBrowseWhere(filters []db.RowFilter) (string, []any, error) {
+	if len(filters) == 0 {
+		return "", nil, nil
+	}
+	parts := make([]string, 0, len(filters))
+	args := make([]any, 0, len(filters))
+	for _, filter := range filters {
+		if filter.Operator != db.FilterEqual {
+			return "", nil, fmt.Errorf("unsupported browse filter %q", filter.Operator)
+		}
+		parts = append(parts, quoteIdent(filter.Column)+" = ?")
+		args = append(args, filter.Value)
+	}
+	return " where " + strings.Join(parts, " and "), args, nil
 }
 
 func (d *Driver) CountRows(ctx context.Context, table db.Table) (int64, error) {

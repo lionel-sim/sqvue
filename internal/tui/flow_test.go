@@ -19,6 +19,7 @@ type fakeDriver struct {
 	describeCols  []db.Column
 	lastLimit     int
 	lastOffset    int
+	lastBrowse    db.BrowseRequest
 	lastSchema    string
 	lastDescribe  string
 	describeCalls int
@@ -57,11 +58,15 @@ func (f *fakeDriver) Rows(ctx context.Context, tbl db.Table, limit, offset int) 
 	return f.cols, rows, nil
 }
 func (f *fakeDriver) BrowseRows(_ context.Context, req db.BrowseRequest) ([]db.Column, [][]string, error) {
+	f.lastBrowse = req
 	rows := f.rows
 	if len(rows) > req.Limit {
 		rows = rows[:req.Limit]
 	}
 	return f.cols, rows, nil
+}
+func (f *fakeDriver) CountBrowseRows(context.Context, db.BrowseRequest) (int64, error) {
+	return f.count, nil
 }
 func (f *fakeDriver) CountRows(context.Context, db.Table) (int64, error) { return f.count, nil }
 

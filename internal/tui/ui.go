@@ -63,6 +63,8 @@ type resultState struct {
 	pageSize         int
 	hasNextPage      bool
 	rowCounts        map[string]int64
+	browseRowCounts  map[string]int64
+	browseFilters    []db.RowFilter
 	visibleColumns   []bool
 	visibleColumnKey string
 	referenceFilter  *referenceFilter
@@ -147,8 +149,9 @@ func New(opts Options) Model {
 		client:  opts.Client,
 		timeout: opts.Timeout,
 		resultState: resultState{
-			pageSize:  maxPageSize,
-			rowCounts: make(map[string]int64),
+			pageSize:        maxPageSize,
+			rowCounts:       make(map[string]int64),
+			browseRowCounts: make(map[string]int64),
 		},
 		overlayState: overlayState{
 			filterInput:       filter,
@@ -383,10 +386,23 @@ func (m Model) openBrowseFilter() (Model, tea.Cmd) {
 }
 
 func (m Model) handleBrowseFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
-	if msg.String() == "esc" || key.Matches(msg, m.keys.Confirm) {
+	if msg.String() == "esc" {
 		m.activeOverlay = overlayNone
 		m.browseFilterInput.Blur()
 		return m, nil
+	}
+	if key.Matches(msg, m.keys.Confirm) {
+		column := m.activeColumn()
+		if column == nil {
+			return m, nil
+		}
+		m.browseFilters = []db.RowFilter{{Column: column.Name, Operator: db.FilterEqual, Value: m.browseFilterInput.Value()}}
+		m.referenceFilter = nil
+		m.page = 0
+		m.rowCursor = 0
+		m.activeOverlay = overlayNone
+		m.browseFilterInput.Blur()
+		return m.startLoadRows()
 	}
 	var cmd tea.Cmd
 	m.browseFilterInput, cmd = m.browseFilterInput.Update(msg)
@@ -706,6 +722,7 @@ func (m Model) handleTablesLoaded(msg tablesLoadedMsg) (Model, tea.Cmd) {
 	m.allTables = msg.tables
 	m.lastErr = nil
 	m.rowCounts = make(map[string]int64)
+	m.browseRowCounts = make(map[string]int64)
 	m.applyFilter()
 	m.status = fmt.Sprintf("found %d tables", len(m.tables))
 	if len(m.tables) > 0 {
@@ -808,7 +825,12 @@ func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 	m.lastErr = nil
 	if t := m.currentTable(); t != nil {
 		m.setRowsStatus(*t)
-		if m.referenceFilter == nil {
+		if len(m.browseFilters) > 0 {
+			key := m.browseCountKey(*t)
+			if _, ok := m.browseRowCounts[key]; !ok {
+				return m, loadBrowseCountCmd(m.client, m.browseRequest(*t), m.timeout, m.loadID)
+			}
+		} else if m.referenceFilter == nil {
 			if _, ok := m.rowCounts[t.String()]; !ok {
 				return m, loadCountCmd(m.client, *t, m.timeout, m.loadID)
 			}
@@ -824,7 +846,11 @@ func (m Model) handleCountLoaded(msg countLoadedMsg) (Model, tea.Cmd) {
 	if msg.err != nil {
 		return m, nil
 	}
-	m.rowCounts[msg.table.String()] = msg.count
+	if msg.browseKey != "" {
+		m.browseRowCounts[msg.browseKey] = msg.count
+	} else {
+		m.rowCounts[msg.table.String()] = msg.count
+	}
 	if t := m.currentTable(); t != nil && *t == msg.table && !m.queryActive {
 		m.setRowsStatus(*t)
 	}
@@ -899,10 +925,26 @@ func (m *Model) setRowsStatus(t db.Table) {
 		return
 	}
 	status := fmt.Sprintf("%s page %d (%d rows", t.String(), m.page+1, len(m.rows))
-	if count, ok := m.rowCounts[t.String()]; ok {
+	if count, ok := m.browseRowCounts[m.browseCountKey(t)]; len(m.browseFilters) > 0 && ok {
+		status += fmt.Sprintf(" of %d", count)
+	} else if count, ok := m.rowCounts[t.String()]; ok {
 		status += fmt.Sprintf(" of %d", count)
 	}
 	m.status = status + ")"
+}
+
+func (m Model) browseRequest(t db.Table) db.BrowseRequest {
+	filters := append([]db.RowFilter(nil), m.browseFilters...)
+	return db.BrowseRequest{Table: t, Filters: filters}
+}
+
+func (m Model) browseCountKey(t db.Table) string {
+	var b strings.Builder
+	b.WriteString(t.String())
+	for _, filter := range m.browseFilters {
+		fmt.Fprintf(&b, "\x00%s\x00%s\x00%s", filter.Column, filter.Operator, filter.Value)
+	}
+	return b.String()
 }
 
 func (m *Model) ensureVisibleColumns(key string) {

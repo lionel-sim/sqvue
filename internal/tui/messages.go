@@ -28,6 +28,7 @@ type (
 		requestID uint64
 		table     db.Table
 		count     int64
+		browseKey string
 		err       error
 	}
 	queryLoadedMsg struct {

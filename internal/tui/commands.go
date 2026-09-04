@@ -51,6 +51,15 @@ func loadReferenceRowsCmd(c db.Driver, tbl db.Table, column, value string, limit
 	}
 }
 
+func loadBrowseRowsCmd(c db.Driver, req db.BrowseRequest, timeout time.Duration, requestID uint64) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		cols, rows, err := c.BrowseRows(ctx, req)
+		return rowsLoadedMsg{requestID: requestID, columns: cols, rows: rows, err: err}
+	}
+}
+
 func loadDescriptionsCmd(c db.Driver, tbl db.Table, timeout time.Duration, requestID uint64) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -67,6 +76,23 @@ func loadCountCmd(c db.Driver, tbl db.Table, timeout time.Duration, requestID ui
 		count, err := c.CountRows(ctx, tbl)
 		return countLoadedMsg{requestID: requestID, table: tbl, count: count, err: err}
 	}
+}
+
+func loadBrowseCountCmd(c db.Driver, req db.BrowseRequest, timeout time.Duration, requestID uint64) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		count, err := c.CountBrowseRows(ctx, req)
+		return countLoadedMsg{requestID: requestID, table: req.Table, count: count, browseKey: browseCountKey(req), err: err}
+	}
+}
+
+func browseCountKey(req db.BrowseRequest) string {
+	key := req.Table.String()
+	for _, filter := range req.Filters {
+		key += "\x00" + filter.Column + "\x00" + string(filter.Operator) + "\x00" + filter.Value
+	}
+	return key
 }
 
 func runQueryCmd(c db.Driver, sql string, timeout time.Duration, requestID uint64) tea.Cmd {
@@ -99,6 +125,12 @@ func (m Model) startLoadRows() (Model, tea.Cmd) {
 		m.status = fmt.Sprintf("loading %s page %d...", t.String(), m.page+1)
 		offset := m.page * m.pageSize
 		requestID := m.nextRequestID()
+		if len(m.browseFilters) > 0 {
+			req := m.browseRequest(*t)
+			req.Limit = m.pageSize + 1
+			req.Offset = offset
+			return m, loadBrowseRowsCmd(m.client, req, m.timeout, requestID)
+		}
 		if m.referenceFilter != nil {
 			return m, loadReferenceRowsCmd(m.client, *t, m.referenceFilter.column, m.referenceFilter.value, m.pageSize+1, m.timeout, requestID)
 		}

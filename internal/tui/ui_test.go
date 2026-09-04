@@ -232,6 +232,33 @@ func TestGridFilterPromptUsesActiveColumnAndCell(t *testing.T) {
 	}
 }
 
+func TestGridFilterAppliesEqualityFromPrompt(t *testing.T) {
+	m := testModel()
+	m.focused = true
+	m.columns = []db.Column{{Name: "name"}}
+	m.rows = [][]string{{"Ada"}}
+	m.pageSize = 2
+	m.client = &fakeDriver{cols: m.columns, rows: m.rows, count: 1}
+
+	m, _ = update(m, keyMsg("/"))
+	m, cmd := m.handleBrowseFilterKey(tea.KeyMsg{Type: tea.KeyEnter})
+	if len(m.browseFilters) != 1 || m.browseFilters[0] != (db.RowFilter{Column: "name", Operator: db.FilterEqual, Value: "Ada"}) {
+		t.Fatalf("browse filters = %#v", m.browseFilters)
+	}
+	if msg := runCmd(cmd); msg != nil {
+		m, cmd = update(m, msg)
+	}
+	if f := m.client.(*fakeDriver); f.lastBrowse.Offset != 0 || f.lastBrowse.Limit != 3 {
+		t.Fatalf("browse request = %#v", f.lastBrowse)
+	}
+	if msg := runCmd(cmd); msg != nil {
+		m, _ = update(m, msg)
+	}
+	if !strings.Contains(m.status, "of 1") {
+		t.Fatalf("status = %q, want filtered row count", m.status)
+	}
+}
+
 func TestEnterOpensAndClosesRowDetails(t *testing.T) {
 	m := testModel()
 	m.focused = true

@@ -282,14 +282,76 @@ func (d *Driver) RowsByColumn(ctx context.Context, tbl db.Table, column, value s
 }
 
 func (d *Driver) BrowseRows(ctx context.Context, req db.BrowseRequest) ([]db.Column, [][]string, error) {
-	if len(req.Filters) == 0 {
-		return d.Rows(ctx, req.Table, req.Limit, req.Offset)
+	if d.pool == nil {
+		return nil, nil, fmt.Errorf("not connected")
 	}
-	if len(req.Filters) == 1 && req.Filters[0].Operator == db.FilterEqual {
-		filter := req.Filters[0]
-		return d.RowsByColumn(ctx, req.Table, filter.Column, filter.Value, req.Limit)
+	columns, err := d.columnMetadata(ctx, req.Table.Schema, req.Table.Name)
+	if err != nil {
+		return nil, nil, err
 	}
-	return nil, nil, fmt.Errorf("unsupported browse filter")
+	where, args, err := postgresBrowseWhere(req.Filters)
+	if err != nil {
+		return nil, nil, err
+	}
+	ident := pgx.Identifier{req.Table.Schema, req.Table.Name}.Sanitize()
+	query := fmt.Sprintf("select * from %s as sqvue_row", ident) + where
+	if orderBy := rowOrder(req.Table, columns); orderBy != "" {
+		query += " order by " + orderBy
+	}
+	query += fmt.Sprintf(" limit $%d offset $%d", len(args)+1, len(args)+2)
+	args = append(args, req.Limit, req.Offset)
+	rows, err := d.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	values := make([]any, len(columns))
+	scanTargets := make([]any, len(columns))
+	for i := range values {
+		scanTargets[i] = &values[i]
+	}
+	var result [][]string
+	for rows.Next() {
+		if err := rows.Scan(scanTargets...); err != nil {
+			return nil, nil, err
+		}
+		row := make([]string, len(values))
+		for i, value := range values {
+			row[i] = formatValue(value)
+		}
+		result = append(result, row)
+	}
+	return columns, result, rows.Err()
+}
+
+func (d *Driver) CountBrowseRows(ctx context.Context, req db.BrowseRequest) (int64, error) {
+	if d.pool == nil {
+		return 0, fmt.Errorf("not connected")
+	}
+	where, args, err := postgresBrowseWhere(req.Filters)
+	if err != nil {
+		return 0, err
+	}
+	ident := pgx.Identifier{req.Table.Schema, req.Table.Name}.Sanitize()
+	var count int64
+	err = d.pool.QueryRow(ctx, fmt.Sprintf("select count(*) from %s as sqvue_row", ident)+where, args...).Scan(&count)
+	return count, err
+}
+
+func postgresBrowseWhere(filters []db.RowFilter) (string, []any, error) {
+	if len(filters) == 0 {
+		return "", nil, nil
+	}
+	parts := make([]string, 0, len(filters))
+	args := make([]any, 0, len(filters))
+	for i, filter := range filters {
+		if filter.Operator != db.FilterEqual {
+			return "", nil, fmt.Errorf("unsupported browse filter %q", filter.Operator)
+		}
+		parts = append(parts, fmt.Sprintf("sqvue_row.%s = $%d", pgx.Identifier{filter.Column}.Sanitize(), i+1))
+		args = append(args, filter.Value)
+	}
+	return " where " + strings.Join(parts, " and "), args, nil
 }
 
 func rowOrder(tbl db.Table, cols []db.Column) string {

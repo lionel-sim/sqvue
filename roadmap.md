@@ -59,7 +59,7 @@ For each driver:
   - [x] Define driver-neutral filter and browse-request types for table rows
   - [x] Replace the specialised foreign-key lookup with the shared filtered-row path
   - [x] Add a grid filter prompt for the active column, prefilled from its selected cell
-  - [ ] Support equality filtering first, including filtered row counts and pagination
+  - [x] Support equality filtering first, including filtered row counts and pagination
   - [ ] Show active filters in the status bar and add a clear-filter action
   - [ ] Add `contains`, `is null`, and `is not null` operators
   - [ ] Support multiple filters combined with `AND`

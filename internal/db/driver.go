@@ -38,6 +38,7 @@ type Driver interface {
 	Query(ctx context.Context, q Query) (Result, error)
 	Rows(ctx context.Context, tbl Table, limit, offset int) ([]Column, [][]string, error)
 	BrowseRows(ctx context.Context, req BrowseRequest) ([]Column, [][]string, error)
+	CountBrowseRows(ctx context.Context, req BrowseRequest) (int64, error)
 	CountRows(ctx context.Context, tbl Table) (int64, error)
 }
 
