@@ -1,0 +1,839 @@
+package tui
+
+import (
+	"fmt"
+	"strings"
+	"unicode"
+
+	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
+
+	"sqvue/internal/db"
+	keymap "sqvue/internal/tui/components/keys"
+)
+
+func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	if msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && unicode.IsDigit(msg.Runes[0]) {
+		digit := int(msg.Runes[0] - '0')
+		if m.countPrefix > 0 || digit > 0 {
+			m.countPrefix = min(maxPageSize*1000, m.countPrefix*10+digit)
+		}
+		return m, nil
+	}
+	count := m.consumeGridCount()
+	if m.loading && (key.Matches(msg, m.keys.Down) || key.Matches(msg, m.keys.Up) || key.Matches(msg, m.keys.PageDown) || key.Matches(msg, m.keys.PageUp)) {
+		return m, nil
+	}
+	switch {
+	case key.Matches(msg, m.keys.BrowseFilter):
+		if m.queryActive {
+			m.status = "row filters are unavailable for SQL results"
+			return m, nil
+		}
+		return m.openBrowseFilter()
+	case key.Matches(msg, m.keys.ClearBrowseFilter):
+		if m.queryActive {
+			m.status = "row filters are unavailable for SQL results"
+			return m, nil
+		}
+		return m.clearBrowseFilters()
+	case key.Matches(msg, m.keys.Down):
+		return m.moveGridRows(count)
+	case key.Matches(msg, m.keys.Up):
+		return m.moveGridRows(-count)
+	case key.Matches(msg, m.keys.Right):
+		return m.moveGridColumn(count), nil
+	case key.Matches(msg, m.keys.Left):
+		return m.moveGridColumn(-count), nil
+	case key.Matches(msg, m.keys.CopyCell):
+		return m, writeClipboardCmd(m.activeCellValue(), "cell")
+	case key.Matches(msg, m.keys.CopyRow):
+		return m, writeClipboardCmd(m.activeRowValue(), "row")
+	case key.Matches(msg, m.keys.OpenReference):
+		return m.followActiveForeignKey()
+	case key.Matches(msg, m.keys.HalfPageDown):
+		return m.moveGridRow(max(1, len(m.rows)/2)), nil
+	case key.Matches(msg, m.keys.HalfPageUp):
+		return m.moveGridRow(-max(1, len(m.rows)/2)), nil
+	case key.Matches(msg, m.keys.FirstRow):
+		m.rowCursor = 0
+		return m, nil
+	case key.Matches(msg, m.keys.LastRow):
+		m.rowCursor = max(0, len(m.rows)-1)
+		return m, nil
+	case key.Matches(msg, m.keys.PageDown):
+		return m.changeGridPage(+1)
+	case key.Matches(msg, m.keys.PageUp):
+		return m.changeGridPage(-1)
+	}
+	return m, nil
+}
+
+func (m Model) clearBrowseFilters() (Model, tea.Cmd) {
+	if len(m.browseFilters) == 0 {
+		m.status = "no active row filters"
+		return m, nil
+	}
+	m.browseFilters = nil
+	m.resetBrowseContext()
+	return m.startLoadRows()
+}
+
+func (m *Model) resetBrowseContext() {
+	m.page = 0
+	m.rowCursor = 0
+	m.pendingRowMoves = 0
+	m.hasNextPage = false
+}
+
+func (m Model) openBrowseFilter() (Model, tea.Cmd) {
+	column := m.activeColumn()
+	if column == nil {
+		m.status = "no active column to filter"
+		return m, nil
+	}
+	m.activeOverlay = overlayBrowseFilterOperator
+	m.browseFilterOperator = db.FilterEqual
+	m.browseFilterColumn = column.Name
+	m.browseFilterCursor = 0
+	m.browseFilterInput.SetValue(m.activeCellValue())
+	return m, nil
+}
+
+var standardBrowseFilterOperators = []db.FilterOperator{
+	db.FilterEqual,
+	db.FilterContains,
+	db.FilterLike,
+	db.FilterGreater,
+	db.FilterLess,
+	db.FilterIsNull,
+	db.FilterIsNotNull,
+}
+
+func (m Model) browseFilterOperators() []db.FilterOperator {
+	operators := append([]db.FilterOperator(nil), standardBrowseFilterOperators...)
+	if m.client != nil && m.client.DbType() == db.DbTypePostgres {
+		operators = append(operators[:3], append([]db.FilterOperator{db.FilterILike}, operators[3:]...)...)
+	}
+	return operators
+}
+
+func (m Model) handleBrowseFilterOperatorKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch {
+	case msg.String() == "esc":
+		m.activeOverlay = overlayNone
+		return m, nil
+	case key.Matches(msg, m.keys.Down):
+		m.browseFilterCursor = min(m.browseFilterCursor+1, len(m.browseFilterOperators())-1)
+	case key.Matches(msg, m.keys.Up):
+		m.browseFilterCursor = max(0, m.browseFilterCursor-1)
+	case key.Matches(msg, m.keys.Confirm):
+		m.browseFilterOperator = m.browseFilterOperators()[m.browseFilterCursor]
+		if m.browseFilterOperator == db.FilterIsNull || m.browseFilterOperator == db.FilterIsNotNull {
+			m.browseFilters = append(m.browseFilters, db.RowFilter{Column: m.browseFilterColumn, Operator: m.browseFilterOperator})
+			m.resetBrowseContext()
+			m.activeOverlay = overlayNone
+			return m.startLoadRows()
+		}
+		m.updateBrowseFilterPrompt(m.browseFilterColumn)
+		m.activeOverlay = overlayBrowseFilter
+		m.browseFilterInput.Focus()
+	}
+	return m, nil
+}
+
+func (m Model) handleBrowseFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	if msg.String() == "esc" {
+		m.activeOverlay = overlayNone
+		m.browseFilterInput.Blur()
+		return m, nil
+	}
+	if key.Matches(msg, m.keys.Confirm) {
+		m.browseFilters = append(m.browseFilters, db.RowFilter{Column: m.browseFilterColumn, Operator: m.browseFilterOperator, Value: m.browseFilterInput.Value()})
+		m.resetBrowseContext()
+		m.activeOverlay = overlayNone
+		m.browseFilterInput.Blur()
+		return m.startLoadRows()
+	}
+	var cmd tea.Cmd
+	m.browseFilterInput, cmd = m.browseFilterInput.Update(msg)
+	return m, cmd
+}
+
+func (m *Model) updateBrowseFilterPrompt(column string) {
+	m.browseFilterInput.Prompt = fmt.Sprintf("Filter %s %s ", column, browseFilterOperatorLabel(m.browseFilterOperator))
+}
+
+func browseFilterOperatorLabel(operator db.FilterOperator) string {
+	switch operator {
+	case db.FilterContains:
+		return "contains (case-insensitive)"
+	case db.FilterLike:
+		return "like"
+	case db.FilterILike:
+		return "ilike"
+	case db.FilterGreater:
+		return ">"
+	case db.FilterLess:
+		return "<"
+	case db.FilterIsNull:
+		return "is null"
+	case db.FilterIsNotNull:
+		return "is not null"
+	default:
+		return "="
+	}
+}
+
+func (m *Model) consumeGridCount() int {
+	count := max(1, m.countPrefix)
+	m.countPrefix = 0
+	return count
+}
+
+func (m Model) moveGridRows(delta int) (Model, tea.Cmd) {
+	if len(m.rows) == 0 {
+		return m, nil
+	}
+	if m.queryActive {
+		absolute := clamp(m.page*m.pageSize+m.rowCursor+delta, 0, max(0, len(m.queryRows)-1))
+		m.page = absolute / m.pageSize
+		m.setQueryPage()
+		m.rowCursor = absolute % m.pageSize
+		return m, nil
+	}
+
+	target := m.rowCursor + delta
+	if target >= 0 && target < len(m.rows) {
+		m.rowCursor = target
+		return m, nil
+	}
+	if target < 0 {
+		if m.page == 0 {
+			m.rowCursor = 0
+			return m, nil
+		}
+		m.page--
+		m.pendingRowMoves = target
+		return m.startLoadRows()
+	}
+	if !m.hasNextPage {
+		m.rowCursor = len(m.rows) - 1
+		return m, nil
+	}
+	m.page++
+	m.pendingRowMoves = target - len(m.rows)
+	return m.startLoadRows()
+}
+
+func (m Model) changeGridPage(delta int) (Model, tea.Cmd) {
+	page := m.page
+	m, cmd := m.changePage(delta)
+	if m.page == page {
+		return m, cmd
+	}
+	if delta > 0 {
+		m.rowCursor = 0
+	} else {
+		m.rowCursor = max(0, m.pageSize-1)
+	}
+	return m, cmd
+}
+
+func (m Model) moveGridRow(delta int) Model {
+	m.rowCursor = clamp(m.rowCursor+delta, 0, max(0, len(m.rows)-1))
+	return m
+}
+
+func (m Model) moveGridColumn(delta int) Model {
+	m.cellCursor = clamp(m.cellCursor+delta, 0, max(0, m.displayedColumnCount()-1))
+	return m
+}
+
+func (m Model) activeCellValue() string {
+	_, rows := visibleData(m.columns, m.rows, m.visibleColumns)
+	if m.rowCursor < 0 || m.rowCursor >= len(rows) || m.cellCursor < 0 || m.cellCursor >= len(rows[m.rowCursor]) {
+		return ""
+	}
+	return rows[m.rowCursor][m.cellCursor]
+}
+
+func (m Model) activeRowValue() string {
+	_, rows := visibleData(m.columns, m.rows, m.visibleColumns)
+	if m.rowCursor < 0 || m.rowCursor >= len(rows) {
+		return ""
+	}
+	return strings.Join(rows[m.rowCursor], "\t")
+}
+
+func (m Model) activeColumn() *db.Column {
+	indexes := visibleColumnIndexes(m.columns, m.visibleColumns)
+	if m.cellCursor < 0 || m.cellCursor >= len(indexes) {
+		return nil
+	}
+	return &m.columns[indexes[m.cellCursor]]
+}
+
+func (m Model) followActiveForeignKey() (Model, tea.Cmd) {
+	column := m.activeColumn()
+	if column == nil || column.ForeignKey == nil {
+		m.status = "active cell is not a foreign key"
+		return m, nil
+	}
+
+	foreignKey := column.ForeignKey
+	value := m.activeCellValue()
+	if value == "NULL" {
+		m.status = "cannot open a NULL reference"
+		return m, nil
+	}
+	schema := foreignKey.Schema
+	if schema == "" {
+		schema = m.currentSchema()
+	}
+	if schema != m.currentSchema() {
+		m.status = "referenced table is in another schema"
+		return m, nil
+	}
+
+	if m.filterInput.Value() != "" {
+		m.filterInput.SetValue("")
+		m.applyFilter()
+	}
+	for i, table := range m.tables {
+		if table.Schema == schema && table.Name == foreignKey.Table {
+			m.focused = true
+			m.selected = i
+			m.scroll = keepInView(m.selected, m.scroll, tableListHeight, len(m.tables))
+			m.resetBrowseContext()
+			m.cellCursor = 0
+			m.mode = modeValues
+			m.browseFilters = []db.RowFilter{{Column: foreignKey.Column, Operator: db.FilterEqual, Value: value}}
+			return m.startLoadRows()
+		}
+	}
+	m.status = "referenced table is not available"
+	return m, nil
+}
+
+func (m Model) handleColumnsKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch {
+	case msg.String() == "esc" || key.Matches(msg, m.keys.Confirm):
+		m.activeOverlay = overlayNone
+		if m.queryActive {
+			m.setQueryPage()
+		} else if t := m.currentTable(); t != nil {
+			m.setRowsStatus(*t)
+		}
+		return m, nil
+	case key.Matches(msg, m.keys.Quit):
+		return m, tea.Quit
+	case key.Matches(msg, m.keys.Down):
+		if m.columnCursor < len(m.columns)-1 {
+			m.columnCursor++
+		}
+	case key.Matches(msg, m.keys.Up):
+		if m.columnCursor > 0 {
+			m.columnCursor--
+		}
+	case key.Matches(msg, m.keys.Toggle):
+		if m.visibleColumnCount() == 1 && m.visibleColumns[m.columnCursor] {
+			m.status = "at least one column must remain visible"
+			return m, nil
+		}
+		m.visibleColumns[m.columnCursor] = !m.visibleColumns[m.columnCursor]
+	}
+	m.columnScroll = keepInView(m.columnCursor, m.columnScroll, m.columnPickerHeight(), len(m.columns))
+	return m, nil
+}
+
+func (m Model) handleSQLKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	if msg.String() == "esc" {
+		m.activeOverlay = overlayNone
+		m.sqlInput.Blur()
+		return m, nil
+	}
+	if key.Matches(msg, m.keys.Confirm) {
+		sql := strings.TrimSpace(m.sqlInput.Value())
+		if sql == "" {
+			return m, nil
+		}
+		m.activeOverlay = overlayNone
+		m.sqlInput.Blur()
+		m.loading = true
+		m.status = "running query..."
+		requestID := m.nextRequestID()
+		return m, runQueryCmd(m.client, sql, m.timeout, requestID)
+	}
+	var cmd tea.Cmd
+	m.sqlInput, cmd = m.sqlInput.Update(msg)
+	return m, cmd
+}
+
+func (m Model) handleFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	if msg.String() == "esc" || key.Matches(msg, m.keys.Confirm) {
+		if msg.String() == "esc" {
+			m.filterInput.SetValue(m.filterPrevious)
+		}
+		m.activeOverlay = overlayNone
+		m.filterInput.Blur()
+		m.applyFilter()
+		return m.startLoad()
+	}
+	var cmd tea.Cmd
+	m.filterInput, cmd = m.filterInput.Update(msg)
+	m.applyFilter()
+	return m, cmd
+}
+
+func (m Model) handleSchemaKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch {
+	case msg.String() == "esc":
+		m.activeOverlay = overlayNone
+		m.status = fmt.Sprintf("schema %s", m.currentSchema())
+		return m, nil
+	case key.Matches(msg, m.keys.Quit):
+		return m, tea.Quit
+	case key.Matches(msg, m.keys.Down):
+		if m.schemaCursor < len(m.schemas)-1 {
+			m.schemaCursor++
+		}
+		m.schemaScroll = keepInView(m.schemaCursor, m.schemaScroll, tableListHeight, len(m.schemas))
+		return m, nil
+	case key.Matches(msg, m.keys.Up):
+		if m.schemaCursor > 0 {
+			m.schemaCursor--
+		}
+		m.schemaScroll = keepInView(m.schemaCursor, m.schemaScroll, tableListHeight, len(m.schemas))
+		return m, nil
+	case key.Matches(msg, m.keys.Confirm):
+		m.schema = m.schemaCursor
+		m.activeOverlay = overlayNone
+		m.selected, m.scroll, m.page = 0, 0, 0
+		m.filterInput.SetValue("")
+		m.applyFilter()
+		m.loading = true
+		m.status = fmt.Sprintf("loading %s tables...", m.currentSchema())
+		requestID := m.nextRequestID()
+		return m, loadTablesCmd(m.client, m.currentSchema(), m.timeout, requestID)
+	}
+	return m, nil
+}
+
+func (m Model) showDescriptions() (Model, tea.Cmd) {
+	if m.mode != modeDescriptions {
+		m.queryActive = false
+		m.mode = modeDescriptions
+		return m.startLoadDescriptions()
+	}
+	return m, nil
+}
+
+func (m Model) showValues() (Model, tea.Cmd) {
+	if m.mode != modeValues || m.queryActive {
+		m.queryActive = false
+		m.mode = modeValues
+		m.page = 0
+		return m.startLoadRows()
+	}
+	return m, nil
+}
+
+func (m Model) moveSelection(delta int) (Model, tea.Cmd) {
+	target := m.selected + delta
+	if target < 0 || target >= len(m.tables) {
+		return m, nil
+	}
+	m.selected = target
+	m.scroll = keepInView(m.selected, m.scroll, tableListHeight, len(m.tables))
+	m.resetBrowseContext()
+	m.cellCursor = 0
+	m.browseFilters = nil
+	return m.startLoad()
+}
+
+// keepInView returns the scroll offset that keeps selected within a window of
+// the given height, scrolling the list as the selection moves past its edges.
+func keepInView(selected, offset, height, count int) int {
+	if count <= height {
+		return 0
+	}
+	if selected < offset {
+		return selected
+	}
+	if selected >= offset+height {
+		return selected - height + 1
+	}
+	return offset
+}
+
+func (m Model) changePage(delta int) (Model, tea.Cmd) {
+	if m.mode != modeValues {
+		return m, nil
+	}
+	if m.page+delta < 0 {
+		return m, nil
+	}
+	if m.queryActive {
+		if delta > 0 && (m.page+1)*m.pageSize >= len(m.queryRows) {
+			return m, nil
+		}
+		m.page += delta
+		m.setQueryPage()
+		return m, nil
+	}
+	if delta > 0 && !m.hasNextPage {
+		return m, nil
+	}
+	m.page += delta
+	return m.startLoadRows()
+}
+
+func (m Model) handleTablesLoaded(msg tablesLoadedMsg) (Model, tea.Cmd) {
+	if !m.isCurrent(msg.requestID) {
+		return m, nil
+	}
+	m.loading = false
+	if msg.err != nil {
+		return m.fail("failed to load tables", msg.err)
+	}
+	m.allTables = msg.tables
+	m.lastErr = nil
+	m.rowCounts = make(map[string]int64)
+	m.browseRowCounts = make(map[string]int64)
+	m.applyFilter()
+	m.status = fmt.Sprintf("found %d tables", len(m.tables))
+	if len(m.tables) > 0 {
+		m.selected = 0
+		m.scroll = 0
+		m.page = 0
+		m.rowCursor = 0
+		m.cellCursor = 0
+		m.mode = modeValues
+		return m.startLoadRows()
+	}
+	return m, nil
+}
+
+func (m Model) handleSchemasLoaded(msg schemasLoadedMsg) (Model, tea.Cmd) {
+	if !m.isCurrent(msg.requestID) {
+		return m, nil
+	}
+	m.loading = false
+	if msg.err != nil {
+		return m.fail("failed to load schemas", msg.err)
+	}
+	m.schemas = msg.schemas
+	m.lastErr = nil
+	if len(m.schemas) == 0 {
+		return m.fail("failed to load schemas", fmt.Errorf("no user schemas found"))
+	}
+	for i, schema := range m.schemas {
+		if schema.Name == "public" {
+			m.schema = i
+			break
+		}
+	}
+	m.loading = true
+	m.status = fmt.Sprintf("loading %s tables...", m.currentSchema())
+	requestID := m.nextRequestID()
+	return m, loadTablesCmd(m.client, m.currentSchema(), m.timeout, requestID)
+}
+
+func (m *Model) applyFilter() {
+	needle := strings.ToLower(strings.TrimSpace(m.filterInput.Value()))
+	m.tables = m.tables[:0]
+	for _, table := range m.allTables {
+		if needle == "" || strings.Contains(strings.ToLower(table.Name), needle) {
+			m.tables = append(m.tables, table)
+		}
+	}
+	m.selected = 0
+	m.scroll = 0
+	m.resetBrowseContext()
+}
+
+func (m Model) currentSchema() string {
+	if m.schema < 0 || m.schema >= len(m.schemas) {
+		return ""
+	}
+	return m.schemas[m.schema].Name
+}
+
+func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
+	if !m.isCurrent(msg.requestID) {
+		return m, nil
+	}
+	m.loading = false
+	if msg.err != nil {
+		return m.fail("rows error", msg.err)
+	}
+	m.columns = msg.columns
+	if t := m.currentTable(); t != nil {
+		m.ensureVisibleColumns(t.String())
+	}
+	m.rows = msg.rows
+	m.hasNextPage = len(m.rows) > m.pageSize
+	if m.hasNextPage {
+		m.rows = m.rows[:m.pageSize]
+	}
+	if m.rowCursor >= len(m.rows) {
+		m.rowCursor = max(0, len(m.rows)-1)
+	}
+	if m.pendingRowMoves != 0 {
+		pending := m.pendingRowMoves
+		m.pendingRowMoves = 0
+		if pending >= 0 && pending < len(m.rows) {
+			m.rowCursor = pending
+		} else if pending >= len(m.rows) && m.hasNextPage {
+			m.page++
+			m.pendingRowMoves = pending - len(m.rows)
+			return m.startLoadRows()
+		} else if pending < 0 && m.page > 0 {
+			m.page--
+			m.pendingRowMoves = pending + len(m.rows)
+			return m.startLoadRows()
+		} else if pending < 0 {
+			m.rowCursor = 0
+		} else {
+			m.rowCursor = max(0, len(m.rows)-1)
+		}
+	}
+	m.cellCursor = clamp(m.cellCursor, 0, max(0, m.displayedColumnCount()-1))
+	m.lastErr = nil
+	if t := m.currentTable(); t != nil {
+		m.setRowsStatus(*t)
+		if len(m.browseFilters) > 0 {
+			key := m.browseCountKey(*t)
+			if _, ok := m.browseRowCounts[key]; !ok {
+				return m, loadBrowseCountCmd(m.client, m.browseRequest(*t), m.timeout, m.loadID)
+			}
+		} else {
+			if _, ok := m.rowCounts[t.String()]; !ok {
+				return m, loadCountCmd(m.client, *t, m.timeout, m.loadID)
+			}
+		}
+	}
+	return m, nil
+}
+
+func (m Model) handleCountLoaded(msg countLoadedMsg) (Model, tea.Cmd) {
+	if !m.isCurrent(msg.requestID) {
+		return m, nil
+	}
+	if msg.err != nil {
+		return m, nil
+	}
+	if msg.browseKey != "" {
+		m.browseRowCounts[msg.browseKey] = msg.count
+	} else {
+		m.rowCounts[msg.table.String()] = msg.count
+	}
+	if t := m.currentTable(); t != nil && *t == msg.table && !m.queryActive {
+		m.setRowsStatus(*t)
+	}
+	return m, nil
+}
+
+func (m Model) handleQueryLoaded(msg queryLoadedMsg) (Model, tea.Cmd) {
+	if !m.isCurrent(msg.requestID) {
+		return m, nil
+	}
+	m.loading = false
+	if msg.err != nil {
+		return m.fail("query failed", msg.err)
+	}
+	m.queryActive = true
+	m.lastErr = nil
+	m.mode = modeValues
+	m.page = 0
+	m.rowCursor = 0
+	m.cellCursor = 0
+	m.queryDuration = msg.result.DurationMs
+	m.queryAffected = msg.result.RowsAffected
+	m.queryTruncated = msg.result.Truncated
+	m.columns = make([]db.Column, len(msg.result.Columns))
+	for i, name := range msg.result.Columns {
+		m.columns[i] = db.Column{Name: name}
+	}
+	m.visibleColumns = make([]bool, len(m.columns))
+	m.visibleColumnKey = "query"
+	for i := range m.visibleColumns {
+		m.visibleColumns[i] = true
+	}
+	m.queryRows = make([][]string, len(msg.result.Rows))
+	for i, row := range msg.result.Rows {
+		m.queryRows[i] = make([]string, len(row))
+		for j, value := range row {
+			m.queryRows[i][j] = formatQueryValue(value)
+		}
+	}
+	m.setQueryPage()
+	m.sqlInput.SetValue("")
+	return m, nil
+}
+
+func formatQueryValue(value any) string {
+	if value == nil {
+		return "NULL"
+	}
+	if bytes, ok := value.([]byte); ok {
+		return string(bytes)
+	}
+	return fmt.Sprint(value)
+}
+
+func (m *Model) setQueryPage() {
+	start := m.page * m.pageSize
+	if start > len(m.queryRows) {
+		start = len(m.queryRows)
+	}
+	end := min(start+m.pageSize, len(m.queryRows))
+	m.rows = m.queryRows[start:end]
+	m.status = fmt.Sprintf("query page %d (%d/%d rows, %d ms, %d affected)", m.page+1, len(m.rows), len(m.queryRows), m.queryDuration, m.queryAffected)
+	if m.queryTruncated {
+		m.status += " [limited to 1000 rows]"
+	}
+}
+
+func (m *Model) setRowsStatus(t db.Table) {
+	status := fmt.Sprintf("%s page %d (%d rows", t.String(), m.page+1, len(m.rows))
+	if count, ok := m.browseRowCounts[m.browseCountKey(t)]; len(m.browseFilters) > 0 && ok {
+		status += fmt.Sprintf(" of %d", count)
+	} else if len(m.browseFilters) == 0 {
+		if count, ok := m.rowCounts[t.String()]; ok {
+			status += fmt.Sprintf(" of %d", count)
+		}
+	}
+	status += ")"
+	if len(m.browseFilters) > 0 {
+		status += " filters: " + formatBrowseFilters(m.browseFilters) + " (x clear)"
+	}
+	m.status = status
+}
+
+func formatBrowseFilters(filters []db.RowFilter) string {
+	parts := make([]string, len(filters))
+	for i, filter := range filters {
+		parts[i] = filter.Column + " " + browseFilterOperatorLabel(filter.Operator)
+		if filter.Operator != db.FilterIsNull && filter.Operator != db.FilterIsNotNull {
+			parts[i] += " " + filter.Value
+		}
+	}
+	return strings.Join(parts, " AND ")
+}
+
+func (m Model) browseRequest(t db.Table) db.BrowseRequest {
+	filters := append([]db.RowFilter(nil), m.browseFilters...)
+	return db.BrowseRequest{Table: t, Filters: filters}
+}
+
+func (m Model) browseCountKey(t db.Table) string {
+	var b strings.Builder
+	b.WriteString(t.String())
+	for _, filter := range m.browseFilters {
+		fmt.Fprintf(&b, "\x00%s\x00%s\x00%s", filter.Column, filter.Operator, filter.Value)
+	}
+	return b.String()
+}
+
+func (m *Model) ensureVisibleColumns(key string) {
+	if m.visibleColumnKey == key && len(m.visibleColumns) == len(m.columns) {
+		return
+	}
+	m.visibleColumnKey = key
+	m.visibleColumns = make([]bool, len(m.columns))
+	for i := range m.visibleColumns {
+		m.visibleColumns[i] = true
+	}
+}
+
+func (m Model) visibleColumnCount() int {
+	count := 0
+	for _, visible := range m.visibleColumns {
+		if visible {
+			count++
+		}
+	}
+	return count
+}
+
+func (m Model) displayedColumnCount() int {
+	if len(m.visibleColumns) == 0 {
+		return len(m.columns)
+	}
+	return m.visibleColumnCount()
+}
+
+func (m Model) columnPickerHeight() int {
+	if m.height <= 0 {
+		return tableListHeight
+	}
+	return max(1, m.height-reservedRows-1)
+}
+
+func (m Model) handleDescriptionsLoaded(msg descriptionsLoadedMsg) (Model, tea.Cmd) {
+	if !m.isCurrent(msg.requestID) {
+		return m, nil
+	}
+	m.loading = false
+	if msg.err != nil {
+		return m.fail("describe failed", msg.err)
+	}
+	m.tableInfo = msg.info
+	m.lastErr = nil
+	if t := m.currentTable(); t != nil {
+		m.status = fmt.Sprintf("%s (%d columns)", t.String(), len(msg.info.Columns))
+	}
+	return m, nil
+}
+
+func (m *Model) nextRequestID() uint64 {
+	m.loadID++
+	return m.loadID
+}
+
+func (m Model) isCurrent(requestID uint64) bool {
+	return requestID == m.loadID
+}
+
+func (m Model) fail(prefix string, err error) (Model, tea.Cmd) {
+	m.status = fmt.Sprintf("%s: %v", prefix, err)
+	m.lastErr = err
+	return m, nil
+}
+
+func (m Model) View() string {
+	return Render(m)
+}
+
+func (m Model) helpKeyMap() keymap.Map {
+	keys := m.keys
+	keys.Left.SetEnabled(m.focused)
+	keys.Right.SetEnabled(m.focused)
+	keys.HalfPageUp.SetEnabled(m.focused)
+	keys.HalfPageDown.SetEnabled(m.focused)
+	keys.FirstRow.SetEnabled(m.focused)
+	keys.LastRow.SetEnabled(m.focused)
+	keys.CopyCell.SetEnabled(m.focused)
+	keys.CopyRow.SetEnabled(m.focused)
+	keys.OpenReference.SetEnabled(m.focused)
+	keys.BrowseFilter.SetEnabled(m.focused && !m.queryActive)
+	keys.ClearBrowseFilter.SetEnabled(m.focused && !m.queryActive && len(m.browseFilters) > 0)
+
+	keys.SQL.SetEnabled(!m.focused)
+	keys.Columns.SetEnabled(!m.focused)
+	keys.Schema.SetEnabled(!m.focused)
+	keys.Filter.SetEnabled(!m.focused)
+	keys.ShowDescriptions.SetEnabled(!m.focused)
+	keys.ShowValues.SetEnabled(!m.focused)
+	keys.Refresh.SetEnabled(!m.focused)
+	return keys
+}
+
+func (m *Model) currentTable() *db.Table {
+	if m.selected < 0 || m.selected >= len(m.tables) {
+		return nil
+	}
+	return &m.tables[m.selected]
+}
