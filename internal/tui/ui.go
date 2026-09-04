@@ -227,7 +227,6 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Confirm):
 		if m.mode == modeValues && len(m.rows) > 0 {
 			m.focused = true
-			m.rowCursor = 0
 		}
 		return m, nil
 	case m.focused:
@@ -281,8 +280,14 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, m.keys.Down):
+		if m.rowCursor == len(m.rows)-1 {
+			return m.changeGridPage(+1)
+		}
 		return m.moveGridRow(+1), nil
 	case key.Matches(msg, m.keys.Up):
+		if m.rowCursor == 0 {
+			return m.changeGridPage(-1)
+		}
 		return m.moveGridRow(-1), nil
 	case key.Matches(msg, m.keys.HalfPageDown):
 		return m.moveGridRow(max(1, len(m.rows)/2)), nil
@@ -295,11 +300,25 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.rowCursor = max(0, len(m.rows)-1)
 		return m, nil
 	case key.Matches(msg, m.keys.PageDown):
-		return m.changePage(+1)
+		return m.changeGridPage(+1)
 	case key.Matches(msg, m.keys.PageUp):
-		return m.changePage(-1)
+		return m.changeGridPage(-1)
 	}
 	return m, nil
+}
+
+func (m Model) changeGridPage(delta int) (Model, tea.Cmd) {
+	page := m.page
+	m, cmd := m.changePage(delta)
+	if m.page == page {
+		return m, cmd
+	}
+	if delta > 0 {
+		m.rowCursor = 0
+	} else {
+		m.rowCursor = max(0, m.pageSize-1)
+	}
+	return m, cmd
 }
 
 func (m Model) moveGridRow(delta int) Model {
@@ -438,6 +457,7 @@ func (m Model) moveSelection(delta int) (Model, tea.Cmd) {
 	m.selected = target
 	m.scroll = keepInView(m.selected, m.scroll, tableListHeight, len(m.tables))
 	m.page = 0
+	m.rowCursor = 0
 	return m.startLoad()
 }
 
@@ -495,6 +515,7 @@ func (m Model) handleTablesLoaded(msg tablesLoadedMsg) (Model, tea.Cmd) {
 		m.selected = 0
 		m.scroll = 0
 		m.page = 0
+		m.rowCursor = 0
 		m.mode = modeValues
 		return m.startLoadRows()
 	}
@@ -602,6 +623,7 @@ func (m Model) handleQueryLoaded(msg queryLoadedMsg) (Model, tea.Cmd) {
 	m.lastErr = nil
 	m.mode = modeValues
 	m.page = 0
+	m.rowCursor = 0
 	m.queryDuration = msg.result.DurationMs
 	m.queryAffected = msg.result.RowsAffected
 	m.queryTruncated = msg.result.Truncated

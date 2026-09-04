@@ -112,6 +112,44 @@ func TestGridNavigationMovesActiveRow(t *testing.T) {
 	}
 }
 
+func TestGridSelectionPersistsAcrossFocusAndColumnChanges(t *testing.T) {
+	m := testModel()
+	m.rows = makeRows(4)
+	m.rowCursor = 2
+	m.columns = []db.Column{{Name: "id"}, {Name: "name"}}
+	m.visibleColumns = []bool{true, true}
+
+	m, _ = update(m, tea.KeyMsg{Type: tea.KeyEnter})
+	if m.rowCursor != 2 {
+		t.Fatalf("row cursor after refocus = %d, want 2", m.rowCursor)
+	}
+	m.focused = false
+	m.activeOverlay = overlayColumnPicker
+	m, _ = m.handleColumnsKey(keyMsg(" "))
+	if m.rowCursor != 2 {
+		t.Fatalf("row cursor after changing visible columns = %d, want 2", m.rowCursor)
+	}
+}
+
+func TestGridNavigationCrossesPageBoundaries(t *testing.T) {
+	m := testModel()
+	m.focused = true
+	m.queryActive = true
+	m.pageSize = 2
+	m.queryRows = makeRows(4)
+	m.setQueryPage()
+	m.rowCursor = 1
+
+	m, _ = update(m, keyMsg("j"))
+	if m.page != 1 || m.rowCursor != 0 {
+		t.Fatalf("down from final row = page %d, row %d; want page 1, row 0", m.page, m.rowCursor)
+	}
+	m, _ = update(m, keyMsg("k"))
+	if m.page != 0 || m.rowCursor != 1 {
+		t.Fatalf("up from first row = page %d, row %d; want page 0, row 1", m.page, m.rowCursor)
+	}
+}
+
 func TestHelpOverlay(t *testing.T) {
 	m := testModel()
 	m, _ = update(m, keyMsg("?"))

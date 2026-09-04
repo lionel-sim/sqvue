@@ -9,6 +9,7 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 - Browse schemas, tables, and views with keyboard navigation; views are marked in the table list
 - Filter the table list, inspect column and foreign-key metadata, and choose visible columns
 - Page through row data with total-row counts and type-aware value rendering
+- Focus and navigate row data while preserving the selected row across pages and column visibility changes
 - Run ad-hoc SQL queries and page through their results
 - Use a discoverable keyboard-help modal and compact footer controls
 - Pluggable database driver abstraction with a registry pattern
