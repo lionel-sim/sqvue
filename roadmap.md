@@ -64,16 +64,16 @@ For each driver:
   - [x] Add `contains`, `is null`, and `is not null` operators
   - [x] Support multiple filters combined with `AND`
   - [x] Test TUI filter state and each driver's parameterized query generation
-- [ ] TUI maintainability refactor
+- [x] TUI maintainability refactor
   - [x] Extract `Model`, state groups, construction, and initialization into `model.go`
-  - [ ] Keep `ui.go` as the small Bubble Tea dispatcher and generic overlay handlers
-  - [ ] Move focused-grid input, count prefixes, cell/row navigation, copying, and FK traversal into `update_grid.go`
-  - [ ] Move row-filter prompts, operator selection, filter application, and clearing into `update_filters.go`
-  - [ ] Move schema/table selection, table-list filtering, and mode switching into `update_browser.go`
-  - [ ] Move browse-request construction, pagination, row/count result handling, and status formatting into `browse.go`
-  - [ ] Move shared view-state helpers (`currentTable`, visible-column bookkeeping, request IDs, and failures) to the closest owning file
-  - [ ] Keep rendering files independent of key handling and database loading
-  - [ ] Run the full test suite after every extraction; preserve behavior and public key bindings
+  - [x] Keep `ui.go` as the small Bubble Tea dispatcher and generic overlay handlers
+  - [x] Move focused-grid input, count prefixes, cell/row navigation, copying, and FK traversal into `update_grid.go`
+  - [x] Move row-filter prompts, operator selection, filter application, and clearing into `update_filters.go`
+  - [x] Move schema/table selection, table-list filtering, and mode switching into `update_browser.go`
+  - [x] Move browse-request construction, pagination, row/count result handling, and status formatting into `browse.go`
+  - [x] Move shared view-state helpers (`currentTable`, visible-column bookkeeping, request IDs, and failures) to the closest owning file
+  - [x] Keep rendering files independent of key handling and database loading
+  - [x] Run the full test suite after every extraction; preserve behavior and public key bindings
 - [ ] Export results (CSV, JSON)
 - [ ] Streaming / large-result handling (cursor or fetch-more pagination instead of LIMIT/OFFSET)
 - [x] Saved connections / connection profiles (XDG config file, named profiles, and `--profile`)
