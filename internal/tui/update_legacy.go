@@ -70,6 +70,7 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 }
 */
 
+/*
 func (m Model) clearBrowseFilters() (Model, tea.Cmd) {
 	if len(m.browseFilters) == 0 {
 		m.status = "no active row filters"
@@ -186,6 +187,7 @@ func browseFilterOperatorLabel(operator db.FilterOperator) string {
 	}
 }
 
+*/
 /*
 func (m *Model) consumeGridCount() int {
 	count := max(1, m.countPrefix)
