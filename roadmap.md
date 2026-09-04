@@ -55,6 +55,15 @@ For each driver:
   - [x] Open a row-detail popup with full, untruncated values
   - [x] Copy the active cell (`y`) or whole row (`Y`)
   - [x] Follow a foreign-key cell to its matching referenced row when its table is available in the current schema
+- [ ] Structured row filtering (parameterized browse filters, separate from SQL mode)
+  - [ ] Define driver-neutral filter and browse-request types for table rows
+  - [ ] Replace the specialised foreign-key lookup with the shared filtered-row path
+  - [ ] Add a grid filter prompt for the active column, prefilled from its selected cell
+  - [ ] Support equality filtering first, including filtered row counts and pagination
+  - [ ] Show active filters in the status bar and add a clear-filter action
+  - [ ] Add `contains`, `is null`, and `is not null` operators
+  - [ ] Support multiple filters combined with `AND`
+  - [ ] Test TUI filter state and each driver's parameterized query generation
 - [ ] Export results (CSV, JSON)
 - [ ] Streaming / large-result handling (cursor or fetch-more pagination instead of LIMIT/OFFSET)
 - [x] Saved connections / connection profiles (XDG config file, named profiles, and `--profile`)
