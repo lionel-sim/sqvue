@@ -58,6 +58,7 @@ You can also run directly from source with `make run` or `go run ./...`.
 | `--user`     | `postgres`  | Postgres user                               |
 | `--password` |             | Postgres password                           |
 | `--db`       |             | Postgres database                           |
+| `--sslmode`  | `require`   | Postgres TLS mode for individual flags      |
 | `--timeout`  | `5s`        | Query timeout                               |
 
 ### Key bindings
