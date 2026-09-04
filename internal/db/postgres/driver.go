@@ -344,12 +344,23 @@ func postgresBrowseWhere(filters []db.RowFilter) (string, []any, error) {
 	}
 	parts := make([]string, 0, len(filters))
 	args := make([]any, 0, len(filters))
-	for i, filter := range filters {
-		if filter.Operator != db.FilterEqual {
+	for _, filter := range filters {
+		column := "sqvue_row." + pgx.Identifier{filter.Column}.Sanitize()
+		placeholder := fmt.Sprintf("$%d", len(args)+1)
+		switch filter.Operator {
+		case db.FilterEqual:
+			parts = append(parts, column+" = "+placeholder)
+			args = append(args, filter.Value)
+		case db.FilterContains:
+			parts = append(parts, "cast("+column+" as text) ilike "+placeholder)
+			args = append(args, "%"+filter.Value+"%")
+		case db.FilterIsNull:
+			parts = append(parts, column+" is null")
+		case db.FilterIsNotNull:
+			parts = append(parts, column+" is not null")
+		default:
 			return "", nil, fmt.Errorf("unsupported browse filter %q", filter.Operator)
 		}
-		parts = append(parts, fmt.Sprintf("sqvue_row.%s = $%d", pgx.Identifier{filter.Column}.Sanitize(), i+1))
-		args = append(args, filter.Value)
 	}
 	return " where " + strings.Join(parts, " and "), args, nil
 }

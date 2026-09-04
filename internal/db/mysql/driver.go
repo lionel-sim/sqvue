@@ -242,11 +242,21 @@ func mysqlBrowseWhere(filters []db.RowFilter) (string, []any, error) {
 	parts := make([]string, 0, len(filters))
 	args := make([]any, 0, len(filters))
 	for _, filter := range filters {
-		if filter.Operator != db.FilterEqual {
+		column := quoteIdent(filter.Column)
+		switch filter.Operator {
+		case db.FilterEqual:
+			parts = append(parts, column+" = ?")
+			args = append(args, filter.Value)
+		case db.FilterContains:
+			parts = append(parts, "cast("+column+" as char) like ?")
+			args = append(args, "%"+filter.Value+"%")
+		case db.FilterIsNull:
+			parts = append(parts, column+" is null")
+		case db.FilterIsNotNull:
+			parts = append(parts, column+" is not null")
+		default:
 			return "", nil, fmt.Errorf("unsupported browse filter %q", filter.Operator)
 		}
-		parts = append(parts, quoteIdent(filter.Column)+" = ?")
-		args = append(args, filter.Value)
 	}
 	return " where " + strings.Join(parts, " and "), args, nil
 }

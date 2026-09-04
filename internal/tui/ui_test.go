@@ -280,6 +280,21 @@ func TestGridFilterStatusAndClearAction(t *testing.T) {
 	}
 }
 
+func TestGridFilterPromptCyclesOperators(t *testing.T) {
+	m := testModel()
+	m.focused = true
+	m.columns = []db.Column{{Name: "name"}}
+	m.rows = [][]string{{"Ada"}}
+	m, _ = update(m, keyMsg("/"))
+
+	for _, want := range []db.FilterOperator{db.FilterContains, db.FilterIsNull, db.FilterIsNotNull, db.FilterEqual} {
+		m, _ = m.handleBrowseFilterKey(tea.KeyMsg{Type: tea.KeyTab})
+		if m.browseFilterOperator != want {
+			t.Fatalf("operator = %q, want %q", m.browseFilterOperator, want)
+		}
+	}
+}
+
 func TestEnterOpensAndClosesRowDetails(t *testing.T) {
 	m := testModel()
 	m.focused = true

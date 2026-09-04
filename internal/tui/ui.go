@@ -110,15 +110,16 @@ const (
 
 // overlayState owns transient inputs, pickers, and the help modal.
 type overlayState struct {
-	activeOverlay     overlayMode
-	filterInput       textinput.Model
-	filterPrevious    string
-	browseFilterInput textinput.Model
-	sqlInput          textinput.Model
-	help              help.Model
-	columnCursor      int
-	columnScroll      int
-	detailScroll      int
+	activeOverlay        overlayMode
+	filterInput          textinput.Model
+	filterPrevious       string
+	browseFilterInput    textinput.Model
+	browseFilterOperator db.FilterOperator
+	sqlInput             textinput.Model
+	help                 help.Model
+	columnCursor         int
+	columnScroll         int
+	detailScroll         int
 }
 
 // viewportState stores the most recent terminal dimensions.
@@ -393,7 +394,8 @@ func (m Model) openBrowseFilter() (Model, tea.Cmd) {
 		return m, nil
 	}
 	m.activeOverlay = overlayBrowseFilter
-	m.browseFilterInput.Prompt = fmt.Sprintf("Filter %s = ", column.Name)
+	m.browseFilterOperator = db.FilterEqual
+	m.updateBrowseFilterPrompt(column.Name)
 	m.browseFilterInput.SetValue(m.activeCellValue())
 	m.browseFilterInput.Focus()
 	return m, nil
@@ -410,7 +412,11 @@ func (m Model) handleBrowseFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if column == nil {
 			return m, nil
 		}
-		m.browseFilters = []db.RowFilter{{Column: column.Name, Operator: db.FilterEqual, Value: m.browseFilterInput.Value()}}
+		value := m.browseFilterInput.Value()
+		if m.browseFilterOperator == db.FilterIsNull || m.browseFilterOperator == db.FilterIsNotNull {
+			value = ""
+		}
+		m.browseFilters = []db.RowFilter{{Column: column.Name, Operator: m.browseFilterOperator, Value: value}}
 		m.referenceFilter = nil
 		m.page = 0
 		m.rowCursor = 0
@@ -418,9 +424,46 @@ func (m Model) handleBrowseFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.browseFilterInput.Blur()
 		return m.startLoadRows()
 	}
+	if msg.Type == tea.KeyTab {
+		m.browseFilterOperator = nextBrowseFilterOperator(m.browseFilterOperator)
+		if column := m.activeColumn(); column != nil {
+			m.updateBrowseFilterPrompt(column.Name)
+		}
+		return m, nil
+	}
 	var cmd tea.Cmd
 	m.browseFilterInput, cmd = m.browseFilterInput.Update(msg)
 	return m, cmd
+}
+
+func nextBrowseFilterOperator(operator db.FilterOperator) db.FilterOperator {
+	switch operator {
+	case db.FilterEqual:
+		return db.FilterContains
+	case db.FilterContains:
+		return db.FilterIsNull
+	case db.FilterIsNull:
+		return db.FilterIsNotNull
+	default:
+		return db.FilterEqual
+	}
+}
+
+func (m *Model) updateBrowseFilterPrompt(column string) {
+	m.browseFilterInput.Prompt = fmt.Sprintf("Filter %s %s ", column, browseFilterOperatorLabel(m.browseFilterOperator))
+}
+
+func browseFilterOperatorLabel(operator db.FilterOperator) string {
+	switch operator {
+	case db.FilterContains:
+		return "contains"
+	case db.FilterIsNull:
+		return "is null"
+	case db.FilterIsNotNull:
+		return "is not null"
+	default:
+		return "="
+	}
 }
 
 func (m *Model) consumeGridCount() int {
@@ -954,7 +997,10 @@ func (m *Model) setRowsStatus(t db.Table) {
 func formatBrowseFilters(filters []db.RowFilter) string {
 	parts := make([]string, len(filters))
 	for i, filter := range filters {
-		parts[i] = filter.Column + " = " + filter.Value
+		parts[i] = filter.Column + " " + browseFilterOperatorLabel(filter.Operator)
+		if filter.Operator != db.FilterIsNull && filter.Operator != db.FilterIsNotNull {
+			parts[i] += " " + filter.Value
+		}
 	}
 	return strings.Join(parts, " AND ")
 }

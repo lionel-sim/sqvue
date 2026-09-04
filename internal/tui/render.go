@@ -46,7 +46,7 @@ func renderMain(m Model) string {
 	} else if m.activeOverlay == overlayFilter {
 		b.WriteString(m.filterInput.View() + "\n")
 	} else if m.activeOverlay == overlayBrowseFilter {
-		b.WriteString(m.browseFilterInput.View() + "\n")
+		b.WriteString(m.browseFilterInput.View() + "  (Tab changes operator)\n")
 	} else if m.activeOverlay == overlaySchemaPicker {
 		b.WriteString("Use j/k to choose a schema, then Enter to load its tables.\n")
 	} else if m.loading {
