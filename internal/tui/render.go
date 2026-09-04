@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"sqvue/internal/db"
 	"sqvue/internal/theme"
 )
@@ -28,14 +30,14 @@ const (
 // =========================================================================
 
 func Render(m Model) string {
-	var b strings.Builder
 	if m.showHelp {
-		b.WriteString(theme.Title.Render("Keyboard shortcuts") + "\n\n")
-		m.help.ShowAll = true
-		b.WriteString(m.help.View(m.keys))
-		b.WriteString("\n\n" + theme.Muted.Render("Press any key to return.") + "\n")
-		return b.String()
+		return renderHelpModal(m)
 	}
+	return renderMain(m)
+}
+
+func renderMain(m Model) string {
+	var b strings.Builder
 
 	if m.showSchemas {
 		renderSchemaList(&b, m.schemas, m.schema)
@@ -62,6 +64,44 @@ func Render(m Model) string {
 	b.WriteString(renderFooter(m))
 
 	return b.String()
+}
+
+func renderHelpModal(m Model) string {
+	background := m
+	background.showHelp = false
+	base := renderMain(background)
+	if m.width <= 0 || m.height <= 0 {
+		return renderHelpDialog(m)
+	}
+
+	dialog := renderHelpDialog(m)
+	dialogLines := strings.Split(dialog, "\n")
+	popupWidth := ansi.StringWidth(dialogLines[0])
+	left := max(0, (m.width-popupWidth)/2)
+	top := max(0, (m.height-len(dialogLines))/2)
+
+	baseLines := strings.Split(base, "\n")
+	for len(baseLines) < m.height {
+		baseLines = append(baseLines, "")
+	}
+	for i, line := range dialogLines {
+		row := top + i
+		if row >= len(baseLines) {
+			break
+		}
+		baseLines[row] = ansi.Cut(baseLines[row], 0, left) + line + ansi.Cut(baseLines[row], left+popupWidth, m.width)
+	}
+	return strings.Join(baseLines, "\n")
+}
+
+func renderHelpDialog(m Model) string {
+	m.help.ShowAll = true
+	content := theme.Title.Render("Keyboard shortcuts") + "\n\n" + m.help.View(m.keys) + "\n\n" + theme.Muted.Render("Press any key to return.")
+	width := 54
+	if m.width > 0 {
+		width = min(width, max(10, m.width-6))
+	}
+	return theme.Dialog.Width(width).Render(content)
 }
 
 func padToFooter(b *strings.Builder, height int) {

@@ -76,4 +76,23 @@ func TestVisibleDataHidesUncheckedColumns(t *testing.T) {
 	}
 }
 
+func TestHelpRendersAsModalOverCurrentView(t *testing.T) {
+	m := testModel()
+	m.width = 100
+	m.height = 20
+	m.status = "public.accounts page 1"
+	m.showHelp = true
+
+	out := m.View()
+	if !strings.Contains(out, "Keyboard shortcuts") {
+		t.Fatalf("help dialog missing heading: %q", out)
+	}
+	if !strings.Contains(out, "Status: public.accounts page 1") {
+		t.Fatalf("background footer missing from modal: %q", out)
+	}
+	if !strings.Contains(out, "╭") {
+		t.Fatalf("help dialog missing border: %q", out)
+	}
+}
+
 func strPtr(s string) *string { return &s }
