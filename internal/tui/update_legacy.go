@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"unicode"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -12,6 +11,7 @@ import (
 	keymap "sqvue/internal/tui/components/keys"
 )
 
+/*
 func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	if msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && unicode.IsDigit(msg.Runes[0]) {
 		digit := int(msg.Runes[0] - '0')
@@ -68,6 +68,7 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	}
 	return m, nil
 }
+*/
 
 func (m Model) clearBrowseFilters() (Model, tea.Cmd) {
 	if len(m.browseFilters) == 0 {
@@ -185,6 +186,7 @@ func browseFilterOperatorLabel(operator db.FilterOperator) string {
 	}
 }
 
+/*
 func (m *Model) consumeGridCount() int {
 	count := max(1, m.countPrefix)
 	m.countPrefix = 0
@@ -315,6 +317,7 @@ func (m Model) followActiveForeignKey() (Model, tea.Cmd) {
 	m.status = "referenced table is not available"
 	return m, nil
 }
+*/
 
 func (m Model) handleColumnsKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch {
