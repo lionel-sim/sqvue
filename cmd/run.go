@@ -17,12 +17,22 @@ import (
 )
 
 var (
-	connFlag    string
-	timeoutFlag time.Duration
+	connFlag     string
+	timeoutFlag  time.Duration
+	hostFlag     string
+	portFlag     int
+	userFlag     string
+	passwordFlag string
+	databaseFlag string
 )
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&connFlag, "conn", "", "Postgres connection string (or set DATABASE_URL)")
+	rootCmd.PersistentFlags().StringVar(&hostFlag, "host", "localhost", "Postgres host")
+	rootCmd.PersistentFlags().IntVar(&portFlag, "port", 5432, "Postgres port")
+	rootCmd.PersistentFlags().StringVar(&userFlag, "user", "postgres", "Postgres user")
+	rootCmd.PersistentFlags().StringVar(&passwordFlag, "password", "", "Postgres password")
+	rootCmd.PersistentFlags().StringVar(&databaseFlag, "db", "", "Postgres database")
 	rootCmd.PersistentFlags().DurationVar(&timeoutFlag, "timeout", 5*time.Second, "query timeout")
 
 	rootCmd.RunE = run
@@ -31,6 +41,11 @@ func init() {
 func run(cmd *cobra.Command, args []string) error {
 	cfg := config.DBProfile{
 		ConnString: firstNonEmpty(connFlag, os.Getenv("DATABASE_URL")),
+		Host:       hostFlag,
+		Port:       portFlag,
+		User:       userFlag,
+		Password:   passwordFlag,
+		Database:   databaseFlag,
 		Timeout:    timeoutFlag,
 	}
 	if err := cfg.Validate(); err != nil {
@@ -40,7 +55,15 @@ func run(cmd *cobra.Command, args []string) error {
 	ctx, cancel := context.WithTimeout(cmd.Context(), 5*time.Second)
 	defer cancel()
 
-	client, err := db.NewClient(ctx, cfg.ConnString)
+	client, err := db.NewClientWithConfig(ctx, db.ConnectConfig{
+		DbType:   db.DbTypePostgres,
+		DSN:      cfg.ConnString,
+		Host:     cfg.Host,
+		Port:     cfg.Port,
+		User:     cfg.User,
+		Password: cfg.Password,
+		Database: cfg.Database,
+	})
 	if err != nil {
 		return fmt.Errorf("connect: %w", err)
 	}

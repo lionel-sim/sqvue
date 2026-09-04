@@ -46,10 +46,15 @@ You can also run directly from source with `make run` or `go run ./...`.
 
 ### Flags
 
-| Flag          | Default | Description                     |
-| ------------- | ------- | ------------------------------- |
-| `--conn`      |         | Postgres connection string      |
-| `--timeout`   | `5s`    | Query timeout                   |
+| Flag         | Default     | Description                                |
+| ------------ | ----------- | ------------------------------------------ |
+| `--conn`     |             | Postgres connection string                 |
+| `--host`     | `localhost` | Postgres host (used when `--conn` is unset) |
+| `--port`     | `5432`      | Postgres port                               |
+| `--user`     | `postgres`  | Postgres user                               |
+| `--password` |             | Postgres password                           |
+| `--db`       |             | Postgres database                           |
+| `--timeout`  | `5s`        | Query timeout                               |
 
 ### Key bindings
 

@@ -11,7 +11,7 @@ Finish the Postgres driver so the TUI is actually usable end-to-end.
 - [x] Implement `Rows` — paginated `SELECT ... LIMIT/OFFSET` with type-aware rendering
 - [x] Implement `Query` — arbitrary SQL with args, returning columns + rows + affected count
 - [x] Parse the connection string properly in `NewClient` (DSN pass-through via `ConnectConfig`)
-- [ ] Add a `--host/--port/--user/--password/--db` flag group in addition to `--conn`
+- [x] Add a `--host/--port/--user/--password/--db` flag group in addition to `--conn`
 - [ ] Replace the hardcoded `"public"` schema list in the TUI with real schema selection
 - [ ] TUI polish:
   - [x] Table-aware cell rendering — truncate/wrap values to terminal width (or use `bubbles/table`)

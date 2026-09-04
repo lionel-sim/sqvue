@@ -75,14 +75,21 @@ type Result struct {
 }
 
 func NewClient(ctx context.Context, connString string) (Driver, error) {
-	// For simplicity, assume Postgres for now
-	driver, err := NewDriver(DbTypePostgres)
-	if err != nil {
-		return nil, err
-	}
-	cfg := ConnectConfig{
+	return NewClientWithConfig(ctx, ConnectConfig{
 		DbType: DbTypePostgres,
 		DSN:    connString,
+	})
+}
+
+// NewClientWithConfig connects a driver using either a DSN or individual
+// connection fields. A DSN takes precedence when both are supplied.
+func NewClientWithConfig(ctx context.Context, cfg ConnectConfig) (Driver, error) {
+	if cfg.DbType == "" {
+		cfg.DbType = DbTypePostgres
+	}
+	driver, err := NewDriver(cfg.DbType)
+	if err != nil {
+		return nil, err
 	}
 	if err := driver.Connect(ctx, cfg); err != nil {
 		return nil, err
