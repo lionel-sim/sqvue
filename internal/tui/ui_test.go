@@ -221,6 +221,10 @@ func TestGridFilterPromptUsesActiveColumnAndCell(t *testing.T) {
 	m.cellCursor = 1
 
 	m, _ = update(m, keyMsg("/"))
+	if m.activeOverlay != overlayBrowseFilterOperator {
+		t.Fatalf("active overlay = %v, want browse filter operator picker", m.activeOverlay)
+	}
+	m, _ = m.handleBrowseFilterOperatorKey(tea.KeyMsg{Type: tea.KeyEnter})
 	if m.activeOverlay != overlayBrowseFilter {
 		t.Fatalf("active overlay = %v, want browse filter", m.activeOverlay)
 	}
@@ -241,7 +245,8 @@ func TestGridFilterAppliesEqualityFromPrompt(t *testing.T) {
 	m.client = &fakeDriver{cols: m.columns, rows: m.rows, count: 1}
 
 	m, _ = update(m, keyMsg("/"))
-	m, cmd := m.handleBrowseFilterKey(tea.KeyMsg{Type: tea.KeyEnter})
+	m, _ = update(m, tea.KeyMsg{Type: tea.KeyEnter})
+	m, cmd := update(m, tea.KeyMsg{Type: tea.KeyEnter})
 	if len(m.browseFilters) != 1 || m.browseFilters[0] != (db.RowFilter{Column: "name", Operator: db.FilterEqual, Value: "Ada"}) {
 		t.Fatalf("browse filters = %#v", m.browseFilters)
 	}
@@ -280,18 +285,20 @@ func TestGridFilterStatusAndClearAction(t *testing.T) {
 	}
 }
 
-func TestGridFilterPromptCyclesOperators(t *testing.T) {
+func TestGridFilterOperatorPickerSelectsOperator(t *testing.T) {
 	m := testModel()
 	m.focused = true
 	m.columns = []db.Column{{Name: "name"}}
 	m.rows = [][]string{{"Ada"}}
 	m, _ = update(m, keyMsg("/"))
 
-	for _, want := range []db.FilterOperator{db.FilterContains, db.FilterIsNull, db.FilterIsNotNull, db.FilterEqual} {
-		m, _ = m.handleBrowseFilterKey(tea.KeyMsg{Type: tea.KeyTab})
-		if m.browseFilterOperator != want {
-			t.Fatalf("operator = %q, want %q", m.browseFilterOperator, want)
-		}
+	m, _ = m.handleBrowseFilterOperatorKey(keyMsg("j"))
+	m, _ = m.handleBrowseFilterOperatorKey(tea.KeyMsg{Type: tea.KeyEnter})
+	if m.browseFilterOperator != db.FilterContains {
+		t.Fatalf("operator = %q, want contains", m.browseFilterOperator)
+	}
+	if got := m.browseFilterInput.Prompt; got != "Filter name contains " {
+		t.Fatalf("filter prompt = %q", got)
 	}
 }
 
@@ -304,13 +311,15 @@ func TestGridFilterAddsMultipleFilters(t *testing.T) {
 	m.pageSize = 2
 
 	m, _ = update(m, keyMsg("/"))
-	m, cmd := m.handleBrowseFilterKey(tea.KeyMsg{Type: tea.KeyEnter})
+	m, _ = update(m, tea.KeyMsg{Type: tea.KeyEnter})
+	m, cmd := update(m, tea.KeyMsg{Type: tea.KeyEnter})
 	if msg := runCmd(cmd); msg != nil {
 		m, _ = update(m, msg)
 	}
 	m.cellCursor = 1
 	m, _ = update(m, keyMsg("/"))
-	m, cmd = m.handleBrowseFilterKey(tea.KeyMsg{Type: tea.KeyEnter})
+	m, _ = update(m, tea.KeyMsg{Type: tea.KeyEnter})
+	m, cmd = update(m, tea.KeyMsg{Type: tea.KeyEnter})
 	if len(m.browseFilters) != 2 {
 		t.Fatalf("browse filters = %#v, want two filters", m.browseFilters)
 	}

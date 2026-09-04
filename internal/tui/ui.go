@@ -96,6 +96,7 @@ const (
 	overlayHelp
 	overlaySchemaPicker
 	overlayFilter
+	overlayBrowseFilterOperator
 	overlayBrowseFilter
 	overlaySQL
 	overlayColumnPicker
@@ -109,6 +110,8 @@ type overlayState struct {
 	filterPrevious       string
 	browseFilterInput    textinput.Model
 	browseFilterOperator db.FilterOperator
+	browseFilterColumn   string
+	browseFilterCursor   int
 	sqlInput             textinput.Model
 	help                 help.Model
 	columnCursor         int
@@ -238,6 +241,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.handleFilterKey(msg)
 	case overlayBrowseFilter:
 		return m.handleBrowseFilterKey(msg)
+	case overlayBrowseFilterOperator:
+		return m.handleBrowseFilterOperatorKey(msg)
 	case overlaySchemaPicker:
 		return m.handleSchemaKey(msg)
 	}
@@ -386,11 +391,36 @@ func (m Model) openBrowseFilter() (Model, tea.Cmd) {
 		m.status = "no active column to filter"
 		return m, nil
 	}
-	m.activeOverlay = overlayBrowseFilter
+	m.activeOverlay = overlayBrowseFilterOperator
 	m.browseFilterOperator = db.FilterEqual
-	m.updateBrowseFilterPrompt(column.Name)
+	m.browseFilterColumn = column.Name
+	m.browseFilterCursor = 0
 	m.browseFilterInput.SetValue(m.activeCellValue())
-	m.browseFilterInput.Focus()
+	return m, nil
+}
+
+var browseFilterOperators = []db.FilterOperator{
+	db.FilterEqual,
+	db.FilterContains,
+	db.FilterIsNull,
+	db.FilterIsNotNull,
+}
+
+func (m Model) handleBrowseFilterOperatorKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch {
+	case msg.String() == "esc":
+		m.activeOverlay = overlayNone
+		return m, nil
+	case key.Matches(msg, m.keys.Down):
+		m.browseFilterCursor = min(m.browseFilterCursor+1, len(browseFilterOperators)-1)
+	case key.Matches(msg, m.keys.Up):
+		m.browseFilterCursor = max(0, m.browseFilterCursor-1)
+	case key.Matches(msg, m.keys.Confirm):
+		m.browseFilterOperator = browseFilterOperators[m.browseFilterCursor]
+		m.updateBrowseFilterPrompt(m.browseFilterColumn)
+		m.activeOverlay = overlayBrowseFilter
+		m.browseFilterInput.Focus()
+	}
 	return m, nil
 }
 
@@ -401,44 +431,20 @@ func (m Model) handleBrowseFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 	}
 	if key.Matches(msg, m.keys.Confirm) {
-		column := m.activeColumn()
-		if column == nil {
-			return m, nil
-		}
 		value := m.browseFilterInput.Value()
 		if m.browseFilterOperator == db.FilterIsNull || m.browseFilterOperator == db.FilterIsNotNull {
 			value = ""
 		}
-		m.browseFilters = append(m.browseFilters, db.RowFilter{Column: column.Name, Operator: m.browseFilterOperator, Value: value})
+		m.browseFilters = append(m.browseFilters, db.RowFilter{Column: m.browseFilterColumn, Operator: m.browseFilterOperator, Value: value})
 		m.page = 0
 		m.rowCursor = 0
 		m.activeOverlay = overlayNone
 		m.browseFilterInput.Blur()
 		return m.startLoadRows()
 	}
-	if msg.Type == tea.KeyTab {
-		m.browseFilterOperator = nextBrowseFilterOperator(m.browseFilterOperator)
-		if column := m.activeColumn(); column != nil {
-			m.updateBrowseFilterPrompt(column.Name)
-		}
-		return m, nil
-	}
 	var cmd tea.Cmd
 	m.browseFilterInput, cmd = m.browseFilterInput.Update(msg)
 	return m, cmd
-}
-
-func nextBrowseFilterOperator(operator db.FilterOperator) db.FilterOperator {
-	switch operator {
-	case db.FilterEqual:
-		return db.FilterContains
-	case db.FilterContains:
-		return db.FilterIsNull
-	case db.FilterIsNull:
-		return db.FilterIsNotNull
-	default:
-		return db.FilterEqual
-	}
 }
 
 func (m *Model) updateBrowseFilterPrompt(column string) {
