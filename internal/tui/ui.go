@@ -876,6 +876,28 @@ func (m Model) View() string {
 	return Render(m)
 }
 
+func (m Model) helpKeyMap() keymap.Map {
+	keys := m.keys
+	keys.Left.SetEnabled(m.focused)
+	keys.Right.SetEnabled(m.focused)
+	keys.HalfPageUp.SetEnabled(m.focused)
+	keys.HalfPageDown.SetEnabled(m.focused)
+	keys.FirstRow.SetEnabled(m.focused)
+	keys.LastRow.SetEnabled(m.focused)
+	keys.CopyCell.SetEnabled(m.focused)
+	keys.CopyRow.SetEnabled(m.focused)
+	keys.OpenReference.SetEnabled(m.focused)
+
+	keys.SQL.SetEnabled(!m.focused)
+	keys.Columns.SetEnabled(!m.focused)
+	keys.Schema.SetEnabled(!m.focused)
+	keys.Filter.SetEnabled(!m.focused)
+	keys.ShowDescriptions.SetEnabled(!m.focused)
+	keys.ShowValues.SetEnabled(!m.focused)
+	keys.Refresh.SetEnabled(!m.focused)
+	return keys
+}
+
 func (m *Model) currentTable() *db.Table {
 	if m.selected < 0 || m.selected >= len(m.tables) {
 		return nil

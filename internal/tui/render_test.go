@@ -145,6 +145,21 @@ func TestRenderFooterShowsGridFocus(t *testing.T) {
 	}
 }
 
+func TestHelpShowsBindingsForCurrentFocus(t *testing.T) {
+	m := testModel()
+	m.width = 100
+	tableHelp := ansi.Strip(renderHelpDialog(m))
+	if !strings.Contains(tableHelp, "show rows") || strings.Contains(tableHelp, "copy cell") {
+		t.Fatalf("table help has wrong bindings:\n%s", tableHelp)
+	}
+
+	m.focused = true
+	gridHelp := ansi.Strip(renderHelpDialog(m))
+	if !strings.Contains(gridHelp, "copy cell") || strings.Contains(gridHelp, "show rows") {
+		t.Fatalf("grid help has wrong bindings:\n%s", gridHelp)
+	}
+}
+
 func TestRenderTableListUsesSchemaHeaderAndMarksViews(t *testing.T) {
 	var b strings.Builder
 	renderTableList(&b, "public", []db.Table{

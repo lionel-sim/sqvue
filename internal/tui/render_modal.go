@@ -62,7 +62,7 @@ func renderHelpDialog(m Model) string {
 	m.help.Styles.FullKey = m.help.Styles.FullKey.Background(panelBackground)
 	m.help.Styles.FullDesc = m.help.Styles.FullDesc.Background(panelBackground)
 	m.help.Styles.FullSeparator = m.help.Styles.FullSeparator.Background(panelBackground)
-	helpText := strings.ReplaceAll(m.help.View(m.keys), "\x1b[0m", "\x1b[0m\x1b[48;5;235m")
+	helpText := strings.ReplaceAll(m.help.View(m.helpKeyMap()), "\x1b[0m", "\x1b[0m\x1b[48;5;235m")
 	dismiss := theme.Muted.Background(panelBackground).Render("Press any key to return.")
 	content := helpText + "\n\n" + dismiss
 	panelLines := strings.Split(theme.Dialog.Width(width).Render(content), "\n")
