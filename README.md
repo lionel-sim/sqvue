@@ -150,13 +150,16 @@ to choose a column, Space to show or hide it, and Enter or Esc to return.
 
 ## Testing
 
-Most tests run without external services. The PostgreSQL integration test is
-skipped unless `SQVUE_TEST_POSTGRES_DSN` is set; it creates and removes an
-isolated schema in that database:
+Most tests run without external services. The PostgreSQL and MySQL integration
+tests are skipped unless their DSNs are set; each creates and removes isolated
+test data in the target database:
 
 ```sh
 SQVUE_TEST_POSTGRES_DSN="postgres://sqvue:sqvue@localhost:5432/sqvue?sslmode=disable" \
   go test ./internal/db/postgres -run '^TestPostgresDriverIntegration$'
+
+SQVUE_TEST_MYSQL_DSN="sqvue:sqvue@tcp(127.0.0.1:3306)/sqvue?parseTime=true" \
+  go test ./internal/db/mysql -run '^TestMySQLDriverIntegration$'
 ```
 
 ## Project layout

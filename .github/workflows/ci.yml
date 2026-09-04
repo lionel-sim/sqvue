@@ -85,3 +85,32 @@ jobs:
           cache: true
       - name: Test PostgreSQL driver against PostgreSQL
         run: go test ./internal/db/postgres -run '^TestPostgresDriverIntegration$'
+
+  mysql-integration:
+    name: MySQL integration
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: sqvue
+          MYSQL_USER: sqvue
+          MYSQL_PASSWORD: sqvue
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost -usqvue -psqvue"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      SQVUE_TEST_MYSQL_DSN: sqvue:sqvue@tcp(127.0.0.1:3306)/sqvue?parseTime=true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Test MySQL driver against MySQL
+        run: go test ./internal/db/mysql -run '^TestMySQLDriverIntegration$'
