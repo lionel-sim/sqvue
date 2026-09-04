@@ -179,8 +179,8 @@ func renderTableList(b *strings.Builder, schema string, tables []db.Table, selec
 		if i == selected {
 			prefix = "> "
 		}
-		name := sanitizeText(tables[i].String())
-		if tables[i].Type != "" {
+		name := sanitizeText(tables[i].Name)
+		if tables[i].Type != "" && tables[i].Type != "table" {
 			name += " [" + tables[i].Type + "]"
 		}
 		line := prefix + name

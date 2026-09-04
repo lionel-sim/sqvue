@@ -66,6 +66,28 @@ func TestRenderFooterStaysOnBottomLine(t *testing.T) {
 	}
 }
 
+func TestRenderTableListUsesSchemaHeaderAndMarksViews(t *testing.T) {
+	var b strings.Builder
+	renderTableList(&b, "public", []db.Table{
+		{Schema: "public", Name: "categories", Type: "table"},
+		{Schema: "public", Name: "sales_summary", Type: "view"},
+	}, 0, 0, "")
+
+	out := ansi.Strip(b.String())
+	if !strings.Contains(out, "Tables: public") {
+		t.Fatalf("table list missing schema header: %q", out)
+	}
+	if !strings.Contains(out, "> categories") {
+		t.Fatalf("table list missing bare table name: %q", out)
+	}
+	if strings.Contains(out, "public.categories") || strings.Contains(out, "[table]") {
+		t.Fatalf("table list repeats schema or table marker: %q", out)
+	}
+	if !strings.Contains(out, "sales_summary [view]") {
+		t.Fatalf("table list does not mark views: %q", out)
+	}
+}
+
 func TestVisibleDataHidesUncheckedColumns(t *testing.T) {
 	columns := []db.Column{{Name: "id"}, {Name: "email"}, {Name: "password_hash"}}
 	rows := [][]string{{"1", "a@example.com", "secret"}}

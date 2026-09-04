@@ -18,6 +18,7 @@ Finish the Postgres driver so the TUI is actually usable end-to-end.
   - [x] Table-aware cell rendering — truncate/wrap values to terminal width (or use `bubbles/table`)
   - [x] `?` help overlay using the keymap, plus a `bubbles/help` footer key bar
   - [x] Schema switcher — select schemas via `ListSchemas` instead of hardcoded `public`
+  - [x] Compact table selector — show the selected schema once in the header and mark views distinctly
   - [x] Table filter — type-ahead search over the table list
   - [x] Column metadata view for the selected table (via `DescribeTable`)
   - [x] Ad-hoc SQL mode — input prompt to run raw SQL through `Query` and page through results
