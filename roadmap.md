@@ -45,7 +45,15 @@ For each driver:
 ## Phase 3 — General TUI capabilities
 
 - [x] Column visibility picker for row and SQL-result views
-- [ ] Data-grid focus mode — press Enter to focus and highlight table rows, then scroll with `j`/`k`
+- [ ] Data-grid focus mode
+  - [ ] Press Enter to move focus between the table picker and data grid; Esc returns to the picker
+  - [ ] Highlight the active row and show the current focus state in the footer
+  - [ ] Navigate rows with `j`/`k`, arrow keys, `Ctrl-d`/`Ctrl-u`, and `g`/`G`
+  - [ ] Keep the selected row visible while scrolling and when visible columns change
+  - [ ] Navigate cells left and right, highlighting the active cell
+  - [ ] Open a row-detail popup with full, untruncated values
+  - [ ] Copy the active cell (`y`) or whole row (`Y`)
+  - [ ] Follow a foreign-key cell to its referenced table or row when possible
 - [ ] Export results (CSV, JSON)
 - [ ] Streaming / large-result handling (cursor or fetch-more pagination instead of LIMIT/OFFSET)
 - [x] Saved connections / connection profiles (XDG config file, named profiles, and `--profile`)
