@@ -7,7 +7,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"sqvue/internal/db"
-	keymap "sqvue/internal/tui/components/keys"
 )
 
 func (m Model) handleColumnsKey(msg tea.KeyMsg) (Model, tea.Cmd) {
@@ -82,7 +81,7 @@ func (m *Model) currentTable() *db.Table {
 	return &m.tables[m.selected]
 }
 
-func (m Model) helpKeyMap() keymap.Map {
+func (m Model) helpKeyMap() Map {
 	keys := m.keys
 	keys.Left.SetEnabled(m.focused)
 	keys.Right.SetEnabled(m.focused)
