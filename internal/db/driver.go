@@ -80,6 +80,31 @@ type Query struct {
 	Args []any
 }
 
+// FilterOperator describes a parameterized row-filter comparison.
+type FilterOperator string
+
+const (
+	FilterEqual     FilterOperator = "equal"
+	FilterContains  FilterOperator = "contains"
+	FilterIsNull    FilterOperator = "is_null"
+	FilterIsNotNull FilterOperator = "is_not_null"
+)
+
+// RowFilter narrows a table browse request without exposing raw SQL.
+type RowFilter struct {
+	Column   string
+	Operator FilterOperator
+	Value    string
+}
+
+// BrowseRequest describes a paginated, structured table browse operation.
+type BrowseRequest struct {
+	Table   Table
+	Limit   int
+	Offset  int
+	Filters []RowFilter
+}
+
 type Result struct {
 	Columns      []string
 	Rows         [][]any

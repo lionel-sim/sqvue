@@ -56,7 +56,7 @@ For each driver:
   - [x] Copy the active cell (`y`) or whole row (`Y`)
   - [x] Follow a foreign-key cell to its matching referenced row when its table is available in the current schema
 - [ ] Structured row filtering (parameterized browse filters, separate from SQL mode)
-  - [ ] Define driver-neutral filter and browse-request types for table rows
+  - [x] Define driver-neutral filter and browse-request types for table rows
   - [ ] Replace the specialised foreign-key lookup with the shared filtered-row path
   - [ ] Add a grid filter prompt for the active column, prefilled from its selected cell
   - [ ] Support equality filtering first, including filtered row counts and pagination
