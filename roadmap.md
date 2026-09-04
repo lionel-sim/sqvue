@@ -61,7 +61,7 @@ For each driver:
   - [x] Add a grid filter prompt for the active column, prefilled from its selected cell
   - [x] Support equality filtering first, including filtered row counts and pagination
   - [x] Show active filters in the status bar and add a clear-filter action
-  - [x] Add `contains`, `is null`, and `is not null` operators
+  - [x] Add `contains`, comparison (`>`, `<`, `>=`, `<=`), `is null`, and `is not null` operators
   - [x] Support multiple filters combined with `AND`
   - [x] Test TUI filter state and each driver's parameterized query generation
 - [x] TUI maintainability refactor

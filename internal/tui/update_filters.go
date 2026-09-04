@@ -38,7 +38,7 @@ func (m Model) openBrowseFilter() (Model, tea.Cmd) {
 	return m, nil
 }
 
-var standardBrowseFilterOperators = []db.FilterOperator{db.FilterEqual, db.FilterContains, db.FilterLike, db.FilterGreater, db.FilterLess, db.FilterIsNull, db.FilterIsNotNull}
+var standardBrowseFilterOperators = []db.FilterOperator{db.FilterEqual, db.FilterContains, db.FilterLike, db.FilterGreater, db.FilterLess, db.FilterGreaterOrEqual, db.FilterLessOrEqual, db.FilterIsNull, db.FilterIsNotNull}
 
 func (m Model) browseFilterOperators() []db.FilterOperator {
 	operators := append([]db.FilterOperator(nil), standardBrowseFilterOperators...)
@@ -104,6 +104,10 @@ func browseFilterOperatorLabel(operator db.FilterOperator) string {
 		return ">"
 	case db.FilterLess:
 		return "<"
+	case db.FilterGreaterOrEqual:
+		return ">="
+	case db.FilterLessOrEqual:
+		return "<="
 	case db.FilterIsNull:
 		return "is null"
 	case db.FilterIsNotNull:

@@ -310,7 +310,7 @@ func TestGridFilterOperatorPickerAppliesNullFilterImmediately(t *testing.T) {
 	m.rows = [][]string{{"NULL"}}
 	m.pageSize = 2
 	m, _ = update(m, keyMsg("/"))
-	for range 6 {
+	for range 8 {
 		m, _ = update(m, keyMsg("j"))
 	}
 	m, cmd := update(m, tea.KeyMsg{Type: tea.KeyEnter})
@@ -342,6 +342,26 @@ func TestBrowseFilterOperatorsIncludeILikeOnlyForPostgres(t *testing.T) {
 	for _, operator := range m.browseFilterOperators() {
 		if operator == db.FilterILike {
 			t.Fatal("ILike available for SQLite")
+		}
+	}
+}
+
+func TestBrowseFilterOperatorsIncludeInclusiveComparisons(t *testing.T) {
+	m := testModel()
+	operators := m.browseFilterOperators()
+	for operator, label := range map[db.FilterOperator]string{
+		db.FilterGreaterOrEqual: ">=",
+		db.FilterLessOrEqual:    "<=",
+	} {
+		found := false
+		for _, candidate := range operators {
+			found = found || candidate == operator
+		}
+		if !found {
+			t.Fatalf("operator %q is missing from picker", operator)
+		}
+		if got := browseFilterOperatorLabel(operator); got != label {
+			t.Fatalf("label for %q = %q, want %q", operator, got, label)
 		}
 	}
 }

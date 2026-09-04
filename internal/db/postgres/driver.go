@@ -366,6 +366,12 @@ func postgresBrowseWhere(filters []db.RowFilter) (string, []any, error) {
 		case db.FilterLess:
 			parts = append(parts, column+" < "+placeholder)
 			args = append(args, filter.Value)
+		case db.FilterGreaterOrEqual:
+			parts = append(parts, column+" >= "+placeholder)
+			args = append(args, filter.Value)
+		case db.FilterLessOrEqual:
+			parts = append(parts, column+" <= "+placeholder)
+			args = append(args, filter.Value)
 		case db.FilterIsNull:
 			parts = append(parts, column+" is null")
 		case db.FilterIsNotNull:

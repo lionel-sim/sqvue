@@ -85,14 +85,16 @@ type Query struct {
 type FilterOperator string
 
 const (
-	FilterEqual     FilterOperator = "equal"
-	FilterContains  FilterOperator = "contains"
-	FilterLike      FilterOperator = "like"
-	FilterILike     FilterOperator = "ilike"
-	FilterGreater   FilterOperator = "greater_than"
-	FilterLess      FilterOperator = "less_than"
-	FilterIsNull    FilterOperator = "is_null"
-	FilterIsNotNull FilterOperator = "is_not_null"
+	FilterEqual          FilterOperator = "equal"
+	FilterContains       FilterOperator = "contains"
+	FilterLike           FilterOperator = "like"
+	FilterILike          FilterOperator = "ilike"
+	FilterGreater        FilterOperator = "greater_than"
+	FilterLess           FilterOperator = "less_than"
+	FilterGreaterOrEqual FilterOperator = "greater_than_or_equal"
+	FilterLessOrEqual    FilterOperator = "less_than_or_equal"
+	FilterIsNull         FilterOperator = "is_null"
+	FilterIsNotNull      FilterOperator = "is_not_null"
 )
 
 // RowFilter narrows a table browse request without exposing raw SQL.

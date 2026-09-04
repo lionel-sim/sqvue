@@ -58,17 +58,19 @@ func TestBrowseWhereUsesParameterizedOperators(t *testing.T) {
 		{Column: "label", Operator: db.FilterILike, Value: "demo%"},
 		{Column: "rank", Operator: db.FilterGreater, Value: "10"},
 		{Column: "rank", Operator: db.FilterLess, Value: "20"},
+		{Column: "rank", Operator: db.FilterGreaterOrEqual, Value: "10"},
+		{Column: "rank", Operator: db.FilterLessOrEqual, Value: "20"},
 		{Column: "deleted_at", Operator: db.FilterIsNull},
 		{Column: "email", Operator: db.FilterIsNotNull},
 	})
 	if err != nil {
 		t.Fatalf("postgresBrowseWhere() error = %v", err)
 	}
-	wantWhere := " where sqvue_row.\"name\" = $1 and cast(sqvue_row.\"note\" as text) ilike $2 escape E'\\\\' and cast(sqvue_row.\"code\" as text) like $3 and cast(sqvue_row.\"label\" as text) ilike $4 and sqvue_row.\"rank\" > $5 and sqvue_row.\"rank\" < $6 and sqvue_row.\"deleted_at\" is null and sqvue_row.\"email\" is not null"
+	wantWhere := " where sqvue_row.\"name\" = $1 and cast(sqvue_row.\"note\" as text) ilike $2 escape E'\\\\' and cast(sqvue_row.\"code\" as text) like $3 and cast(sqvue_row.\"label\" as text) ilike $4 and sqvue_row.\"rank\" > $5 and sqvue_row.\"rank\" < $6 and sqvue_row.\"rank\" >= $7 and sqvue_row.\"rank\" <= $8 and sqvue_row.\"deleted_at\" is null and sqvue_row.\"email\" is not null"
 	if where != wantWhere {
 		t.Fatalf("where = %q, want %q", where, wantWhere)
 	}
-	if len(args) != 6 || args[0] != "Ada" || args[1] != "%vip\\%\\_%" || args[2] != "A_%" || args[3] != "demo%" || args[4] != "10" || args[5] != "20" {
+	if len(args) != 8 || args[0] != "Ada" || args[1] != "%vip\\%\\_%" || args[2] != "A_%" || args[3] != "demo%" || args[4] != "10" || args[5] != "20" || args[6] != "10" || args[7] != "20" {
 		t.Fatalf("args = %#v", args)
 	}
 }
