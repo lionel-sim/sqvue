@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"sqvue/internal/db"
 )
 
@@ -92,6 +94,16 @@ func TestHelpRendersAsModalOverCurrentView(t *testing.T) {
 	}
 	if !strings.Contains(out, "╔") {
 		t.Fatalf("help dialog missing border: %q", out)
+	}
+	for _, line := range strings.Split(out, "\n") {
+		plain := ansi.Strip(line)
+		if strings.Contains(plain, "╔") {
+			left := strings.Index(plain, "╔")
+			right := len(plain) - len(strings.TrimRight(plain, " "))
+			if left != right {
+				t.Fatalf("help dialog is not horizontally centered: %q", plain)
+			}
+		}
 	}
 }
 

@@ -90,9 +90,17 @@ func renderHelpModal(m Model) string {
 		if row >= len(baseLines) {
 			break
 		}
+		baseLines[row] = padRenderLine(baseLines[row], m.width)
 		baseLines[row] = ansi.Cut(baseLines[row], 0, left) + line + ansi.Cut(baseLines[row], left+popupWidth, m.width)
 	}
 	return strings.Join(baseLines, "\n")
+}
+
+func padRenderLine(line string, width int) string {
+	if padding := width - ansi.StringWidth(line); padding > 0 {
+		return line + strings.Repeat(" ", padding)
+	}
+	return line
 }
 
 func renderHelpDialog(m Model) string {
