@@ -26,6 +26,7 @@ func TestLoadProfileUsesConfiguredDefault(t *testing.T) {
 	originalPasswordFlag := passwordFlag
 	originalDatabaseFlag := databaseFlag
 	originalSSLModeFlag := sslModeFlag
+	originalDBTypeFlag := dbTypeFlag
 	defer func() {
 		profileFlag = originalProfileFlag
 		connFlag = originalConnFlag
@@ -35,6 +36,7 @@ func TestLoadProfileUsesConfiguredDefault(t *testing.T) {
 		passwordFlag = originalPasswordFlag
 		databaseFlag = originalDatabaseFlag
 		sslModeFlag = originalSSLModeFlag
+		dbTypeFlag = originalDBTypeFlag
 	}()
 
 	configDir := t.TempDir()
@@ -59,6 +61,10 @@ sslmode = "verify-full"
 
 [connections.work]
 conn = "postgres://work.example.com/work"
+
+[connections.local_sqlite]
+db_type = "sqlite"
+conn = "sqvue.db"
 `
 	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
@@ -112,5 +118,15 @@ conn = "postgres://work.example.com/work"
 	}
 	if profile.ConnString != "postgres://flag.example.com/flag" {
 		t.Fatalf("flag connection string = %q", profile.ConnString)
+	}
+
+	connFlag = ""
+	profileFlag = "local_sqlite"
+	profile, _, _, err = loadProfile(rootCmd)
+	if err != nil {
+		t.Fatalf("loadProfile() with SQLite profile error = %v", err)
+	}
+	if profile.DBType != "sqlite" || profile.ConnString != "sqvue.db" {
+		t.Fatalf("SQLite profile = %#v", profile)
 	}
 }

@@ -13,6 +13,7 @@ import (
 )
 
 type DBProfile struct {
+	DBType     string        `toml:"db_type"`
 	ConnString string        `toml:"conn"`
 	Host       string        `toml:"host"`
 	Port       int           `toml:"port"`
@@ -42,11 +43,16 @@ const defaultFile = `# sqvue configuration
 # default_profile = "local"
 
 # [connections.local]
+# db_type = "postgres"
 # host = "localhost"
 # port = 5432
 # user = "postgres"
 # database = "my_database"
 # sslmode = "disable"
+
+# [connections.local_sqlite]
+# db_type = "sqlite"
+# conn = "./sqvue_demo.db"
 `
 
 // DefaultPath returns the platform's standard per-user configuration location.
@@ -125,6 +131,7 @@ func (f File) Profile(name string) (DBProfile, error) {
 // DefaultDBProfile contains the existing command-line defaults.
 func DefaultDBProfile() DBProfile {
 	return DBProfile{
+		DBType:  "postgres",
 		Host:    "localhost",
 		Port:    5432,
 		User:    "postgres",
@@ -135,6 +142,9 @@ func DefaultDBProfile() DBProfile {
 
 // Merge applies non-zero connection fields from overrides to p.
 func (p DBProfile) Merge(overrides DBProfile) DBProfile {
+	if overrides.DBType != "" {
+		p.DBType = overrides.DBType
+	}
 	if overrides.ConnString != "" {
 		p.ConnString = overrides.ConnString
 	}
@@ -160,6 +170,20 @@ func (p DBProfile) Merge(overrides DBProfile) DBProfile {
 		p.Timeout = overrides.Timeout
 	}
 	return p
+}
+
+// ValidateFor checks the connection requirements for a selected driver.
+func (p DBProfile) ValidateFor(dbType string) error {
+	if dbType == "sqlite" {
+		if p.ConnString == "" {
+			return errors.New("provide --conn or a profile conn for SQLite")
+		}
+		if p.Timeout <= 0 {
+			return errors.New("timeout must be > 0")
+		}
+		return nil
+	}
+	return p.Validate()
 }
 
 func (p DBProfile) Validate() error {

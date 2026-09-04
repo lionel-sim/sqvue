@@ -20,8 +20,8 @@ Additional database drivers, exporting, streaming large results, and CI remain p
 
 ## Requirements
 
-- Go 1.24+
-- A running Postgres database
+- Go 1.25+
+- A running Postgres database or a SQLite database file
 
 ## Installation
 
@@ -48,6 +48,12 @@ DATABASE_URL="postgres://user:pass@localhost:5432/mydb?sslmode=disable" ./bin/sq
 
 You can also run directly from source with `make run` or `go run ./...`.
 
+Open a SQLite database directly with its path or URI:
+
+```sh
+./bin/sqvue --db-type sqlite --conn ./sqvue_demo.db
+```
+
 ### Connection profiles
 
 On its first run, sqvue creates a commented configuration template. The file is
@@ -62,26 +68,32 @@ to select one automatically:
 default_profile = "local"
 
 [connections.local]
+db_type = "postgres"
 host = "localhost"
 port = 5432
 user = "postgres"
 database = "my_database"
 sslmode = "disable"
+
+[connections.local_sqlite]
+db_type = "sqlite"
+conn = "./sqvue_demo.db"
 ```
 
-Select another profile for one launch with `--profile work`. A profile may also
-use `conn = "postgres://..."`; use either `conn` or the individual connection
-fields in a profile. `--conn` wins over every other source. Without an explicit
-`--profile`, `DATABASE_URL` takes precedence over the configured default profile.
-Explicitly supplied connection flags override matching profile fields. Avoid
-storing passwords in the config file—use a connection URL, environment variable,
-or Postgres password file instead.
+Select another profile for one launch with `--profile work`. A Postgres profile
+may use `conn = "postgres://..."` or the individual connection fields; a SQLite
+profile uses its database path or URI in `conn`. `--conn` wins over every other
+source. Without an explicit `--profile`, `DATABASE_URL` takes precedence over
+the configured default Postgres profile. Explicitly supplied connection flags
+override matching profile fields. Avoid storing passwords in the config file—use
+a connection URL, environment variable, or Postgres password file instead.
 
 ### Flags
 
 | Flag         | Default     | Description                                |
 | ------------ | ----------- | ------------------------------------------ |
-| `--conn`     |             | Postgres connection string                 |
+| `--db-type`  | `postgres`  | Database type (`postgres` or `sqlite`)      |
+| `--conn`     |             | Connection string or SQLite database path   |
 | `--profile`  |             | Named connection profile from the config file |
 | `--host`     | `localhost` | Postgres host (used when `--conn` is unset) |
 | `--port`     | `5432`      | Postgres port                               |
@@ -120,6 +132,7 @@ internal/
   config/       Connection/profile configuration and validation
   db/           Driver interface, metadata types, and driver registry
     postgres/   Postgres implementation (pgx)
+    sqlite/     SQLite implementation (pure Go)
   logging/      Log setup helpers
   theme/        Shared Lip Gloss UI styles
   tui/          Bubble Tea model and rendering

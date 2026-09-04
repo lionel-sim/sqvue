@@ -6,11 +6,12 @@ type DbType string
 
 const (
 	DbTypePostgres DbType = "postgres"
+	DbTypeSQLite   DbType = "sqlite"
 )
 
 type ConnectConfig struct {
 	DbType   DbType
-	DSN      string // full connection string; takes precedence over the fields below
+	DSN      string // driver connection string or database path; takes precedence over the fields below
 	Host     string
 	Port     int
 	User     string

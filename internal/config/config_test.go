@@ -114,8 +114,17 @@ sslmode = "verify-full"
 
 func TestDBProfileMerge(t *testing.T) {
 	base := DefaultDBProfile()
-	got := base.Merge(DBProfile{Host: "db.example.com", Database: "analytics", SSLMode: "verify-full"})
-	if got.Host != "db.example.com" || got.Port != 5432 || got.User != "postgres" || got.Database != "analytics" || got.SSLMode != "verify-full" {
+	got := base.Merge(DBProfile{DBType: "sqlite", Host: "db.example.com", Database: "analytics", SSLMode: "verify-full"})
+	if got.DBType != "sqlite" || got.Host != "db.example.com" || got.Port != 5432 || got.User != "postgres" || got.Database != "analytics" || got.SSLMode != "verify-full" {
 		t.Fatalf("Merge() = %#v", got)
+	}
+}
+
+func TestDBProfileValidateForSQLite(t *testing.T) {
+	if err := (DBProfile{ConnString: "sqvue.db", Timeout: time.Second}).ValidateFor("sqlite"); err != nil {
+		t.Fatalf("ValidateFor(sqlite) error = %v", err)
+	}
+	if err := (DBProfile{Timeout: time.Second}).ValidateFor("sqlite"); err == nil {
+		t.Fatal("ValidateFor(sqlite) accepted a missing database path")
 	}
 }

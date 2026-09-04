@@ -13,6 +13,7 @@ import (
 	"sqvue/internal/config"
 	"sqvue/internal/db"
 	_ "sqvue/internal/db/postgres"
+	_ "sqvue/internal/db/sqlite"
 	"sqvue/internal/tui"
 )
 
@@ -26,10 +27,12 @@ var (
 	databaseFlag string
 	sslModeFlag  string
 	profileFlag  string
+	dbTypeFlag   string
 )
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&connFlag, "conn", "", "Postgres connection string (or set DATABASE_URL)")
+	rootCmd.PersistentFlags().StringVar(&dbTypeFlag, "db-type", "postgres", "Database type (postgres or sqlite)")
+	rootCmd.PersistentFlags().StringVar(&connFlag, "conn", "", "Database connection string or SQLite database path")
 	rootCmd.PersistentFlags().StringVar(&profileFlag, "profile", "", "Named connection profile from the config file")
 	rootCmd.PersistentFlags().StringVar(&hostFlag, "host", "localhost", "Postgres host")
 	rootCmd.PersistentFlags().IntVar(&portFlag, "port", 5432, "Postgres port")
@@ -50,7 +53,8 @@ func run(cmd *cobra.Command, args []string) error {
 	if created {
 		fmt.Fprintf(cmd.ErrOrStderr(), "Created config file at %s\n", path)
 	}
-	if err := cfg.Validate(); err != nil {
+	dbType := db.DbType(cfg.DBType)
+	if err := cfg.ValidateFor(string(dbType)); err != nil {
 		return err
 	}
 
@@ -58,7 +62,7 @@ func run(cmd *cobra.Command, args []string) error {
 	defer cancel()
 
 	client, err := db.NewClientWithConfig(ctx, db.ConnectConfig{
-		DbType:   db.DbTypePostgres,
+		DbType:   dbType,
 		DSN:      cfg.ConnString,
 		Host:     cfg.Host,
 		Port:     cfg.Port,
@@ -104,10 +108,13 @@ func loadProfile(cmd *cobra.Command) (config.DBProfile, bool, string, error) {
 		}
 		cfg = cfg.Merge(profile)
 	}
+	if cmd.Flags().Changed("db-type") {
+		cfg.DBType = dbTypeFlag
+	}
 
 	if connFlag != "" {
 		cfg.ConnString = connFlag
-	} else if profileFlag == "" {
+	} else if profileFlag == "" && cfg.DBType == string(db.DbTypePostgres) {
 		if dsn := os.Getenv("DATABASE_URL"); dsn != "" {
 			cfg.ConnString = dsn
 		}
