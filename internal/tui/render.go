@@ -17,7 +17,7 @@ const (
 	gapAfterList    = 1
 	columnsHeader   = 1
 	maxPageSize     = 50
-	footerRows      = 2
+	footerRows      = 1
 	// reservedRows counts every fixed line above and below the data rows:
 	// list header, list, blank gap, column header, and the footer.
 	reservedRows = tableListHeader + tableListHeight + gapAfterList + columnsHeader + footerRows
@@ -42,8 +42,7 @@ func Render(m Model) string {
 	} else {
 		renderTableList(&b, m.currentSchema(), m.tables, m.selected, m.scroll, m.filterInput.Value())
 	}
-	m.help.ShowAll = false
-	b.WriteString(m.help.View(m.keys) + "\n")
+	b.WriteString("\n")
 	if m.sqlMode {
 		b.WriteString(m.sqlInput.View() + "\n")
 	} else if m.filtering {
@@ -57,27 +56,48 @@ func Render(m Model) string {
 	} else {
 		renderRows(&b, m.columns, m.rows, m.width, m.height-reservedRows)
 	}
-	b.WriteString("\n")
-	// Right-align one column short of the edge so the final character isn't
-	// clipped by terminals at the bottom-right corner.
-	status := "Status: " + m.status
-	if m.lastErr != nil {
-		b.WriteString(theme.Error.Render(rightAlign(m.width-1, status)))
-	} else {
-		b.WriteString(theme.Status.Render(rightAlign(m.width-1, status)))
-	}
+	padToFooter(&b, m.height)
+	b.WriteString(renderFooter(m))
 
 	return b.String()
 }
 
+func padToFooter(b *strings.Builder, height int) {
+	if height <= 0 {
+		return
+	}
+	contentLines := strings.Count(b.String(), "\n")
+	for contentLines < height-footerRows {
+		b.WriteByte('\n')
+		contentLines++
+	}
+}
+
+func renderFooter(m Model) string {
+	bindings := "s schema | / filter | j/k navigate | d columns | y rows | q quit"
+	status := "Status: " + m.status
+	gap := m.width - 1 - len(bindings) - len(status)
+	if gap < 1 {
+		gap = 1
+	}
+	styledStatus := theme.Status.Render(status)
+	if m.lastErr != nil {
+		styledStatus = theme.Error.Render(status)
+	}
+	return theme.Muted.Render(bindings) + strings.Repeat(" ", gap) + styledStatus
+}
+
 func renderTableList(b *strings.Builder, schema string, tables []db.Table, selected, offset int, filter string) {
-	header := fmt.Sprintf("Tables: %s (s schema, / filter, j/k navigate, d columns, y rows, q quit)", schema)
+	header := fmt.Sprintf("Tables: %s", schema)
 	if filter != "" {
 		header += fmt.Sprintf(" [filter: %s]", filter)
 	}
 	b.WriteString(theme.Title.Render(header) + "\n")
 	if len(tables) == 0 {
 		b.WriteString("  (no tables found)\n")
+		for i := 1; i < tableListHeight; i++ {
+			b.WriteByte('\n')
+		}
 		return
 	}
 	end := offset + tableListHeight
@@ -99,11 +119,16 @@ func renderTableList(b *strings.Builder, schema string, tables []db.Table, selec
 		}
 		b.WriteString(line + "\n")
 	}
+	for i := end - offset; i < tableListHeight; i++ {
+		b.WriteByte('\n')
+	}
 }
 
 func renderSchemaList(b *strings.Builder, schemas []db.Schema, selected int) {
 	b.WriteString(theme.Title.Render("Schemas") + "\n")
-	for i, schema := range schemas {
+	end := min(len(schemas), tableListHeight)
+	for i := 0; i < end; i++ {
+		schema := schemas[i]
 		prefix := "  "
 		if i == selected {
 			prefix = "> "
@@ -113,6 +138,9 @@ func renderSchemaList(b *strings.Builder, schemas []db.Schema, selected int) {
 			line = theme.Selected.Render(line)
 		}
 		b.WriteString(line + "\n")
+	}
+	for i := end; i < tableListHeight; i++ {
+		b.WriteByte('\n')
 	}
 }
 

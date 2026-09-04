@@ -137,8 +137,8 @@ func TestScrollWithMoveSelection(t *testing.T) {
 func TestComputedPageSize(t *testing.T) {
 	m := testModel()
 	m.height = 40
-	if got := m.computedPageSize(); got != 31 {
-		t.Fatalf("height 40: want page size 31, got %d", got)
+	if got := m.computedPageSize(); got != 32 {
+		t.Fatalf("height 40: want page size 32, got %d", got)
 	}
 	m.height = 120
 	if got := m.computedPageSize(); got != maxPageSize {
@@ -156,8 +156,8 @@ func TestWindowSizeUpdatesPageSize(t *testing.T) {
 	m.pageSize = maxPageSize
 
 	m, _ = m.handleWindowSize(tea.WindowSizeMsg{Width: 100, Height: 40})
-	if m.pageSize != 31 {
-		t.Fatalf("want page size 31, got %d", m.pageSize)
+	if m.pageSize != 32 {
+		t.Fatalf("want page size 32, got %d", m.pageSize)
 	}
 }
 
@@ -165,8 +165,8 @@ func TestWindowSizeReloadsRows(t *testing.T) {
 	m := testModel()
 	m.height = 40
 	m, _ = m.handleWindowSize(tea.WindowSizeMsg{Width: 100, Height: 40})
-	if m.pageSize != 31 {
-		t.Fatalf("want page size 31, got %d", m.pageSize)
+	if m.pageSize != 32 {
+		t.Fatalf("want page size 32, got %d", m.pageSize)
 	}
 	if _, cmd := m.handleWindowSize(tea.WindowSizeMsg{Width: 100, Height: 40}); cmd != nil {
 		t.Fatal("expected no reload when page size is unchanged")

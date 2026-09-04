@@ -45,4 +45,23 @@ func TestRenderDescriptions(t *testing.T) {
 	}
 }
 
+func TestRenderFooterStaysOnBottomLine(t *testing.T) {
+	m := testModel()
+	m.width = 100
+	m.height = 20
+	m.status = "public.accounts page 1 (2 rows)"
+
+	lines := strings.Split(m.View(), "\n")
+	if len(lines) != 20 {
+		t.Fatalf("rendered %d lines, want 20", len(lines))
+	}
+	footer := lines[len(lines)-1]
+	if !strings.Contains(footer, "s schema | / filter | j/k navigate | d columns | y rows | q quit") {
+		t.Fatalf("footer missing key bindings: %q", footer)
+	}
+	if !strings.Contains(footer, "Status: public.accounts page 1 (2 rows)") {
+		t.Fatalf("footer missing status: %q", footer)
+	}
+}
+
 func strPtr(s string) *string { return &s }
