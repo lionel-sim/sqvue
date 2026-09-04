@@ -1,6 +1,6 @@
 # Roadmap
 
-Current status: Phase 1 is complete and Phase 2 is underway. sqvue supports PostgreSQL and SQLite, including schema and table browsing, paginated row and column views, row counts, and ad-hoc SQL queries in the Bubble Tea TUI.
+Current status: Phase 1 is complete and Phase 2 is underway. sqvue supports PostgreSQL, SQLite, and MySQL, including schema and table browsing, paginated row and column views, row counts, and ad-hoc SQL queries in the Bubble Tea TUI.
 
 ## Phase 1 — Make PostgreSQL fully functional
 
@@ -31,7 +31,8 @@ Finish the Postgres driver so the TUI is actually usable end-to-end.
 Keep the `Driver` interface as the seam; add one driver at a time behind feature flags.
 
 - [x] SQLite (file-based, great for local dev and testing)
-- [ ] MySQL / MariaDB
+- [x] MySQL
+- [ ] MariaDB compatibility verification
 - [ ] SQL Server
 
 For each driver:

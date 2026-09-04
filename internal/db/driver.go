@@ -7,6 +7,7 @@ type DbType string
 const (
 	DbTypePostgres DbType = "postgres"
 	DbTypeSQLite   DbType = "sqlite"
+	DbTypeMySQL    DbType = "mysql"
 )
 
 type ConnectConfig struct {

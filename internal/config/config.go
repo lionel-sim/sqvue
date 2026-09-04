@@ -53,6 +53,10 @@ const defaultFile = `# sqvue configuration
 # [connections.local_sqlite]
 # db_type = "sqlite"
 # conn = "./sqvue_demo.db"
+
+# [connections.local_mysql]
+# db_type = "mysql"
+# conn = "user:password@tcp(localhost:3306)/my_database?parseTime=true"
 `
 
 // DefaultPath returns the platform's standard per-user configuration location.
@@ -177,6 +181,15 @@ func (p DBProfile) ValidateFor(dbType string) error {
 	if dbType == "sqlite" {
 		if p.ConnString == "" {
 			return errors.New("provide --conn or a profile conn for SQLite")
+		}
+		if p.Timeout <= 0 {
+			return errors.New("timeout must be > 0")
+		}
+		return nil
+	}
+	if dbType == "mysql" {
+		if p.ConnString == "" {
+			return errors.New("provide --conn or a profile conn for MySQL")
 		}
 		if p.Timeout <= 0 {
 			return errors.New("timeout must be > 0")

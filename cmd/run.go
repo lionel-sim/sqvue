@@ -12,6 +12,7 @@ import (
 
 	"sqvue/internal/config"
 	"sqvue/internal/db"
+	_ "sqvue/internal/db/mysql"
 	_ "sqvue/internal/db/postgres"
 	_ "sqvue/internal/db/sqlite"
 	"sqvue/internal/tui"
@@ -31,7 +32,7 @@ var (
 )
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&dbTypeFlag, "db-type", "postgres", "Database type (postgres or sqlite)")
+	rootCmd.PersistentFlags().StringVar(&dbTypeFlag, "db-type", "postgres", "Database type (postgres, sqlite, or mysql)")
 	rootCmd.PersistentFlags().StringVar(&connFlag, "conn", "", "Database connection string or SQLite database path")
 	rootCmd.PersistentFlags().StringVar(&profileFlag, "profile", "", "Named connection profile from the config file")
 	rootCmd.PersistentFlags().StringVar(&hostFlag, "host", "localhost", "Postgres host")

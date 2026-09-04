@@ -128,3 +128,12 @@ func TestDBProfileValidateForSQLite(t *testing.T) {
 		t.Fatal("ValidateFor(sqlite) accepted a missing database path")
 	}
 }
+
+func TestDBProfileValidateForMySQL(t *testing.T) {
+	if err := (DBProfile{ConnString: "user@tcp(localhost:3306)/app", Timeout: time.Second}).ValidateFor("mysql"); err != nil {
+		t.Fatalf("ValidateFor(mysql) error = %v", err)
+	}
+	if err := (DBProfile{Timeout: time.Second}).ValidateFor("mysql"); err == nil {
+		t.Fatal("ValidateFor(mysql) accepted a missing connection string")
+	}
+}
