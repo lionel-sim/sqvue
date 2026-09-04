@@ -245,6 +245,42 @@ func (d *Driver) Rows(ctx context.Context, tbl db.Table, limit, offset int) ([]d
 	return cols, out, rows.Err()
 }
 
+func (d *Driver) RowsByColumn(ctx context.Context, tbl db.Table, column, value string, limit int) ([]db.Column, [][]string, error) {
+	if d.pool == nil {
+		return nil, nil, fmt.Errorf("not connected")
+	}
+	cols, err := d.columnMetadata(ctx, tbl.Schema, tbl.Name)
+	if err != nil {
+		return nil, nil, err
+	}
+	ident := pgx.Identifier{tbl.Schema, tbl.Name}.Sanitize()
+	columnIdent := pgx.Identifier{column}.Sanitize()
+	query := fmt.Sprintf("select * from %s as sqvue_row where sqvue_row.%s = $1 limit $2", ident, columnIdent)
+	rows, err := d.pool.Query(ctx, query, value, limit)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	values := make([]any, len(cols))
+	scanTargets := make([]any, len(cols))
+	for i := range values {
+		scanTargets[i] = &values[i]
+	}
+	var out [][]string
+	for rows.Next() {
+		if err := rows.Scan(scanTargets...); err != nil {
+			return nil, nil, err
+		}
+		row := make([]string, len(values))
+		for i, v := range values {
+			row[i] = formatValue(v)
+		}
+		out = append(out, row)
+	}
+	return cols, out, rows.Err()
+}
+
 func rowOrder(tbl db.Table, cols []db.Column) string {
 	var primary []string
 	for _, col := range cols {

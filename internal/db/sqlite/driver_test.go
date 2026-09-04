@@ -59,8 +59,14 @@ func TestDriverBrowsesAndQueriesSQLite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Rows() error = %v", err)
 	}
+
 	if len(columns) != 4 || len(rows) != 2 || rows[0][2] != "books" || rows[1][2] != "games" {
 		t.Fatalf("Rows() = columns %#v, rows %#v", columns, rows)
+	}
+
+	columns, rows, err = driver.RowsByColumn(ctx, tables[0], "id", "2", 2)
+	if err != nil || len(columns) != 4 || len(rows) != 1 || rows[0][2] != "games" {
+		t.Fatalf("RowsByColumn() = columns %#v, rows %#v, error %v", columns, rows, err)
 	}
 
 	count, err := driver.CountRows(ctx, tables[0])

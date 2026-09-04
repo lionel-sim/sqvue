@@ -64,7 +64,13 @@ type resultState struct {
 	rowCounts        map[string]int64
 	visibleColumns   []bool
 	visibleColumnKey string
+	referenceFilter  *referenceFilter
 	queryState
+}
+
+type referenceFilter struct {
+	column string
+	value  string
 }
 
 // gridState tracks whether keyboard input is directed at the displayed rows.
@@ -405,6 +411,7 @@ func (m Model) followActiveForeignKey() (Model, tea.Cmd) {
 	}
 
 	foreignKey := column.ForeignKey
+	value := m.activeCellValue()
 	schema := foreignKey.Schema
 	if schema == "" {
 		schema = m.currentSchema()
@@ -420,13 +427,14 @@ func (m Model) followActiveForeignKey() (Model, tea.Cmd) {
 	}
 	for i, table := range m.tables {
 		if table.Schema == schema && table.Name == foreignKey.Table {
-			m.focused = false
+			m.focused = true
 			m.selected = i
 			m.scroll = keepInView(m.selected, m.scroll, tableListHeight, len(m.tables))
 			m.page = 0
 			m.rowCursor = 0
 			m.cellCursor = 0
 			m.mode = modeValues
+			m.referenceFilter = &referenceFilter{column: foreignKey.Column, value: value}
 			return m.startLoadRows()
 		}
 	}
@@ -567,6 +575,7 @@ func (m Model) moveSelection(delta int) (Model, tea.Cmd) {
 	m.page = 0
 	m.rowCursor = 0
 	m.cellCursor = 0
+	m.referenceFilter = nil
 	return m.startLoad()
 }
 
@@ -701,8 +710,10 @@ func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 	m.lastErr = nil
 	if t := m.currentTable(); t != nil {
 		m.setRowsStatus(*t)
-		if _, ok := m.rowCounts[t.String()]; !ok {
-			return m, loadCountCmd(m.client, *t, m.timeout, m.loadID)
+		if m.referenceFilter == nil {
+			if _, ok := m.rowCounts[t.String()]; !ok {
+				return m, loadCountCmd(m.client, *t, m.timeout, m.loadID)
+			}
 		}
 	}
 	return m, nil
@@ -731,6 +742,7 @@ func (m Model) handleQueryLoaded(msg queryLoadedMsg) (Model, tea.Cmd) {
 		return m.fail("query failed", msg.err)
 	}
 	m.queryActive = true
+	m.referenceFilter = nil
 	m.lastErr = nil
 	m.mode = modeValues
 	m.page = 0
@@ -784,6 +796,10 @@ func (m *Model) setQueryPage() {
 }
 
 func (m *Model) setRowsStatus(t db.Table) {
+	if m.referenceFilter != nil {
+		m.status = fmt.Sprintf("%s where %s = %s (%d rows)", t.String(), m.referenceFilter.column, m.referenceFilter.value, len(m.rows))
+		return
+	}
 	status := fmt.Sprintf("%s page %d (%d rows", t.String(), m.page+1, len(m.rows))
 	if count, ok := m.rowCounts[t.String()]; ok {
 		status += fmt.Sprintf(" of %d", count)

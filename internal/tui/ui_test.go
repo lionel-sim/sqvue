@@ -214,8 +214,11 @@ func TestGridFollowsForeignKeyToReferencedTable(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected referenced table rows to load")
 	}
-	if m.selected != 0 || m.focused {
-		t.Fatalf("reference navigation selected %d, focused %t; want 0, false", m.selected, m.focused)
+	if m.selected != 0 || !m.focused {
+		t.Fatalf("reference navigation selected %d, focused %t; want 0, true", m.selected, m.focused)
+	}
+	if m.referenceFilter == nil || m.referenceFilter.column != "id" || m.referenceFilter.value != "1" {
+		t.Fatalf("reference filter = %#v", m.referenceFilter)
 	}
 }
 

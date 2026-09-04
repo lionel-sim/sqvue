@@ -127,7 +127,7 @@ or Postgres password file instead.
 | `g` / `G`        | First / last focused row |
 | `h` / `←` and `l` / `→` | Previous / next cell in focused rows |
 | `y` / `Y`        | Copy focused cell / visible row |
-| `o`              | Open the focused cell's foreign-key table |
+| `o`              | Open the matching row in the focused cell's foreign-key table |
 | `f` / `PgDn`     | Next page             |
 | `b` / `PgUp`     | Previous page         |
 | `d`              | Show column descriptions |

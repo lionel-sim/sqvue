@@ -149,6 +149,36 @@ func (d *Driver) Rows(ctx context.Context, table db.Table, limit, offset int) ([
 	return columns, result, rows.Err()
 }
 
+func (d *Driver) RowsByColumn(ctx context.Context, table db.Table, column, value string, limit int) ([]db.Column, [][]string, error) {
+	columns, err := d.columnMetadata(ctx, table.Schema, table.Name)
+	if err != nil {
+		return nil, nil, err
+	}
+	query := fmt.Sprintf("select * from %s where %s = ? limit ?", qualifiedName(table.Schema, table.Name), quoteIdent(column))
+	rows, err := d.db.QueryContext(ctx, query, value, limit)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	values := make([]any, len(columns))
+	scanTargets := make([]any, len(columns))
+	for i := range values {
+		scanTargets[i] = &values[i]
+	}
+	var result [][]string
+	for rows.Next() {
+		if err := rows.Scan(scanTargets...); err != nil {
+			return nil, nil, err
+		}
+		row := make([]string, len(values))
+		for i, value := range values {
+			row[i] = formatValue(value)
+		}
+		result = append(result, row)
+	}
+	return columns, result, rows.Err()
+}
+
 func (d *Driver) CountRows(ctx context.Context, table db.Table) (int64, error) {
 	if d.db == nil {
 		return 0, fmt.Errorf("not connected")

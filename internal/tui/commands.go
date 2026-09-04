@@ -38,6 +38,15 @@ func loadRowsCmd(c db.Driver, tbl db.Table, limit, offset int, timeout time.Dura
 	}
 }
 
+func loadReferenceRowsCmd(c db.Driver, tbl db.Table, column, value string, limit int, timeout time.Duration, requestID uint64) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		cols, rows, err := c.RowsByColumn(ctx, tbl, column, value, limit)
+		return rowsLoadedMsg{requestID: requestID, columns: cols, rows: rows, err: err}
+	}
+}
+
 func loadDescriptionsCmd(c db.Driver, tbl db.Table, timeout time.Duration, requestID uint64) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -86,6 +95,9 @@ func (m Model) startLoadRows() (Model, tea.Cmd) {
 		m.status = fmt.Sprintf("loading %s page %d...", t.String(), m.page+1)
 		offset := m.page * m.pageSize
 		requestID := m.nextRequestID()
+		if m.referenceFilter != nil {
+			return m, loadReferenceRowsCmd(m.client, *t, m.referenceFilter.column, m.referenceFilter.value, m.pageSize+1, m.timeout, requestID)
+		}
 		// Fetch one extra row to determine whether a following page exists.
 		return m, loadRowsCmd(m.client, *t, m.pageSize+1, offset, m.timeout, requestID)
 	}

@@ -53,7 +53,7 @@ For each driver:
   - [x] Navigate cells left and right, highlighting the active cell
   - [x] Open a row-detail popup with full, untruncated values
   - [x] Copy the active cell (`y`) or whole row (`Y`)
-  - [x] Follow a foreign-key cell to its referenced table when it is available in the current schema
+  - [x] Follow a foreign-key cell to its matching referenced row when its table is available in the current schema
 - [ ] Export results (CSV, JSON)
 - [ ] Streaming / large-result handling (cursor or fetch-more pagination instead of LIMIT/OFFSET)
 - [x] Saved connections / connection profiles (XDG config file, named profiles, and `--profile`)
