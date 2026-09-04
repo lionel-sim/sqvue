@@ -191,8 +191,9 @@ func layoutColumns(width int, cols []db.Column, rows [][]string) []int {
 
 func naturalWidths(cols []db.Column, rows [][]string) []int {
 	natural := make([]int, len(cols))
-	for i, c := range cols {
-		natural[i] = clamp(cellWidth(i, c.Name, rows), minColWidth, maxColWidth)
+	headerNames := columnNames(cols)
+	for i, name := range headerNames {
+		natural[i] = clamp(cellWidth(i, name, rows), minColWidth, maxColWidth)
 	}
 	return natural
 }

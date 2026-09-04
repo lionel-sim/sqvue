@@ -58,6 +58,14 @@ func TestColumnNamesMarksForeignKeys(t *testing.T) {
 	}
 }
 
+func TestLayoutColumnsAccountsForForeignKeyIndicator(t *testing.T) {
+	columns := []db.Column{{Name: "parent_id", ForeignKey: &db.ForeignKey{Table: "categories", Column: "id"}}}
+	width := layoutColumns(40, columns, nil)[0]
+	if got := formatCell(columnNames(columns)[0], width); got != "parent_id [FK]" {
+		t.Fatalf("foreign-key header = %q", got)
+	}
+}
+
 func TestForeignKeyLabelOmitsEmptyParts(t *testing.T) {
 	if got := foreignKeyLabel(&db.ForeignKey{Table: "owners"}); got != "owners" {
 		t.Fatalf("foreignKeyLabel() = %q, want owners", got)
