@@ -352,219 +352,221 @@ func (m Model) handleColumnsKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) handleSQLKey(msg tea.KeyMsg) (Model, tea.Cmd) {
-	if msg.String() == "esc" {
-		m.activeOverlay = overlayNone
-		m.sqlInput.Blur()
-		return m, nil
-	}
-	if key.Matches(msg, m.keys.Confirm) {
-		sql := strings.TrimSpace(m.sqlInput.Value())
-		if sql == "" {
+/*
+	func (m Model) handleSQLKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+		if msg.String() == "esc" {
+			m.activeOverlay = overlayNone
+			m.sqlInput.Blur()
 			return m, nil
 		}
-		m.activeOverlay = overlayNone
-		m.sqlInput.Blur()
-		m.loading = true
-		m.status = "running query..."
-		requestID := m.nextRequestID()
-		return m, runQueryCmd(m.client, sql, m.timeout, requestID)
-	}
-	var cmd tea.Cmd
-	m.sqlInput, cmd = m.sqlInput.Update(msg)
-	return m, cmd
-}
-
-func (m Model) handleFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
-	if msg.String() == "esc" || key.Matches(msg, m.keys.Confirm) {
-		if msg.String() == "esc" {
-			m.filterInput.SetValue(m.filterPrevious)
+		if key.Matches(msg, m.keys.Confirm) {
+			sql := strings.TrimSpace(m.sqlInput.Value())
+			if sql == "" {
+				return m, nil
+			}
+			m.activeOverlay = overlayNone
+			m.sqlInput.Blur()
+			m.loading = true
+			m.status = "running query..."
+			requestID := m.nextRequestID()
+			return m, runQueryCmd(m.client, sql, m.timeout, requestID)
 		}
-		m.activeOverlay = overlayNone
-		m.filterInput.Blur()
+		var cmd tea.Cmd
+		m.sqlInput, cmd = m.sqlInput.Update(msg)
+		return m, cmd
+	}
+
+	func (m Model) handleFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+		if msg.String() == "esc" || key.Matches(msg, m.keys.Confirm) {
+			if msg.String() == "esc" {
+				m.filterInput.SetValue(m.filterPrevious)
+			}
+			m.activeOverlay = overlayNone
+			m.filterInput.Blur()
+			m.applyFilter()
+			return m.startLoad()
+		}
+		var cmd tea.Cmd
+		m.filterInput, cmd = m.filterInput.Update(msg)
 		m.applyFilter()
+		return m, cmd
+	}
+
+	func (m Model) handleSchemaKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+		switch {
+		case msg.String() == "esc":
+			m.activeOverlay = overlayNone
+			m.status = fmt.Sprintf("schema %s", m.currentSchema())
+			return m, nil
+		case key.Matches(msg, m.keys.Quit):
+			return m, tea.Quit
+		case key.Matches(msg, m.keys.Down):
+			if m.schemaCursor < len(m.schemas)-1 {
+				m.schemaCursor++
+			}
+			m.schemaScroll = keepInView(m.schemaCursor, m.schemaScroll, tableListHeight, len(m.schemas))
+			return m, nil
+		case key.Matches(msg, m.keys.Up):
+			if m.schemaCursor > 0 {
+				m.schemaCursor--
+			}
+			m.schemaScroll = keepInView(m.schemaCursor, m.schemaScroll, tableListHeight, len(m.schemas))
+			return m, nil
+		case key.Matches(msg, m.keys.Confirm):
+			m.schema = m.schemaCursor
+			m.activeOverlay = overlayNone
+			m.selected, m.scroll, m.page = 0, 0, 0
+			m.filterInput.SetValue("")
+			m.applyFilter()
+			m.loading = true
+			m.status = fmt.Sprintf("loading %s tables...", m.currentSchema())
+			requestID := m.nextRequestID()
+			return m, loadTablesCmd(m.client, m.currentSchema(), m.timeout, requestID)
+		}
+		return m, nil
+	}
+
+	func (m Model) showDescriptions() (Model, tea.Cmd) {
+		if m.mode != modeDescriptions {
+			m.queryActive = false
+			m.mode = modeDescriptions
+			return m.startLoadDescriptions()
+		}
+		return m, nil
+	}
+
+	func (m Model) showValues() (Model, tea.Cmd) {
+		if m.mode != modeValues || m.queryActive {
+			m.queryActive = false
+			m.mode = modeValues
+			m.page = 0
+			return m.startLoadRows()
+		}
+		return m, nil
+	}
+
+	func (m Model) moveSelection(delta int) (Model, tea.Cmd) {
+		target := m.selected + delta
+		if target < 0 || target >= len(m.tables) {
+			return m, nil
+		}
+		m.selected = target
+		m.scroll = keepInView(m.selected, m.scroll, tableListHeight, len(m.tables))
+		m.resetBrowseContext()
+		m.cellCursor = 0
+		m.browseFilters = nil
 		return m.startLoad()
 	}
-	var cmd tea.Cmd
-	m.filterInput, cmd = m.filterInput.Update(msg)
-	m.applyFilter()
-	return m, cmd
-}
 
-func (m Model) handleSchemaKey(msg tea.KeyMsg) (Model, tea.Cmd) {
-	switch {
-	case msg.String() == "esc":
-		m.activeOverlay = overlayNone
-		m.status = fmt.Sprintf("schema %s", m.currentSchema())
-		return m, nil
-	case key.Matches(msg, m.keys.Quit):
-		return m, tea.Quit
-	case key.Matches(msg, m.keys.Down):
-		if m.schemaCursor < len(m.schemas)-1 {
-			m.schemaCursor++
+// keepInView returns the scroll offset that keeps selected within a window of
+// the given height, scrolling the list as the selection moves past its edges.
+
+	func keepInView(selected, offset, height, count int) int {
+		if count <= height {
+			return 0
 		}
-		m.schemaScroll = keepInView(m.schemaCursor, m.schemaScroll, tableListHeight, len(m.schemas))
-		return m, nil
-	case key.Matches(msg, m.keys.Up):
-		if m.schemaCursor > 0 {
-			m.schemaCursor--
+		if selected < offset {
+			return selected
 		}
-		m.schemaScroll = keepInView(m.schemaCursor, m.schemaScroll, tableListHeight, len(m.schemas))
-		return m, nil
-	case key.Matches(msg, m.keys.Confirm):
-		m.schema = m.schemaCursor
-		m.activeOverlay = overlayNone
-		m.selected, m.scroll, m.page = 0, 0, 0
-		m.filterInput.SetValue("")
+		if selected >= offset+height {
+			return selected - height + 1
+		}
+		return offset
+	}
+
+	func (m Model) changePage(delta int) (Model, tea.Cmd) {
+		if m.mode != modeValues {
+			return m, nil
+		}
+		if m.page+delta < 0 {
+			return m, nil
+		}
+		if m.queryActive {
+			if delta > 0 && (m.page+1)*m.pageSize >= len(m.queryRows) {
+				return m, nil
+			}
+			m.page += delta
+			m.setQueryPage()
+			return m, nil
+		}
+		if delta > 0 && !m.hasNextPage {
+			return m, nil
+		}
+		m.page += delta
+		return m.startLoadRows()
+	}
+
+	func (m Model) handleTablesLoaded(msg tablesLoadedMsg) (Model, tea.Cmd) {
+		if !m.isCurrent(msg.requestID) {
+			return m, nil
+		}
+		m.loading = false
+		if msg.err != nil {
+			return m.fail("failed to load tables", msg.err)
+		}
+		m.allTables = msg.tables
+		m.lastErr = nil
+		m.rowCounts = make(map[string]int64)
+		m.browseRowCounts = make(map[string]int64)
 		m.applyFilter()
+		m.status = fmt.Sprintf("found %d tables", len(m.tables))
+		if len(m.tables) > 0 {
+			m.selected = 0
+			m.scroll = 0
+			m.page = 0
+			m.rowCursor = 0
+			m.cellCursor = 0
+			m.mode = modeValues
+			return m.startLoadRows()
+		}
+		return m, nil
+	}
+
+	func (m Model) handleSchemasLoaded(msg schemasLoadedMsg) (Model, tea.Cmd) {
+		if !m.isCurrent(msg.requestID) {
+			return m, nil
+		}
+		m.loading = false
+		if msg.err != nil {
+			return m.fail("failed to load schemas", msg.err)
+		}
+		m.schemas = msg.schemas
+		m.lastErr = nil
+		if len(m.schemas) == 0 {
+			return m.fail("failed to load schemas", fmt.Errorf("no user schemas found"))
+		}
+		for i, schema := range m.schemas {
+			if schema.Name == "public" {
+				m.schema = i
+				break
+			}
+		}
 		m.loading = true
 		m.status = fmt.Sprintf("loading %s tables...", m.currentSchema())
 		requestID := m.nextRequestID()
 		return m, loadTablesCmd(m.client, m.currentSchema(), m.timeout, requestID)
 	}
-	return m, nil
-}
 
-func (m Model) showDescriptions() (Model, tea.Cmd) {
-	if m.mode != modeDescriptions {
-		m.queryActive = false
-		m.mode = modeDescriptions
-		return m.startLoadDescriptions()
-	}
-	return m, nil
-}
-
-func (m Model) showValues() (Model, tea.Cmd) {
-	if m.mode != modeValues || m.queryActive {
-		m.queryActive = false
-		m.mode = modeValues
-		m.page = 0
-		return m.startLoadRows()
-	}
-	return m, nil
-}
-
-func (m Model) moveSelection(delta int) (Model, tea.Cmd) {
-	target := m.selected + delta
-	if target < 0 || target >= len(m.tables) {
-		return m, nil
-	}
-	m.selected = target
-	m.scroll = keepInView(m.selected, m.scroll, tableListHeight, len(m.tables))
-	m.resetBrowseContext()
-	m.cellCursor = 0
-	m.browseFilters = nil
-	return m.startLoad()
-}
-
-// keepInView returns the scroll offset that keeps selected within a window of
-// the given height, scrolling the list as the selection moves past its edges.
-func keepInView(selected, offset, height, count int) int {
-	if count <= height {
-		return 0
-	}
-	if selected < offset {
-		return selected
-	}
-	if selected >= offset+height {
-		return selected - height + 1
-	}
-	return offset
-}
-
-func (m Model) changePage(delta int) (Model, tea.Cmd) {
-	if m.mode != modeValues {
-		return m, nil
-	}
-	if m.page+delta < 0 {
-		return m, nil
-	}
-	if m.queryActive {
-		if delta > 0 && (m.page+1)*m.pageSize >= len(m.queryRows) {
-			return m, nil
+	func (m *Model) applyFilter() {
+		needle := strings.ToLower(strings.TrimSpace(m.filterInput.Value()))
+		m.tables = m.tables[:0]
+		for _, table := range m.allTables {
+			if needle == "" || strings.Contains(strings.ToLower(table.Name), needle) {
+				m.tables = append(m.tables, table)
+			}
 		}
-		m.page += delta
-		m.setQueryPage()
-		return m, nil
-	}
-	if delta > 0 && !m.hasNextPage {
-		return m, nil
-	}
-	m.page += delta
-	return m.startLoadRows()
-}
-
-func (m Model) handleTablesLoaded(msg tablesLoadedMsg) (Model, tea.Cmd) {
-	if !m.isCurrent(msg.requestID) {
-		return m, nil
-	}
-	m.loading = false
-	if msg.err != nil {
-		return m.fail("failed to load tables", msg.err)
-	}
-	m.allTables = msg.tables
-	m.lastErr = nil
-	m.rowCounts = make(map[string]int64)
-	m.browseRowCounts = make(map[string]int64)
-	m.applyFilter()
-	m.status = fmt.Sprintf("found %d tables", len(m.tables))
-	if len(m.tables) > 0 {
 		m.selected = 0
 		m.scroll = 0
-		m.page = 0
-		m.rowCursor = 0
-		m.cellCursor = 0
-		m.mode = modeValues
-		return m.startLoadRows()
+		m.resetBrowseContext()
 	}
-	return m, nil
-}
 
-func (m Model) handleSchemasLoaded(msg schemasLoadedMsg) (Model, tea.Cmd) {
-	if !m.isCurrent(msg.requestID) {
-		return m, nil
-	}
-	m.loading = false
-	if msg.err != nil {
-		return m.fail("failed to load schemas", msg.err)
-	}
-	m.schemas = msg.schemas
-	m.lastErr = nil
-	if len(m.schemas) == 0 {
-		return m.fail("failed to load schemas", fmt.Errorf("no user schemas found"))
-	}
-	for i, schema := range m.schemas {
-		if schema.Name == "public" {
-			m.schema = i
-			break
+	func (m Model) currentSchema() string {
+		if m.schema < 0 || m.schema >= len(m.schemas) {
+			return ""
 		}
+		return m.schemas[m.schema].Name
 	}
-	m.loading = true
-	m.status = fmt.Sprintf("loading %s tables...", m.currentSchema())
-	requestID := m.nextRequestID()
-	return m, loadTablesCmd(m.client, m.currentSchema(), m.timeout, requestID)
-}
-
-func (m *Model) applyFilter() {
-	needle := strings.ToLower(strings.TrimSpace(m.filterInput.Value()))
-	m.tables = m.tables[:0]
-	for _, table := range m.allTables {
-		if needle == "" || strings.Contains(strings.ToLower(table.Name), needle) {
-			m.tables = append(m.tables, table)
-		}
-	}
-	m.selected = 0
-	m.scroll = 0
-	m.resetBrowseContext()
-}
-
-func (m Model) currentSchema() string {
-	if m.schema < 0 || m.schema >= len(m.schemas) {
-		return ""
-	}
-	return m.schemas[m.schema].Name
-}
-
+*/
 func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 	if !m.isCurrent(msg.requestID) {
 		return m, nil
