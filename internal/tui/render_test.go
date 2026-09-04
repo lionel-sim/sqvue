@@ -90,7 +90,7 @@ func TestHelpRendersAsModalOverCurrentView(t *testing.T) {
 	if !strings.Contains(out, "Status: public.accounts page 1") {
 		t.Fatalf("background footer missing from modal: %q", out)
 	}
-	if !strings.Contains(out, "╭") {
+	if !strings.Contains(out, "╔") {
 		t.Fatalf("help dialog missing border: %q", out)
 	}
 }

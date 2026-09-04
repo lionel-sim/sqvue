@@ -9,7 +9,7 @@ var (
 	Error    = lipgloss.NewStyle().Foreground(lipgloss.Color("204"))
 	Status   = lipgloss.NewStyle().Foreground(lipgloss.Color("111"))
 	Dialog   = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
+			Border(lipgloss.DoubleBorder()).
 			BorderForeground(lipgloss.Color("69")).
 			Background(lipgloss.Color("235")).
 			Padding(1, 2)

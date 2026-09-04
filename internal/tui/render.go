@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
 	"sqvue/internal/db"
@@ -95,12 +96,20 @@ func renderHelpModal(m Model) string {
 }
 
 func renderHelpDialog(m Model) string {
-	m.help.ShowAll = true
-	content := theme.Title.Render("Keyboard shortcuts") + "\n\n" + m.help.View(m.keys) + "\n\n" + theme.Muted.Render("Press any key to return.")
-	width := 54
+	panelBackground := lipgloss.Color("235")
+	width := 62
 	if m.width > 0 {
 		width = min(width, max(10, m.width-6))
 	}
+	m.help.Width = width
+	m.help.ShowAll = true
+	m.help.Styles.FullKey = m.help.Styles.FullKey.Background(panelBackground)
+	m.help.Styles.FullDesc = m.help.Styles.FullDesc.Background(panelBackground)
+	m.help.Styles.FullSeparator = m.help.Styles.FullSeparator.Background(panelBackground)
+	helpText := strings.ReplaceAll(m.help.View(m.keys), "\x1b[0m", "\x1b[0m\x1b[48;5;235m")
+	title := theme.Title.Background(panelBackground).Render("Keyboard shortcuts")
+	dismiss := theme.Muted.Background(panelBackground).Render("Press any key to return.")
+	content := title + "\n\n" + helpText + "\n\n" + dismiss
 	return theme.Dialog.Width(width).Render(content)
 }
 
