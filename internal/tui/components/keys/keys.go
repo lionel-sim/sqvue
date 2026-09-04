@@ -15,6 +15,7 @@ type Map struct {
 	Schema           key.Binding
 	Filter           key.Binding
 	Confirm          key.Binding
+	Help             key.Binding
 }
 
 // Default returns the default key bindings for navigation and quitting.
@@ -64,5 +65,17 @@ func Default() Map {
 			key.WithKeys("enter"),
 			key.WithHelp("enter", "select"),
 		),
+		Help: key.NewBinding(
+			key.WithKeys("?"),
+			key.WithHelp("?", "help"),
+		),
 	}
+}
+
+func (m Map) ShortHelp() []key.Binding {
+	return []key.Binding{m.Help, m.Schema, m.Filter, m.ShowDescriptions, m.Refresh, m.Quit}
+}
+
+func (m Map) FullHelp() [][]key.Binding {
+	return [][]key.Binding{{m.Up, m.Down, m.PageUp, m.PageDown}, {m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
 }

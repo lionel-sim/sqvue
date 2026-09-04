@@ -68,6 +68,7 @@ You can also run directly from source with `make run` or `go run ./...`.
 | `y`              | Show row values       |
 | `s`              | Switch schema         |
 | `/`              | Filter table list     |
+| `?`              | Show keyboard help    |
 | `r`              | Refresh tables        |
 | `q` / `Esc` / `Ctrl+C` | Quit              |
 

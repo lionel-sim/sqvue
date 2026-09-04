@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -58,6 +59,21 @@ func TestUpdateQuitKey(t *testing.T) {
 	_, cmd := testModel().Update(keyMsg("q"))
 	if cmd == nil {
 		t.Fatal("expected quit command")
+	}
+}
+
+func TestHelpOverlay(t *testing.T) {
+	m := testModel()
+	m, _ = update(m, keyMsg("?"))
+	if !m.showHelp {
+		t.Fatal("expected help overlay to open")
+	}
+	if got := m.View(); !strings.Contains(got, "Keyboard shortcuts") {
+		t.Fatalf("help overlay missing heading: %q", got)
+	}
+	m, _ = update(m, keyMsg("x"))
+	if m.showHelp {
+		t.Fatal("expected any key to close help overlay")
 	}
 }
 

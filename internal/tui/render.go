@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"sqvue/internal/db"
+	"sqvue/internal/theme"
 )
 
 const (
@@ -28,13 +29,21 @@ const (
 
 func Render(m Model) string {
 	var b strings.Builder
+	if m.showHelp {
+		b.WriteString(theme.Title.Render("Keyboard shortcuts") + "\n\n")
+		m.help.ShowAll = true
+		b.WriteString(m.help.View(m.keys))
+		b.WriteString("\n\n" + theme.Muted.Render("Press any key to return.") + "\n")
+		return b.String()
+	}
 
 	if m.showSchemas {
 		renderSchemaList(&b, m.schemas, m.schema)
 	} else {
 		renderTableList(&b, m.currentSchema(), m.tables, m.selected, m.scroll, m.filterInput.Value())
 	}
-	b.WriteString("\n")
+	m.help.ShowAll = false
+	b.WriteString(m.help.View(m.keys) + "\n")
 	if m.filtering {
 		b.WriteString(m.filterInput.View() + "\n")
 	} else if m.showSchemas {
@@ -49,7 +58,12 @@ func Render(m Model) string {
 	b.WriteString("\n")
 	// Right-align one column short of the edge so the final character isn't
 	// clipped by terminals at the bottom-right corner.
-	b.WriteString(rightAlign(m.width-1, "Status: "+m.status))
+	status := "Status: " + m.status
+	if m.lastErr != nil {
+		b.WriteString(theme.Error.Render(rightAlign(m.width-1, status)))
+	} else {
+		b.WriteString(theme.Status.Render(rightAlign(m.width-1, status)))
+	}
 
 	return b.String()
 }
@@ -59,7 +73,7 @@ func renderTableList(b *strings.Builder, schema string, tables []db.Table, selec
 	if filter != "" {
 		header += fmt.Sprintf(" [filter: %s]", filter)
 	}
-	b.WriteString(header + "\n")
+	b.WriteString(theme.Title.Render(header) + "\n")
 	if len(tables) == 0 {
 		b.WriteString("  (no tables found)\n")
 		return
@@ -73,18 +87,30 @@ func renderTableList(b *strings.Builder, schema string, tables []db.Table, selec
 		if i == selected {
 			prefix = "> "
 		}
-		b.WriteString(prefix + tables[i].String() + "\n")
+		name := tables[i].String()
+		if tables[i].Type != "" {
+			name += " [" + tables[i].Type + "]"
+		}
+		line := prefix + name
+		if i == selected {
+			line = theme.Selected.Render(line)
+		}
+		b.WriteString(line + "\n")
 	}
 }
 
 func renderSchemaList(b *strings.Builder, schemas []db.Schema, selected int) {
-	b.WriteString("Schemas\n")
+	b.WriteString(theme.Title.Render("Schemas") + "\n")
 	for i, schema := range schemas {
 		prefix := "  "
 		if i == selected {
 			prefix = "> "
 		}
-		b.WriteString(prefix + schema.Name + "\n")
+		line := prefix + schema.Name
+		if i == selected {
+			line = theme.Selected.Render(line)
+		}
+		b.WriteString(line + "\n")
 	}
 }
 

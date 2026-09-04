@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -52,6 +53,8 @@ type Model struct {
 	height      int
 	filterInput textinput.Model
 	filtering   bool
+	help        help.Model
+	showHelp    bool
 
 	keys keymap.Map
 }
@@ -68,6 +71,7 @@ func New(opts Options) Model {
 		loading:     true,
 		keys:        keymap.Default(),
 		filterInput: filter,
+		help:        help.New(),
 	}
 }
 
@@ -111,6 +115,10 @@ func (m Model) computedPageSize() int {
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	if m.showHelp {
+		m.showHelp = false
+		return m, nil
+	}
 	if m.filtering {
 		return m.handleFilterKey(msg)
 	}
@@ -118,6 +126,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.handleSchemaKey(msg)
 	}
 	switch {
+	case key.Matches(msg, m.keys.Help):
+		m.showHelp = true
+		return m, nil
 	case key.Matches(msg, m.keys.Quit):
 		return m, tea.Quit
 	case key.Matches(msg, m.keys.Refresh):
