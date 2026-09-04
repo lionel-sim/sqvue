@@ -38,19 +38,6 @@ func loadRowsCmd(c db.Driver, tbl db.Table, limit, offset int, timeout time.Dura
 	}
 }
 
-func loadReferenceRowsCmd(c db.Driver, tbl db.Table, column, value string, limit int, timeout time.Duration, requestID uint64) tea.Cmd {
-	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		defer cancel()
-		cols, rows, err := c.BrowseRows(ctx, db.BrowseRequest{
-			Table:   tbl,
-			Limit:   limit,
-			Filters: []db.RowFilter{{Column: column, Operator: db.FilterEqual, Value: value}},
-		})
-		return rowsLoadedMsg{requestID: requestID, columns: cols, rows: rows, err: err}
-	}
-}
-
 func loadBrowseRowsCmd(c db.Driver, req db.BrowseRequest, timeout time.Duration, requestID uint64) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -130,9 +117,6 @@ func (m Model) startLoadRows() (Model, tea.Cmd) {
 			req.Limit = m.pageSize + 1
 			req.Offset = offset
 			return m, loadBrowseRowsCmd(m.client, req, m.timeout, requestID)
-		}
-		if m.referenceFilter != nil {
-			return m, loadReferenceRowsCmd(m.client, *t, m.referenceFilter.column, m.referenceFilter.value, m.pageSize+1, m.timeout, requestID)
 		}
 		// Fetch one extra row to determine whether a following page exists.
 		return m, loadRowsCmd(m.client, *t, m.pageSize+1, offset, m.timeout, requestID)

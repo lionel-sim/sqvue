@@ -67,13 +67,7 @@ type resultState struct {
 	browseFilters    []db.RowFilter
 	visibleColumns   []bool
 	visibleColumnKey string
-	referenceFilter  *referenceFilter
 	queryState
-}
-
-type referenceFilter struct {
-	column string
-	value  string
 }
 
 // gridState tracks whether keyboard input is directed at the displayed rows.
@@ -381,7 +375,6 @@ func (m Model) clearBrowseFilters() (Model, tea.Cmd) {
 		return m, nil
 	}
 	m.browseFilters = nil
-	m.referenceFilter = nil
 	m.page = 0
 	m.rowCursor = 0
 	return m.startLoadRows()
@@ -417,7 +410,6 @@ func (m Model) handleBrowseFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 			value = ""
 		}
 		m.browseFilters = append(m.browseFilters, db.RowFilter{Column: column.Name, Operator: m.browseFilterOperator, Value: value})
-		m.referenceFilter = nil
 		m.page = 0
 		m.rowCursor = 0
 		m.activeOverlay = overlayNone
@@ -586,7 +578,7 @@ func (m Model) followActiveForeignKey() (Model, tea.Cmd) {
 			m.rowCursor = 0
 			m.cellCursor = 0
 			m.mode = modeValues
-			m.referenceFilter = &referenceFilter{column: foreignKey.Column, value: value}
+			m.browseFilters = []db.RowFilter{{Column: foreignKey.Column, Operator: db.FilterEqual, Value: value}}
 			return m.startLoadRows()
 		}
 	}
@@ -727,7 +719,7 @@ func (m Model) moveSelection(delta int) (Model, tea.Cmd) {
 	m.page = 0
 	m.rowCursor = 0
 	m.cellCursor = 0
-	m.referenceFilter = nil
+	m.browseFilters = nil
 	return m.startLoad()
 }
 
@@ -887,7 +879,7 @@ func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 			if _, ok := m.browseRowCounts[key]; !ok {
 				return m, loadBrowseCountCmd(m.client, m.browseRequest(*t), m.timeout, m.loadID)
 			}
-		} else if m.referenceFilter == nil {
+		} else {
 			if _, ok := m.rowCounts[t.String()]; !ok {
 				return m, loadCountCmd(m.client, *t, m.timeout, m.loadID)
 			}
@@ -923,7 +915,6 @@ func (m Model) handleQueryLoaded(msg queryLoadedMsg) (Model, tea.Cmd) {
 		return m.fail("query failed", msg.err)
 	}
 	m.queryActive = true
-	m.referenceFilter = nil
 	m.lastErr = nil
 	m.mode = modeValues
 	m.page = 0
@@ -977,10 +968,6 @@ func (m *Model) setQueryPage() {
 }
 
 func (m *Model) setRowsStatus(t db.Table) {
-	if m.referenceFilter != nil {
-		m.status = fmt.Sprintf("%s where %s = %s (%d rows)", t.String(), m.referenceFilter.column, m.referenceFilter.value, len(m.rows))
-		return
-	}
 	status := fmt.Sprintf("%s page %d (%d rows", t.String(), m.page+1, len(m.rows))
 	if count, ok := m.browseRowCounts[m.browseCountKey(t)]; len(m.browseFilters) > 0 && ok {
 		status += fmt.Sprintf(" of %d", count)

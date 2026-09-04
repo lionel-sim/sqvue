@@ -128,7 +128,7 @@ or Postgres password file instead.
 | `h` / `←` and `l` / `→` | Previous / next cell in focused rows |
 | `count` + `j` / `k` / `h` / `l` | Repeat focused-grid movement (for example, `23j`) |
 | `y` / `Y`        | Copy focused cell / visible row |
-| `o`              | Open the matching row in the focused cell's foreign-key table |
+| `o`              | Open the matching row in the focused cell's foreign-key table as a clearable equality filter |
 | `/`              | Add a focused-row filter for the active column (prefilled from its cell; Tab changes operator; filters use AND) |
 | `x`              | Clear focused-row filters |
 | `f` / `PgDn`     | Next page             |
