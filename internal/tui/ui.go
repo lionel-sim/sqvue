@@ -104,3 +104,5 @@ func (m Model) handleRowDetailKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	}
 	return m, nil
 }
+
+func (m Model) View() string { return Render(m) }
