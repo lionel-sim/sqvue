@@ -45,6 +45,8 @@ func renderMain(m Model) string {
 		b.WriteString(m.sqlInput.View() + "\n")
 	} else if m.activeOverlay == overlayFilter {
 		b.WriteString(m.filterInput.View() + "\n")
+	} else if m.activeOverlay == overlayBrowseFilter {
+		b.WriteString(m.browseFilterInput.View() + "\n")
 	} else if m.activeOverlay == overlaySchemaPicker {
 		b.WriteString("Use j/k to choose a schema, then Enter to load its tables.\n")
 	} else if m.loading {

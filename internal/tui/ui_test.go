@@ -213,6 +213,25 @@ func TestGridNavigationMovesActiveCellAcrossVisibleColumns(t *testing.T) {
 	}
 }
 
+func TestGridFilterPromptUsesActiveColumnAndCell(t *testing.T) {
+	m := testModel()
+	m.focused = true
+	m.columns = []db.Column{{Name: "id"}, {Name: "name"}}
+	m.rows = [][]string{{"1", "Ada"}}
+	m.cellCursor = 1
+
+	m, _ = update(m, keyMsg("/"))
+	if m.activeOverlay != overlayBrowseFilter {
+		t.Fatalf("active overlay = %v, want browse filter", m.activeOverlay)
+	}
+	if got := m.browseFilterInput.Prompt; got != "Filter name = " {
+		t.Fatalf("filter prompt = %q", got)
+	}
+	if got := m.browseFilterInput.Value(); got != "Ada" {
+		t.Fatalf("filter value = %q, want Ada", got)
+	}
+}
+
 func TestEnterOpensAndClosesRowDetails(t *testing.T) {
 	m := testModel()
 	m.focused = true

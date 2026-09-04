@@ -23,6 +23,7 @@ type Map struct {
 	ShowValues       key.Binding
 	Schema           key.Binding
 	Filter           key.Binding
+	BrowseFilter     key.Binding
 	Confirm          key.Binding
 	Help             key.Binding
 	SQL              key.Binding
@@ -109,6 +110,10 @@ func Default() Map {
 			key.WithKeys("/"),
 			key.WithHelp("/", "filter tables"),
 		),
+		BrowseFilter: key.NewBinding(
+			key.WithKeys("/"),
+			key.WithHelp("/", "filter rows"),
+		),
 		Confirm: key.NewBinding(
 			key.WithKeys("enter"),
 			key.WithHelp("enter", "select"),
@@ -133,9 +138,9 @@ func Default() Map {
 }
 
 func (m Map) ShortHelp() []key.Binding {
-	return []key.Binding{m.Help, m.SQL, m.Columns, m.Schema, m.Filter, m.Quit}
+	return []key.Binding{m.Help, m.SQL, m.Columns, m.Schema, m.Filter, m.BrowseFilter, m.Quit}
 }
 
 func (m Map) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{m.Up, m.Down, m.Left, m.Right, m.PageUp, m.PageDown, m.HalfPageUp, m.HalfPageDown, m.FirstRow, m.LastRow}, {m.CopyCell, m.CopyRow, m.OpenReference, m.SQL, m.Columns, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
+	return [][]key.Binding{{m.Up, m.Down, m.Left, m.Right, m.PageUp, m.PageDown, m.HalfPageUp, m.HalfPageDown, m.FirstRow, m.LastRow}, {m.CopyCell, m.CopyRow, m.OpenReference, m.BrowseFilter, m.SQL, m.Columns, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
 }

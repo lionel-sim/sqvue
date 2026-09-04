@@ -100,6 +100,7 @@ const (
 	overlayHelp
 	overlaySchemaPicker
 	overlayFilter
+	overlayBrowseFilter
 	overlaySQL
 	overlayColumnPicker
 	overlayRowDetail
@@ -107,14 +108,15 @@ const (
 
 // overlayState owns transient inputs, pickers, and the help modal.
 type overlayState struct {
-	activeOverlay  overlayMode
-	filterInput    textinput.Model
-	filterPrevious string
-	sqlInput       textinput.Model
-	help           help.Model
-	columnCursor   int
-	columnScroll   int
-	detailScroll   int
+	activeOverlay     overlayMode
+	filterInput       textinput.Model
+	filterPrevious    string
+	browseFilterInput textinput.Model
+	sqlInput          textinput.Model
+	help              help.Model
+	columnCursor      int
+	columnScroll      int
+	detailScroll      int
 }
 
 // viewportState stores the most recent terminal dimensions.
@@ -135,6 +137,8 @@ func New(opts Options) Model {
 	filter := textinput.New()
 	filter.Prompt = "Filter tables: "
 	filter.Placeholder = "type to search"
+	browseFilter := textinput.New()
+	browseFilter.Placeholder = "value"
 	sql := textinput.New()
 	sql.Prompt = "SQL> "
 	sql.Placeholder = "SELECT * FROM ..."
@@ -147,9 +151,10 @@ func New(opts Options) Model {
 			rowCounts: make(map[string]int64),
 		},
 		overlayState: overlayState{
-			filterInput: filter,
-			sqlInput:    sql,
-			help:        help.New(),
+			filterInput:       filter,
+			browseFilterInput: browseFilter,
+			sqlInput:          sql,
+			help:              help.New(),
 		},
 		loadState: loadState{
 			status:  "loading tables...",
@@ -197,6 +202,7 @@ func (m Model) handleWindowSize(msg tea.WindowSizeMsg) (Model, tea.Cmd) {
 	m.width = msg.Width
 	m.height = msg.Height
 	m.filterInput.Width = inputWidth(msg.Width, m.filterInput.Prompt)
+	m.browseFilterInput.Width = inputWidth(msg.Width, m.browseFilterInput.Prompt)
 	m.sqlInput.Width = inputWidth(msg.Width, m.sqlInput.Prompt)
 	if msg.Height > 0 {
 		m.pageSize = m.computedPageSize()
@@ -232,6 +238,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.handleRowDetailKey(msg)
 	case overlayFilter:
 		return m.handleFilterKey(msg)
+	case overlayBrowseFilter:
+		return m.handleBrowseFilterKey(msg)
 	case overlaySchemaPicker:
 		return m.handleSchemaKey(msg)
 	}
@@ -327,6 +335,8 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	}
 	count := m.consumeGridCount()
 	switch {
+	case key.Matches(msg, m.keys.BrowseFilter):
+		return m.openBrowseFilter()
 	case key.Matches(msg, m.keys.Down):
 		return m.moveGridRows(count)
 	case key.Matches(msg, m.keys.Up):
@@ -357,6 +367,30 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.changeGridPage(-1)
 	}
 	return m, nil
+}
+
+func (m Model) openBrowseFilter() (Model, tea.Cmd) {
+	column := m.activeColumn()
+	if column == nil {
+		m.status = "no active column to filter"
+		return m, nil
+	}
+	m.activeOverlay = overlayBrowseFilter
+	m.browseFilterInput.Prompt = fmt.Sprintf("Filter %s = ", column.Name)
+	m.browseFilterInput.SetValue(m.activeCellValue())
+	m.browseFilterInput.Focus()
+	return m, nil
+}
+
+func (m Model) handleBrowseFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	if msg.String() == "esc" || key.Matches(msg, m.keys.Confirm) {
+		m.activeOverlay = overlayNone
+		m.browseFilterInput.Blur()
+		return m, nil
+	}
+	var cmd tea.Cmd
+	m.browseFilterInput, cmd = m.browseFilterInput.Update(msg)
+	return m, cmd
 }
 
 func (m *Model) consumeGridCount() int {
@@ -952,6 +986,7 @@ func (m Model) helpKeyMap() keymap.Map {
 	keys.CopyCell.SetEnabled(m.focused)
 	keys.CopyRow.SetEnabled(m.focused)
 	keys.OpenReference.SetEnabled(m.focused)
+	keys.BrowseFilter.SetEnabled(m.focused)
 
 	keys.SQL.SetEnabled(!m.focused)
 	keys.Columns.SetEnabled(!m.focused)
