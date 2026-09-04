@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"sqvue/internal/db"
@@ -61,6 +62,12 @@ func runQueryCmd(c db.Driver, sql string, timeout time.Duration, requestID uint6
 		defer cancel()
 		result, err := c.Query(ctx, db.Query{SQL: sql})
 		return queryLoadedMsg{requestID: requestID, result: result, err: err}
+	}
+}
+
+func writeClipboardCmd(value, kind string) tea.Cmd {
+	return func() tea.Msg {
+		return clipboardWrittenMsg{kind: kind, err: clipboard.WriteAll(value)}
 	}
 }
 

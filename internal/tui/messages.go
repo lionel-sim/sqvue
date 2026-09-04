@@ -35,4 +35,8 @@ type (
 		result    db.Result
 		err       error
 	}
+	clipboardWrittenMsg struct {
+		kind string
+		err  error
+	}
 )

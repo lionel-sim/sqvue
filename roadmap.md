@@ -52,7 +52,7 @@ For each driver:
   - [x] Keep the selected row visible while scrolling and when visible columns change
   - [x] Navigate cells left and right, highlighting the active cell
   - [x] Open a row-detail popup with full, untruncated values
-  - [ ] Copy the active cell (`y`) or whole row (`Y`)
+  - [x] Copy the active cell (`y`) or whole row (`Y`)
   - [ ] Follow a foreign-key cell to its referenced table or row when possible
 - [ ] Export results (CSV, JSON)
 - [ ] Streaming / large-result handling (cursor or fetch-more pagination instead of LIMIT/OFFSET)

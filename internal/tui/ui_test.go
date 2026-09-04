@@ -186,6 +186,29 @@ func TestEnterOpensAndClosesRowDetails(t *testing.T) {
 	}
 }
 
+func TestGridCopyValuesUseVisibleColumns(t *testing.T) {
+	m := testModel()
+	m.columns = []db.Column{{Name: "id"}, {Name: "secret"}, {Name: "name"}}
+	m.rows = [][]string{{"1", "hidden", "books"}}
+	m.visibleColumns = []bool{true, false, true}
+	m.cellCursor = 1
+
+	if got := m.activeCellValue(); got != "books" {
+		t.Fatalf("active cell value = %q, want books", got)
+	}
+	if got := m.activeRowValue(); got != "1\tbooks" {
+		t.Fatalf("active row value = %q, want visible row", got)
+	}
+}
+
+func TestClipboardResultUpdatesStatus(t *testing.T) {
+	m := testModel()
+	m, _ = update(m, clipboardWrittenMsg{kind: "cell"})
+	if m.status != "copied cell" {
+		t.Fatalf("copy status = %q", m.status)
+	}
+}
+
 func TestRowDetailsScroll(t *testing.T) {
 	m := testModel()
 	m.width = 40

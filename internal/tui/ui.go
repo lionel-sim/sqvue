@@ -172,6 +172,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleCountLoaded(msg)
 	case queryLoadedMsg:
 		return m.handleQueryLoaded(msg)
+	case clipboardWrittenMsg:
+		if msg.err != nil {
+			return m.fail("copy failed", msg.err)
+		}
+		m.status = "copied " + msg.kind
+		m.lastErr = nil
+		return m, nil
 	}
 	return m, nil
 }
@@ -318,6 +325,10 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.moveGridColumn(+1), nil
 	case key.Matches(msg, m.keys.Left):
 		return m.moveGridColumn(-1), nil
+	case key.Matches(msg, m.keys.CopyCell):
+		return m, writeClipboardCmd(m.activeCellValue(), "cell")
+	case key.Matches(msg, m.keys.CopyRow):
+		return m, writeClipboardCmd(m.activeRowValue(), "row")
 	case key.Matches(msg, m.keys.HalfPageDown):
 		return m.moveGridRow(max(1, len(m.rows)/2)), nil
 	case key.Matches(msg, m.keys.HalfPageUp):
@@ -358,6 +369,22 @@ func (m Model) moveGridRow(delta int) Model {
 func (m Model) moveGridColumn(delta int) Model {
 	m.cellCursor = clamp(m.cellCursor+delta, 0, max(0, m.displayedColumnCount()-1))
 	return m
+}
+
+func (m Model) activeCellValue() string {
+	_, rows := visibleData(m.columns, m.rows, m.visibleColumns)
+	if m.rowCursor < 0 || m.rowCursor >= len(rows) || m.cellCursor < 0 || m.cellCursor >= len(rows[m.rowCursor]) {
+		return ""
+	}
+	return rows[m.rowCursor][m.cellCursor]
+}
+
+func (m Model) activeRowValue() string {
+	_, rows := visibleData(m.columns, m.rows, m.visibleColumns)
+	if m.rowCursor < 0 || m.rowCursor >= len(rows) {
+		return ""
+	}
+	return strings.Join(rows[m.rowCursor], "\t")
 }
 
 func (m Model) handleColumnsKey(msg tea.KeyMsg) (Model, tea.Cmd) {
