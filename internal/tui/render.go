@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
 	"sqvue/internal/db"
@@ -104,7 +103,7 @@ func padRenderLine(line string, width int) string {
 }
 
 func renderHelpDialog(m Model) string {
-	panelBackground := lipgloss.Color("235")
+	panelBackground := theme.Palette["charcoal"]
 	width := 62
 	if m.width > 0 {
 		width = min(width, max(10, m.width-6))

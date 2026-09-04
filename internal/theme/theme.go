@@ -2,16 +2,27 @@ package theme
 
 import "github.com/charmbracelet/lipgloss"
 
+// Palette maps readable colour names to ANSI 256-colour values. Keep all
+// terminal colour choices here so the theme can be adjusted in one place.
+var Palette = map[string]lipgloss.Color{
+	"blue":       "69",
+	"cyan":       "86",
+	"gray":       "245",
+	"pink":       "204",
+	"light_blue": "111",
+	"charcoal":   "235",
+}
+
 var (
-	Title    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("69"))
-	Selected = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("86"))
-	Muted    = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
-	Error    = lipgloss.NewStyle().Foreground(lipgloss.Color("204"))
-	Status   = lipgloss.NewStyle().Foreground(lipgloss.Color("111"))
+	Title    = lipgloss.NewStyle().Bold(true).Foreground(Palette["blue"])
+	Selected = lipgloss.NewStyle().Bold(true).Foreground(Palette["cyan"])
+	Muted    = lipgloss.NewStyle().Foreground(Palette["gray"])
+	Error    = lipgloss.NewStyle().Foreground(Palette["pink"])
+	Status   = lipgloss.NewStyle().Foreground(Palette["light_blue"])
 	Dialog   = lipgloss.NewStyle().
-			Background(lipgloss.Color("235")).
+			Background(Palette["charcoal"]).
 			Padding(1, 2)
 	DialogBorder = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("69")).
-			Background(lipgloss.Color("235"))
+			Foreground(Palette["blue"]).
+			Background(Palette["charcoal"])
 )
