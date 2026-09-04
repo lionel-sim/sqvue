@@ -179,6 +179,17 @@ func (d *Driver) RowsByColumn(ctx context.Context, table db.Table, column, value
 	return columns, result, rows.Err()
 }
 
+func (d *Driver) BrowseRows(ctx context.Context, req db.BrowseRequest) ([]db.Column, [][]string, error) {
+	if len(req.Filters) == 0 {
+		return d.Rows(ctx, req.Table, req.Limit, req.Offset)
+	}
+	if len(req.Filters) == 1 && req.Filters[0].Operator == db.FilterEqual {
+		filter := req.Filters[0]
+		return d.RowsByColumn(ctx, req.Table, filter.Column, filter.Value, req.Limit)
+	}
+	return nil, nil, fmt.Errorf("unsupported browse filter")
+}
+
 func (d *Driver) CountRows(ctx context.Context, table db.Table) (int64, error) {
 	if d.db == nil {
 		return 0, fmt.Errorf("not connected")

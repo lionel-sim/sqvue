@@ -56,10 +56,10 @@ func (f *fakeDriver) Rows(ctx context.Context, tbl db.Table, limit, offset int) 
 	}
 	return f.cols, rows, nil
 }
-func (f *fakeDriver) RowsByColumn(_ context.Context, _ db.Table, _ string, _ string, limit int) ([]db.Column, [][]string, error) {
+func (f *fakeDriver) BrowseRows(_ context.Context, req db.BrowseRequest) ([]db.Column, [][]string, error) {
 	rows := f.rows
-	if len(rows) > limit {
-		rows = rows[:limit]
+	if len(rows) > req.Limit {
+		rows = rows[:req.Limit]
 	}
 	return f.cols, rows, nil
 }

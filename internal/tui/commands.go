@@ -42,7 +42,11 @@ func loadReferenceRowsCmd(c db.Driver, tbl db.Table, column, value string, limit
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
-		cols, rows, err := c.RowsByColumn(ctx, tbl, column, value, limit)
+		cols, rows, err := c.BrowseRows(ctx, db.BrowseRequest{
+			Table:   tbl,
+			Limit:   limit,
+			Filters: []db.RowFilter{{Column: column, Operator: db.FilterEqual, Value: value}},
+		})
 		return rowsLoadedMsg{requestID: requestID, columns: cols, rows: rows, err: err}
 	}
 }

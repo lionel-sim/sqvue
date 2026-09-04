@@ -281,6 +281,17 @@ func (d *Driver) RowsByColumn(ctx context.Context, tbl db.Table, column, value s
 	return cols, out, rows.Err()
 }
 
+func (d *Driver) BrowseRows(ctx context.Context, req db.BrowseRequest) ([]db.Column, [][]string, error) {
+	if len(req.Filters) == 0 {
+		return d.Rows(ctx, req.Table, req.Limit, req.Offset)
+	}
+	if len(req.Filters) == 1 && req.Filters[0].Operator == db.FilterEqual {
+		filter := req.Filters[0]
+		return d.RowsByColumn(ctx, req.Table, filter.Column, filter.Value, req.Limit)
+	}
+	return nil, nil, fmt.Errorf("unsupported browse filter")
+}
+
 func rowOrder(tbl db.Table, cols []db.Column) string {
 	var primary []string
 	for _, col := range cols {

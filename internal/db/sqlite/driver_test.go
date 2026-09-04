@@ -64,9 +64,9 @@ func TestDriverBrowsesAndQueriesSQLite(t *testing.T) {
 		t.Fatalf("Rows() = columns %#v, rows %#v", columns, rows)
 	}
 
-	columns, rows, err = driver.RowsByColumn(ctx, tables[0], "id", "2", 2)
+	columns, rows, err = driver.BrowseRows(ctx, db.BrowseRequest{Table: tables[0], Limit: 2, Filters: []db.RowFilter{{Column: "id", Operator: db.FilterEqual, Value: "2"}}})
 	if err != nil || len(columns) != 4 || len(rows) != 1 || rows[0][2] != "games" {
-		t.Fatalf("RowsByColumn() = columns %#v, rows %#v, error %v", columns, rows, err)
+		t.Fatalf("BrowseRows() = columns %#v, rows %#v, error %v", columns, rows, err)
 	}
 
 	count, err := driver.CountRows(ctx, tables[0])
