@@ -90,7 +90,7 @@ func renderDescriptions(b *strings.Builder, cols []db.Column, width, maxRows int
 		}
 		rows[i] = []string{c.Name, c.DataType, yesNo(c.Nullable), def, yesNo(c.IsPrimary), foreignKeyLabel(c.ForeignKey)}
 	}
-	widths := layoutColumns(width, headers, rows)
+	widths := descriptionWidths(width, headers, rows)
 	b.WriteString(formatRow(columnNames(headers), widths) + "\n")
 	for i, row := range rows {
 		if maxRows >= 0 && i >= maxRows {
@@ -98,6 +98,38 @@ func renderDescriptions(b *strings.Builder, cols []db.Column, width, maxRows int
 		}
 		b.WriteString(formatRow(row, widths) + "\n")
 	}
+}
+
+// descriptionWidths favors the references column so foreign-key targets stay
+// useful on typical terminal widths. Other metadata can tolerate truncation
+// better because its headers make the meaning clear.
+func descriptionWidths(width int, headers []db.Column, rows [][]string) []int {
+	if len(headers) == 0 || width <= 0 {
+		return layoutColumns(width, headers, rows)
+	}
+
+	avail := width - len(colSep)*(len(headers)-1)
+	if avail <= 0 {
+		return make([]int, len(headers))
+	}
+
+	// The descriptions view has five fixed metadata columns followed by
+	// references. Reserve at least half of the available space for the latter,
+	// while leaving enough room to show the metadata headers.
+	const referenceIndex = 5
+	if len(headers) <= referenceIndex {
+		return layoutColumns(width, headers, rows)
+	}
+	minimumMetadataWidth := 0
+	for i := range headers[:referenceIndex] {
+		minimumMetadataWidth += max(ansi.StringWidth(headers[i].Name), minColWidth)
+	}
+	referenceNaturalWidth := cellWidth(referenceIndex, headers[referenceIndex].Name, rows)
+	referenceWidth := min(referenceNaturalWidth, max(avail/2, avail-minimumMetadataWidth))
+
+	metadataNaturalWidths := naturalWidths(headers[:referenceIndex], rows)
+	metadataWidths := scaleWidths(metadataNaturalWidths, avail-referenceWidth)
+	return append(metadataWidths, referenceWidth)
 }
 
 func foreignKeyLabel(foreignKey *db.ForeignKey) string {

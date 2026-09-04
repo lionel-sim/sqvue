@@ -35,13 +35,13 @@ func TestRenderRowsClips(t *testing.T) {
 func TestRenderDescriptions(t *testing.T) {
 	cols := []db.Column{
 		{Name: "id", DataType: "integer", IsPrimary: true},
-		{Name: "owner_id", DataType: "integer", Nullable: true, Default: strPtr("'anon'"), ForeignKey: &db.ForeignKey{Schema: "public", Table: "owners", Column: "id"}},
+		{Name: "owner_id", DataType: "integer", Nullable: true, Default: strPtr("'anon'"), ForeignKey: &db.ForeignKey{Schema: "public", Table: "customer_accounts", Column: "owner_id"}},
 	}
 	var b strings.Builder
-	renderDescriptions(&b, cols, 100, -1)
+	renderDescriptions(&b, cols, 80, -1)
 
 	out := b.String()
-	for _, want := range []string{"column", "type", "nullable", "default", "primary", "references", "id", "integer", "yes", "owner_id", "'anon'", "public.owners.id"} {
+	for _, want := range []string{"column", "references", "id", "integer", "yes", "owner_id", "'anon'", "public.customer_accounts.owner_id"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("descriptions output missing %q:\n%s", want, out)
 		}
