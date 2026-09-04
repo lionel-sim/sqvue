@@ -50,6 +50,25 @@ func TestRowOrder(t *testing.T) {
 	}
 }
 
+func TestBrowseWhereUsesParameterizedOperators(t *testing.T) {
+	where, args, err := postgresBrowseWhere([]db.RowFilter{
+		{Column: "name", Operator: db.FilterEqual, Value: "Ada"},
+		{Column: "note", Operator: db.FilterContains, Value: "vip"},
+		{Column: "deleted_at", Operator: db.FilterIsNull},
+		{Column: "email", Operator: db.FilterIsNotNull},
+	})
+	if err != nil {
+		t.Fatalf("postgresBrowseWhere() error = %v", err)
+	}
+	wantWhere := " where sqvue_row.\"name\" = $1 and cast(sqvue_row.\"note\" as text) ilike $2 and sqvue_row.\"deleted_at\" is null and sqvue_row.\"email\" is not null"
+	if where != wantWhere {
+		t.Fatalf("where = %q, want %q", where, wantWhere)
+	}
+	if len(args) != 2 || args[0] != "Ada" || args[1] != "%vip%" {
+		t.Fatalf("args = %#v", args)
+	}
+}
+
 func TestFormatNumericPreservesPrecision(t *testing.T) {
 	n := pgtype.Numeric{Int: new(big.Int), Exp: -3, Valid: true}
 	n.Int.SetString("12345678901234567890123", 10)

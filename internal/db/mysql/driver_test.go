@@ -37,6 +37,25 @@ func TestReturnsRows(t *testing.T) {
 	}
 }
 
+func TestBrowseWhereUsesParameterizedOperators(t *testing.T) {
+	where, args, err := mysqlBrowseWhere([]db.RowFilter{
+		{Column: "name", Operator: db.FilterEqual, Value: "Ada"},
+		{Column: "note", Operator: db.FilterContains, Value: "vip"},
+		{Column: "deleted_at", Operator: db.FilterIsNull},
+		{Column: "email", Operator: db.FilterIsNotNull},
+	})
+	if err != nil {
+		t.Fatalf("mysqlBrowseWhere() error = %v", err)
+	}
+	wantWhere := " where `name` = ? and cast(`note` as char) like ? and `deleted_at` is null and `email` is not null"
+	if where != wantWhere {
+		t.Fatalf("where = %q, want %q", where, wantWhere)
+	}
+	if len(args) != 2 || args[0] != "Ada" || args[1] != "%vip%" {
+		t.Fatalf("args = %#v", args)
+	}
+}
+
 func TestDriverRejectsOperationsBeforeConnect(t *testing.T) {
 	driver := New()
 	if _, err := driver.Query(context.Background(), db.Query{SQL: "select 1"}); err == nil {
