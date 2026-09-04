@@ -78,6 +78,16 @@ func TestVisibleDataHidesUncheckedColumns(t *testing.T) {
 	}
 }
 
+func TestSanitizeTextEscapesTerminalControls(t *testing.T) {
+	got := sanitizeText("line\n\x1b]8;;https://example.com\a")
+	if strings.Contains(got, "\n") || strings.Contains(got, "\x1b") {
+		t.Fatalf("sanitized text still contains terminal controls: %q", got)
+	}
+	if !strings.Contains(got, `\n`) || !strings.Contains(got, `\x1b`) {
+		t.Fatalf("sanitized text = %q", got)
+	}
+}
+
 func TestHelpRendersAsModalOverCurrentView(t *testing.T) {
 	m := testModel()
 	m.width = 100

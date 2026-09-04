@@ -27,16 +27,18 @@ const (
 )
 
 type Model struct {
-	client      db.Driver
-	timeout     time.Duration
-	schemas     []db.Schema
-	schema      int
-	showSchemas bool
-	allTables   []db.Table
-	tables      []db.Table
-	selected    int
-	scroll      int
-	mode        viewMode
+	client       db.Driver
+	timeout      time.Duration
+	schemas      []db.Schema
+	schema       int
+	showSchemas  bool
+	schemaCursor int
+	schemaScroll int
+	allTables    []db.Table
+	tables       []db.Table
+	selected     int
+	scroll       int
+	mode         viewMode
 
 	columns []db.Column
 	rows    [][]string
@@ -45,29 +47,32 @@ type Model struct {
 
 	status string
 
-	page           int
-	pageSize       int
-	hasNextPage    bool
-	loading        bool
-	lastErr        error
-	width          int
-	height         int
-	filterInput    textinput.Model
-	filtering      bool
-	sqlInput       textinput.Model
-	sqlMode        bool
-	queryActive    bool
-	queryRows      [][]string
-	queryDuration  int64
-	queryAffected  int64
-	queryTruncated bool
-	rowCounts      map[string]int64
-	visibleColumns []bool
-	showColumns    bool
-	columnCursor   int
-	columnScroll   int
-	help           help.Model
-	showHelp       bool
+	page             int
+	pageSize         int
+	hasNextPage      bool
+	loading          bool
+	lastErr          error
+	width            int
+	height           int
+	filterInput      textinput.Model
+	filtering        bool
+	filterPrevious   string
+	sqlInput         textinput.Model
+	sqlMode          bool
+	queryActive      bool
+	queryRows        [][]string
+	queryDuration    int64
+	queryAffected    int64
+	queryTruncated   bool
+	rowCounts        map[string]int64
+	visibleColumns   []bool
+	showColumns      bool
+	columnCursor     int
+	columnScroll     int
+	visibleColumnKey string
+	help             help.Model
+	showHelp         bool
+	loadID           uint64
 
 	keys keymap.Map
 }
@@ -95,7 +100,7 @@ func New(opts Options) Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	return loadSchemasCmd(m.client, m.timeout)
+	return loadSchemasCmd(m.client, m.timeout, m.loadID)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -167,16 +172,19 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Refresh):
 		m.loading = true
 		m.status = "reloading tables..."
-		return m, loadTablesCmd(m.client, m.currentSchema(), m.timeout)
+		requestID := m.nextRequestID()
+		return m, loadTablesCmd(m.client, m.currentSchema(), m.timeout, requestID)
 	case key.Matches(msg, m.keys.Schema):
 		if len(m.schemas) > 0 {
 			m.showSchemas = true
+			m.schemaCursor = m.schema
+			m.schemaScroll = keepInView(m.schemaCursor, m.schemaScroll, tableListHeight, len(m.schemas))
 			m.status = "select a schema"
 		}
 		return m, nil
 	case key.Matches(msg, m.keys.Filter):
+		m.filterPrevious = m.filterInput.Value()
 		m.filtering = true
-		m.filterInput.SetValue("")
 		m.filterInput.Focus()
 		return m, nil
 	case key.Matches(msg, m.keys.SQL):
@@ -253,7 +261,8 @@ func (m Model) handleSQLKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.sqlInput.Blur()
 		m.loading = true
 		m.status = "running query..."
-		return m, runQueryCmd(m.client, sql, m.timeout)
+		requestID := m.nextRequestID()
+		return m, runQueryCmd(m.client, sql, m.timeout, requestID)
 	}
 	var cmd tea.Cmd
 	m.sqlInput, cmd = m.sqlInput.Update(msg)
@@ -262,6 +271,9 @@ func (m Model) handleSQLKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 func (m Model) handleFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	if msg.String() == "esc" || key.Matches(msg, m.keys.Confirm) {
+		if msg.String() == "esc" {
+			m.filterInput.SetValue(m.filterPrevious)
+		}
 		m.filtering = false
 		m.filterInput.Blur()
 		m.applyFilter()
@@ -275,28 +287,34 @@ func (m Model) handleFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 func (m Model) handleSchemaKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch {
-	case key.Matches(msg, m.keys.Quit):
+	case msg.String() == "esc":
 		m.showSchemas = false
 		m.status = fmt.Sprintf("schema %s", m.currentSchema())
 		return m, nil
+	case key.Matches(msg, m.keys.Quit):
+		return m, tea.Quit
 	case key.Matches(msg, m.keys.Down):
-		if m.schema < len(m.schemas)-1 {
-			m.schema++
+		if m.schemaCursor < len(m.schemas)-1 {
+			m.schemaCursor++
 		}
+		m.schemaScroll = keepInView(m.schemaCursor, m.schemaScroll, tableListHeight, len(m.schemas))
 		return m, nil
 	case key.Matches(msg, m.keys.Up):
-		if m.schema > 0 {
-			m.schema--
+		if m.schemaCursor > 0 {
+			m.schemaCursor--
 		}
+		m.schemaScroll = keepInView(m.schemaCursor, m.schemaScroll, tableListHeight, len(m.schemas))
 		return m, nil
 	case key.Matches(msg, m.keys.Confirm):
+		m.schema = m.schemaCursor
 		m.showSchemas = false
 		m.selected, m.scroll, m.page = 0, 0, 0
 		m.filterInput.SetValue("")
 		m.applyFilter()
 		m.loading = true
 		m.status = fmt.Sprintf("loading %s tables...", m.currentSchema())
-		return m, loadTablesCmd(m.client, m.currentSchema(), m.timeout)
+		requestID := m.nextRequestID()
+		return m, loadTablesCmd(m.client, m.currentSchema(), m.timeout, requestID)
 	}
 	return m, nil
 }
@@ -369,6 +387,9 @@ func (m Model) changePage(delta int) (Model, tea.Cmd) {
 }
 
 func (m Model) handleTablesLoaded(msg tablesLoadedMsg) (Model, tea.Cmd) {
+	if !m.isCurrent(msg.requestID) {
+		return m, nil
+	}
 	m.loading = false
 	if msg.err != nil {
 		return m.fail("failed to load tables", msg.err)
@@ -389,6 +410,9 @@ func (m Model) handleTablesLoaded(msg tablesLoadedMsg) (Model, tea.Cmd) {
 }
 
 func (m Model) handleSchemasLoaded(msg schemasLoadedMsg) (Model, tea.Cmd) {
+	if !m.isCurrent(msg.requestID) {
+		return m, nil
+	}
 	m.loading = false
 	if msg.err != nil {
 		return m.fail("failed to load schemas", msg.err)
@@ -406,7 +430,8 @@ func (m Model) handleSchemasLoaded(msg schemasLoadedMsg) (Model, tea.Cmd) {
 	}
 	m.loading = true
 	m.status = fmt.Sprintf("loading %s tables...", m.currentSchema())
-	return m, loadTablesCmd(m.client, m.currentSchema(), m.timeout)
+	requestID := m.nextRequestID()
+	return m, loadTablesCmd(m.client, m.currentSchema(), m.timeout, requestID)
 }
 
 func (m *Model) applyFilter() {
@@ -430,12 +455,17 @@ func (m Model) currentSchema() string {
 }
 
 func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
+	if !m.isCurrent(msg.requestID) {
+		return m, nil
+	}
 	m.loading = false
 	if msg.err != nil {
 		return m.fail("rows error", msg.err)
 	}
 	m.columns = msg.columns
-	m.ensureVisibleColumns()
+	if t := m.currentTable(); t != nil {
+		m.ensureVisibleColumns(t.String())
+	}
 	m.rows = msg.rows
 	m.hasNextPage = len(m.rows) > m.pageSize
 	if m.hasNextPage {
@@ -445,13 +475,16 @@ func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 	if t := m.currentTable(); t != nil {
 		m.setRowsStatus(*t)
 		if _, ok := m.rowCounts[t.String()]; !ok {
-			return m, loadCountCmd(m.client, *t, m.timeout)
+			return m, loadCountCmd(m.client, *t, m.timeout, m.loadID)
 		}
 	}
 	return m, nil
 }
 
 func (m Model) handleCountLoaded(msg countLoadedMsg) (Model, tea.Cmd) {
+	if !m.isCurrent(msg.requestID) {
+		return m, nil
+	}
 	if msg.err != nil {
 		return m, nil
 	}
@@ -463,6 +496,9 @@ func (m Model) handleCountLoaded(msg countLoadedMsg) (Model, tea.Cmd) {
 }
 
 func (m Model) handleQueryLoaded(msg queryLoadedMsg) (Model, tea.Cmd) {
+	if !m.isCurrent(msg.requestID) {
+		return m, nil
+	}
 	m.loading = false
 	if msg.err != nil {
 		return m.fail("query failed", msg.err)
@@ -479,6 +515,7 @@ func (m Model) handleQueryLoaded(msg queryLoadedMsg) (Model, tea.Cmd) {
 		m.columns[i] = db.Column{Name: name}
 	}
 	m.visibleColumns = make([]bool, len(m.columns))
+	m.visibleColumnKey = "query"
 	for i := range m.visibleColumns {
 		m.visibleColumns[i] = true
 	}
@@ -525,10 +562,11 @@ func (m *Model) setRowsStatus(t db.Table) {
 	m.status = status + ")"
 }
 
-func (m *Model) ensureVisibleColumns() {
-	if len(m.visibleColumns) == len(m.columns) {
+func (m *Model) ensureVisibleColumns(key string) {
+	if m.visibleColumnKey == key && len(m.visibleColumns) == len(m.columns) {
 		return
 	}
+	m.visibleColumnKey = key
 	m.visibleColumns = make([]bool, len(m.columns))
 	for i := range m.visibleColumns {
 		m.visibleColumns[i] = true
@@ -553,6 +591,9 @@ func (m Model) columnPickerHeight() int {
 }
 
 func (m Model) handleDescriptionsLoaded(msg descriptionsLoadedMsg) (Model, tea.Cmd) {
+	if !m.isCurrent(msg.requestID) {
+		return m, nil
+	}
 	m.loading = false
 	if msg.err != nil {
 		return m.fail("describe failed", msg.err)
@@ -563,6 +604,15 @@ func (m Model) handleDescriptionsLoaded(msg descriptionsLoadedMsg) (Model, tea.C
 		m.status = fmt.Sprintf("%s (%d columns)", t.String(), len(msg.info.Columns))
 	}
 	return m, nil
+}
+
+func (m *Model) nextRequestID() uint64 {
+	m.loadID++
+	return m.loadID
+}
+
+func (m Model) isCurrent(requestID uint64) bool {
+	return requestID == m.loadID
 }
 
 func (m Model) fail(prefix string, err error) (Model, tea.Cmd) {

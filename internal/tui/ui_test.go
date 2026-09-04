@@ -97,6 +97,51 @@ func TestColumnPickerTogglesColumnsButKeepsOneVisible(t *testing.T) {
 	}
 }
 
+func TestStaleRowsAreIgnored(t *testing.T) {
+	m := testModel()
+	m.loadID = 2
+	m.rows = [][]string{{"current"}}
+	got, _ := m.handleRowsLoaded(rowsLoadedMsg{requestID: 1, rows: [][]string{{"stale"}}})
+	if got.rows[0][0] != "current" {
+		t.Fatalf("stale rows replaced current rows: %#v", got.rows)
+	}
+}
+
+func TestSchemaCancelKeepsCommittedSchema(t *testing.T) {
+	m := testModel()
+	m.schemas = []db.Schema{{Name: "public"}, {Name: "analytics"}}
+	m.schema = 0
+	m.schemaCursor = 0
+	m.showSchemas = true
+	m, _ = m.handleSchemaKey(keyMsg("j"))
+	m, _ = m.handleSchemaKey(tea.KeyMsg{Type: tea.KeyEsc})
+	if m.schema != 0 || m.currentSchema() != "public" {
+		t.Fatalf("schema changed after cancel: %q", m.currentSchema())
+	}
+}
+
+func TestColumnVisibilityResetsForDifferentTable(t *testing.T) {
+	m := testModel()
+	m.columns = []db.Column{{Name: "id"}, {Name: "secret"}}
+	m.ensureVisibleColumns("public.accounts")
+	m.visibleColumns[1] = false
+	m.ensureVisibleColumns("public.events")
+	if !m.visibleColumns[0] || !m.visibleColumns[1] {
+		t.Fatalf("visibility leaked to different table: %#v", m.visibleColumns)
+	}
+}
+
+func TestFilterCancelRestoresPreviousFilter(t *testing.T) {
+	m := testModel()
+	m.filtering = true
+	m.filterPrevious = "accounts"
+	m.filterInput.SetValue("events")
+	m, _ = m.handleFilterKey(tea.KeyMsg{Type: tea.KeyEsc})
+	if got := m.filterInput.Value(); got != "accounts" {
+		t.Fatalf("filter after cancel = %q", got)
+	}
+}
+
 func TestHandlersReportErrors(t *testing.T) {
 	m := testModel()
 	got, _ := m.handleTablesLoaded(tablesLoadedMsg{err: errBoom})

@@ -41,7 +41,7 @@ func renderMain(m Model) string {
 	var b strings.Builder
 
 	if m.showSchemas {
-		renderSchemaList(&b, m.schemas, m.schema)
+		renderSchemaList(&b, m.schemas, m.schemaCursor, m.schemaScroll)
 	} else {
 		renderTableList(&b, m.currentSchema(), m.tables, m.selected, m.scroll, m.filterInput.Value())
 	}
@@ -145,8 +145,8 @@ func padToFooter(b *strings.Builder, height int) {
 
 func renderFooter(m Model) string {
 	bindings := "s schema | / filter | j/k navigate | d columns | y rows | q quit"
-	status := "Status: " + m.status
-	gap := m.width - 1 - len(bindings) - len(status)
+	status := "Status: " + sanitizeText(m.status)
+	gap := m.width - 1 - ansi.StringWidth(bindings) - ansi.StringWidth(status)
 	if gap < 1 {
 		gap = 1
 	}
@@ -158,9 +158,9 @@ func renderFooter(m Model) string {
 }
 
 func renderTableList(b *strings.Builder, schema string, tables []db.Table, selected, offset int, filter string) {
-	header := fmt.Sprintf("Tables: %s", schema)
+	header := fmt.Sprintf("Tables: %s", sanitizeText(schema))
 	if filter != "" {
-		header += fmt.Sprintf(" [filter: %s]", filter)
+		header += fmt.Sprintf(" [filter: %s]", sanitizeText(filter))
 	}
 	b.WriteString(theme.Title.Render(header) + "\n")
 	if len(tables) == 0 {
@@ -179,7 +179,7 @@ func renderTableList(b *strings.Builder, schema string, tables []db.Table, selec
 		if i == selected {
 			prefix = "> "
 		}
-		name := tables[i].String()
+		name := sanitizeText(tables[i].String())
 		if tables[i].Type != "" {
 			name += " [" + tables[i].Type + "]"
 		}
@@ -194,22 +194,22 @@ func renderTableList(b *strings.Builder, schema string, tables []db.Table, selec
 	}
 }
 
-func renderSchemaList(b *strings.Builder, schemas []db.Schema, selected int) {
+func renderSchemaList(b *strings.Builder, schemas []db.Schema, selected, offset int) {
 	b.WriteString(theme.Title.Render("Schemas") + "\n")
-	end := min(len(schemas), tableListHeight)
-	for i := 0; i < end; i++ {
+	end := min(offset+tableListHeight, len(schemas))
+	for i := offset; i < end; i++ {
 		schema := schemas[i]
 		prefix := "  "
 		if i == selected {
 			prefix = "> "
 		}
-		line := prefix + schema.Name
+		line := prefix + sanitizeText(schema.Name)
 		if i == selected {
 			line = theme.Selected.Render(line)
 		}
 		b.WriteString(line + "\n")
 	}
-	for i := end; i < tableListHeight; i++ {
+	for i := end - offset; i < tableListHeight; i++ {
 		b.WriteByte('\n')
 	}
 }
@@ -222,7 +222,7 @@ func renderColumnPicker(b *strings.Builder, columns []db.Column, visible []bool,
 		if i < len(visible) && visible[i] {
 			mark = "[x]"
 		}
-		line := fmt.Sprintf("%s %s", mark, columns[i].Name)
+		line := fmt.Sprintf("%s %s", mark, sanitizeText(columns[i].Name))
 		if i == cursor {
 			line = theme.Selected.Render("> " + line)
 		} else {
@@ -378,10 +378,10 @@ func naturalWidths(cols []db.Column, rows [][]string) []int {
 }
 
 func cellWidth(col int, name string, rows [][]string) int {
-	n := len(name)
+	n := ansi.StringWidth(sanitizeText(name))
 	for _, r := range rows {
-		if col < len(r) && len(r[col]) > n {
-			n = len(r[col])
+		if col < len(r) && ansi.StringWidth(sanitizeText(r[col])) > n {
+			n = ansi.StringWidth(sanitizeText(r[col]))
 		}
 	}
 	return n
@@ -445,25 +445,45 @@ func clamp(v, lo, hi int) int {
 // columns stay aligned. Content that fits exactly is left as-is, and a
 // negative width returns s unchanged.
 func formatCell(s string, w int) string {
+	s = sanitizeText(s)
 	if w < 0 {
 		return s
 	}
 	if w == 0 {
 		return ""
 	}
-	r := []rune(s)
-	if len(r) > w {
-		if w == 1 {
-			return "…"
-		}
-		return string(r[:w-1]) + "…"
+	if ansi.StringWidth(s) > w {
+		return ansi.Truncate(s, w, "…")
 	}
-	return s + strings.Repeat(" ", w-len(r))
+	return s + strings.Repeat(" ", w-ansi.StringWidth(s))
 }
 
 func rightAlign(width int, s string) string {
-	if width <= len(s) {
+	if width <= ansi.StringWidth(s) {
 		return s
 	}
-	return strings.Repeat(" ", width-len(s)) + s
+	return strings.Repeat(" ", width-ansi.StringWidth(s)) + s
+}
+
+func sanitizeText(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		switch r {
+		case '\n':
+			b.WriteString(`\n`)
+		case '\r':
+			b.WriteString(`\r`)
+		case '\t':
+			b.WriteString(`\t`)
+		case 0x1b:
+			b.WriteString(`\x1b`)
+		default:
+			if r < 0x20 || r == 0x7f {
+				fmt.Fprintf(&b, `\x%02x`, r)
+			} else {
+				b.WriteRune(r)
+			}
+		}
+	}
+	return b.String()
 }
