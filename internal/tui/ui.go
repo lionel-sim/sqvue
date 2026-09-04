@@ -47,6 +47,7 @@ type Model struct {
 
 	page           int
 	pageSize       int
+	hasNextPage    bool
 	loading        bool
 	lastErr        error
 	width          int
@@ -359,6 +360,9 @@ func (m Model) changePage(delta int) (Model, tea.Cmd) {
 		m.setQueryPage()
 		return m, nil
 	}
+	if delta > 0 && !m.hasNextPage {
+		return m, nil
+	}
 	m.page += delta
 	return m.startLoadRows()
 }
@@ -432,6 +436,10 @@ func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 	m.columns = msg.columns
 	m.ensureVisibleColumns()
 	m.rows = msg.rows
+	m.hasNextPage = len(m.rows) > m.pageSize
+	if m.hasNextPage {
+		m.rows = m.rows[:m.pageSize]
+	}
 	m.lastErr = nil
 	if t := m.currentTable(); t != nil {
 		m.setRowsStatus(*t)

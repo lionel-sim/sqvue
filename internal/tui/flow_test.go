@@ -98,8 +98,8 @@ func TestRowsUseComputedPageSize(t *testing.T) {
 		m, cmd = update(m, msg)
 		_ = cmd
 	}
-	if f.lastLimit != 12 {
-		t.Fatalf("table loaded after resize: want limit 12, got %d", f.lastLimit)
+	if f.lastLimit != 13 {
+		t.Fatalf("table loaded after resize: want limit 13, got %d", f.lastLimit)
 	}
 
 	// Reverse order: tables load with the default page size, then a resize
@@ -111,16 +111,16 @@ func TestRowsUseComputedPageSize(t *testing.T) {
 		m2, cmd = update(m2, msg)
 		_ = cmd
 	}
-	if f.lastLimit != maxPageSize {
-		t.Fatalf("before resize: want default limit %d, got %d", maxPageSize, f.lastLimit)
+	if f.lastLimit != maxPageSize+1 {
+		t.Fatalf("before resize: want limit %d, got %d", maxPageSize+1, f.lastLimit)
 	}
 	m2, cmd = update(m2, tea.WindowSizeMsg{Width: 100, Height: 20})
 	if cmd == nil {
 		t.Fatal("expected reload after resize")
 	}
 	_ = runCmd(cmd)
-	if f.lastLimit != 12 {
-		t.Fatalf("after resize: want limit 12, got %d", f.lastLimit)
+	if f.lastLimit != 13 {
+		t.Fatalf("after resize: want limit 13, got %d", f.lastLimit)
 	}
 }
 
@@ -297,5 +297,20 @@ func TestQueryResizeRepagesWithoutLoadingTableRows(t *testing.T) {
 	}
 	if len(m.rows) != 2 {
 		t.Fatalf("query rows after resize = %d, want 2", len(m.rows))
+	}
+}
+
+func TestTablePaginationStopsOnFinalPage(t *testing.T) {
+	m := testModel()
+	m.pageSize = 2
+	m, _ = m.handleRowsLoaded(rowsLoadedMsg{
+		columns: []db.Column{{Name: "value"}},
+		rows:    makeRows(2),
+	})
+	if m.hasNextPage {
+		t.Fatal("expected no next page without an extra fetched row")
+	}
+	if got, cmd := m.changePage(+1); got.page != 0 || cmd != nil {
+		t.Fatalf("next page should be unavailable: page=%d cmd=%v", got.page, cmd)
 	}
 }

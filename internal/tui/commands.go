@@ -78,7 +78,8 @@ func (m Model) startLoadRows() (Model, tea.Cmd) {
 		m.loading = true
 		m.status = fmt.Sprintf("loading %s page %d...", t.String(), m.page+1)
 		offset := m.page * m.pageSize
-		return m, loadRowsCmd(m.client, *t, m.pageSize, offset, m.timeout)
+		// Fetch one extra row to determine whether a following page exists.
+		return m, loadRowsCmd(m.client, *t, m.pageSize+1, offset, m.timeout)
 	}
 	return m, nil
 }
