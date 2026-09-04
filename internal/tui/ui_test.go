@@ -302,6 +302,29 @@ func TestGridFilterOperatorPickerSelectsOperator(t *testing.T) {
 	}
 }
 
+func TestGridFilterOperatorPickerAppliesNullFilterImmediately(t *testing.T) {
+	m := testModel()
+	m.focused = true
+	m.client = &fakeDriver{cols: []db.Column{{Name: "deleted_at"}}, rows: [][]string{{"NULL"}}}
+	m.columns = []db.Column{{Name: "deleted_at"}}
+	m.rows = [][]string{{"NULL"}}
+	m.pageSize = 2
+	m, _ = update(m, keyMsg("/"))
+	m, _ = update(m, keyMsg("j"))
+	m, _ = update(m, keyMsg("j"))
+	m, cmd := update(m, tea.KeyMsg{Type: tea.KeyEnter})
+
+	if m.activeOverlay != overlayNone {
+		t.Fatalf("active overlay = %v, want none", m.activeOverlay)
+	}
+	if len(m.browseFilters) != 1 || m.browseFilters[0] != (db.RowFilter{Column: "deleted_at", Operator: db.FilterIsNull}) {
+		t.Fatalf("browse filters = %#v", m.browseFilters)
+	}
+	if msg := runCmd(cmd); msg != nil {
+		_, _ = update(m, msg)
+	}
+}
+
 func TestGridFilterAddsMultipleFilters(t *testing.T) {
 	m := testModel()
 	m.focused = true

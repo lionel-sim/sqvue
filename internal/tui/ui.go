@@ -417,6 +417,13 @@ func (m Model) handleBrowseFilterOperatorKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.browseFilterCursor = max(0, m.browseFilterCursor-1)
 	case key.Matches(msg, m.keys.Confirm):
 		m.browseFilterOperator = browseFilterOperators[m.browseFilterCursor]
+		if m.browseFilterOperator == db.FilterIsNull || m.browseFilterOperator == db.FilterIsNotNull {
+			m.browseFilters = append(m.browseFilters, db.RowFilter{Column: m.browseFilterColumn, Operator: m.browseFilterOperator})
+			m.page = 0
+			m.rowCursor = 0
+			m.activeOverlay = overlayNone
+			return m.startLoadRows()
+		}
 		m.updateBrowseFilterPrompt(m.browseFilterColumn)
 		m.activeOverlay = overlayBrowseFilter
 		m.browseFilterInput.Focus()
@@ -431,11 +438,7 @@ func (m Model) handleBrowseFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 	}
 	if key.Matches(msg, m.keys.Confirm) {
-		value := m.browseFilterInput.Value()
-		if m.browseFilterOperator == db.FilterIsNull || m.browseFilterOperator == db.FilterIsNotNull {
-			value = ""
-		}
-		m.browseFilters = append(m.browseFilters, db.RowFilter{Column: m.browseFilterColumn, Operator: m.browseFilterOperator, Value: value})
+		m.browseFilters = append(m.browseFilters, db.RowFilter{Column: m.browseFilterColumn, Operator: m.browseFilterOperator, Value: m.browseFilterInput.Value()})
 		m.page = 0
 		m.rowCursor = 0
 		m.activeOverlay = overlayNone
