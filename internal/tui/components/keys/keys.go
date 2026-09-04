@@ -12,6 +12,9 @@ type Map struct {
 	PageDown         key.Binding
 	ShowDescriptions key.Binding
 	ShowValues       key.Binding
+	Schema           key.Binding
+	Filter           key.Binding
+	Confirm          key.Binding
 }
 
 // Default returns the default key bindings for navigation and quitting.
@@ -48,6 +51,18 @@ func Default() Map {
 		ShowValues: key.NewBinding(
 			key.WithKeys("y"),
 			key.WithHelp("y", "show rows"),
+		),
+		Schema: key.NewBinding(
+			key.WithKeys("s"),
+			key.WithHelp("s", "switch schema"),
+		),
+		Filter: key.NewBinding(
+			key.WithKeys("/"),
+			key.WithHelp("/", "filter tables"),
+		),
+		Confirm: key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("enter", "select"),
 		),
 	}
 }

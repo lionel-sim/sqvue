@@ -12,12 +12,12 @@ Finish the Postgres driver so the TUI is actually usable end-to-end.
 - [x] Implement `Query` — arbitrary SQL with args, returning columns + rows + affected count
 - [x] Parse the connection string properly in `NewClient` (DSN pass-through via `ConnectConfig`)
 - [x] Add a `--host/--port/--user/--password/--db` flag group in addition to `--conn`
-- [ ] Replace the hardcoded `"public"` schema list in the TUI with real schema selection
+- [x] Replace the hardcoded `"public"` schema list in the TUI with real schema selection
 - [ ] TUI polish:
   - [x] Table-aware cell rendering — truncate/wrap values to terminal width (or use `bubbles/table`)
   - [ ] `?` help overlay using the keymap, plus a `bubbles/help` footer key bar
-  - [ ] Schema switcher — select schemas via `ListSchemas` instead of hardcoded `public`
-  - [ ] Table filter — type-ahead search over the table list
+  - [x] Schema switcher — select schemas via `ListSchemas` instead of hardcoded `public`
+  - [x] Table filter — type-ahead search over the table list
   - [ ] Column metadata view for the selected table (via `DescribeTable`)
   - [ ] Ad-hoc SQL mode — input prompt to run raw SQL through `Query` and page through results
   - [ ] Inline error handling for per-query failures without killing the session

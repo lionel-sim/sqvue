@@ -2,9 +2,11 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"sqvue/internal/db"
@@ -24,12 +26,16 @@ const (
 )
 
 type Model struct {
-	client   db.Driver
-	timeout  time.Duration
-	tables   []db.Table
-	selected int
-	scroll   int
-	mode     viewMode
+	client      db.Driver
+	timeout     time.Duration
+	schemas     []db.Schema
+	schema      int
+	showSchemas bool
+	allTables   []db.Table
+	tables      []db.Table
+	selected    int
+	scroll      int
+	mode        viewMode
 
 	columns []db.Column
 	rows    [][]string
@@ -38,29 +44,35 @@ type Model struct {
 
 	status string
 
-	page     int
-	pageSize int
-	loading  bool
-	lastErr  error
-	width    int
-	height   int
+	page        int
+	pageSize    int
+	loading     bool
+	lastErr     error
+	width       int
+	height      int
+	filterInput textinput.Model
+	filtering   bool
 
 	keys keymap.Map
 }
 
 func New(opts Options) Model {
+	filter := textinput.New()
+	filter.Prompt = "Filter tables: "
+	filter.Placeholder = "type to search"
 	return Model{
-		client:   opts.Client,
-		timeout:  opts.Timeout,
-		status:   "loading tables...",
-		pageSize: maxPageSize,
-		loading:  true,
-		keys:     keymap.Default(),
+		client:      opts.Client,
+		timeout:     opts.Timeout,
+		status:      "loading tables...",
+		pageSize:    maxPageSize,
+		loading:     true,
+		keys:        keymap.Default(),
+		filterInput: filter,
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return loadTablesCmd(m.client, m.timeout)
+	return loadSchemasCmd(m.client, m.timeout)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -69,6 +81,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleWindowSize(msg)
 	case tea.KeyMsg:
 		return m.handleKey(msg)
+	case schemasLoadedMsg:
+		return m.handleSchemasLoaded(msg)
 	case tablesLoadedMsg:
 		return m.handleTablesLoaded(msg)
 	case rowsLoadedMsg:
@@ -97,13 +111,30 @@ func (m Model) computedPageSize() int {
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	if m.filtering {
+		return m.handleFilterKey(msg)
+	}
+	if m.showSchemas {
+		return m.handleSchemaKey(msg)
+	}
 	switch {
 	case key.Matches(msg, m.keys.Quit):
 		return m, tea.Quit
 	case key.Matches(msg, m.keys.Refresh):
 		m.loading = true
 		m.status = "reloading tables..."
-		return m, loadTablesCmd(m.client, m.timeout)
+		return m, loadTablesCmd(m.client, m.currentSchema(), m.timeout)
+	case key.Matches(msg, m.keys.Schema):
+		if len(m.schemas) > 0 {
+			m.showSchemas = true
+			m.status = "select a schema"
+		}
+		return m, nil
+	case key.Matches(msg, m.keys.Filter):
+		m.filtering = true
+		m.filterInput.SetValue("")
+		m.filterInput.Focus()
+		return m, nil
 	case key.Matches(msg, m.keys.Down):
 		return m.moveSelection(+1)
 	case key.Matches(msg, m.keys.Up):
@@ -116,6 +147,47 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.showDescriptions()
 	case key.Matches(msg, m.keys.ShowValues):
 		return m.showValues()
+	}
+	return m, nil
+}
+
+func (m Model) handleFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	if msg.String() == "esc" {
+		m.filtering = false
+		m.filterInput.Blur()
+		m.applyFilter()
+		return m, nil
+	}
+	var cmd tea.Cmd
+	m.filterInput, cmd = m.filterInput.Update(msg)
+	m.applyFilter()
+	return m, cmd
+}
+
+func (m Model) handleSchemaKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.Quit):
+		m.showSchemas = false
+		m.status = fmt.Sprintf("schema %s", m.currentSchema())
+		return m, nil
+	case key.Matches(msg, m.keys.Down):
+		if m.schema < len(m.schemas)-1 {
+			m.schema++
+		}
+		return m, nil
+	case key.Matches(msg, m.keys.Up):
+		if m.schema > 0 {
+			m.schema--
+		}
+		return m, nil
+	case key.Matches(msg, m.keys.Confirm):
+		m.showSchemas = false
+		m.selected, m.scroll, m.page = 0, 0, 0
+		m.filterInput.SetValue("")
+		m.applyFilter()
+		m.loading = true
+		m.status = fmt.Sprintf("loading %s tables...", m.currentSchema())
+		return m, loadTablesCmd(m.client, m.currentSchema(), m.timeout)
 	}
 	return m, nil
 }
@@ -179,7 +251,8 @@ func (m Model) handleTablesLoaded(msg tablesLoadedMsg) (Model, tea.Cmd) {
 	if msg.err != nil {
 		return m.fail("failed to load tables", msg.err)
 	}
-	m.tables = msg.tables
+	m.allTables = msg.tables
+	m.applyFilter()
 	m.status = fmt.Sprintf("found %d tables", len(m.tables))
 	if len(m.tables) > 0 {
 		m.selected = 0
@@ -189,6 +262,46 @@ func (m Model) handleTablesLoaded(msg tablesLoadedMsg) (Model, tea.Cmd) {
 		return m.startLoadRows()
 	}
 	return m, nil
+}
+
+func (m Model) handleSchemasLoaded(msg schemasLoadedMsg) (Model, tea.Cmd) {
+	m.loading = false
+	if msg.err != nil {
+		return m.fail("failed to load schemas", msg.err)
+	}
+	m.schemas = msg.schemas
+	if len(m.schemas) == 0 {
+		return m.fail("failed to load schemas", fmt.Errorf("no user schemas found"))
+	}
+	for i, schema := range m.schemas {
+		if schema.Name == "public" {
+			m.schema = i
+			break
+		}
+	}
+	m.loading = true
+	m.status = fmt.Sprintf("loading %s tables...", m.currentSchema())
+	return m, loadTablesCmd(m.client, m.currentSchema(), m.timeout)
+}
+
+func (m *Model) applyFilter() {
+	needle := strings.ToLower(strings.TrimSpace(m.filterInput.Value()))
+	m.tables = m.tables[:0]
+	for _, table := range m.allTables {
+		if needle == "" || strings.Contains(strings.ToLower(table.Name), needle) {
+			m.tables = append(m.tables, table)
+		}
+	}
+	m.selected = 0
+	m.scroll = 0
+	m.page = 0
+}
+
+func (m Model) currentSchema() string {
+	if m.schema < 0 || m.schema >= len(m.schemas) {
+		return ""
+	}
+	return m.schemas[m.schema].Name
 }
 
 func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {

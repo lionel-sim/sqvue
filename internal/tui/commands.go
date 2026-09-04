@@ -10,11 +10,20 @@ import (
 	"sqvue/internal/db"
 )
 
-func loadTablesCmd(c db.Driver, timeout time.Duration) tea.Cmd {
+func loadSchemasCmd(c db.Driver, timeout time.Duration) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
-		tables, err := c.ListTables(ctx, "public")
+		schemas, err := c.ListSchemas(ctx)
+		return schemasLoadedMsg{schemas: schemas, err: err}
+	}
+}
+
+func loadTablesCmd(c db.Driver, schema string, timeout time.Duration) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		tables, err := c.ListTables(ctx, schema)
 		return tablesLoadedMsg{tables: tables, err: err}
 	}
 }

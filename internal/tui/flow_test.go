@@ -11,12 +11,14 @@ import (
 )
 
 type fakeDriver struct {
+	schemas       []db.Schema
 	tables        []db.Table
 	cols          []db.Column
 	rows          [][]string
 	describeCols  []db.Column
 	lastLimit     int
 	lastOffset    int
+	lastSchema    string
 	lastDescribe  string
 	describeCalls int
 }
@@ -26,9 +28,10 @@ func (f *fakeDriver) Connect(context.Context, db.ConnectConfig) error { return n
 func (f *fakeDriver) Close() error                                    { return nil }
 func (f *fakeDriver) Ping(context.Context) error                      { return nil }
 func (f *fakeDriver) ListSchemas(context.Context) ([]db.Schema, error) {
-	return nil, nil
+	return f.schemas, nil
 }
-func (f *fakeDriver) ListTables(context.Context, string) ([]db.Table, error) {
+func (f *fakeDriver) ListTables(_ context.Context, schema string) ([]db.Table, error) {
+	f.lastSchema = schema
 	return f.tables, nil
 }
 func (f *fakeDriver) DescribeTable(_ context.Context, schema, table string) (db.TableInfo, error) {
@@ -69,9 +72,10 @@ func update(m Model, msg tea.Msg) (Model, tea.Cmd) {
 
 func TestRowsUseComputedPageSize(t *testing.T) {
 	f := &fakeDriver{
-		tables: []db.Table{{Schema: "public", Name: "t"}},
-		cols:   []db.Column{{Name: "c"}},
-		rows:   makeRows(100),
+		schemas: []db.Schema{{Name: "public"}},
+		tables:  []db.Table{{Schema: "public", Name: "t"}},
+		cols:    []db.Column{{Name: "c"}},
+		rows:    makeRows(100),
 	}
 	m := New(Options{Client: f, Timeout: time.Second})
 
@@ -114,9 +118,10 @@ func TestRowsUseComputedPageSize(t *testing.T) {
 
 func TestToggleDescriptions(t *testing.T) {
 	f := &fakeDriver{
-		tables: []db.Table{{Schema: "public", Name: "t"}},
-		cols:   []db.Column{{Name: "c"}},
-		rows:   makeRows(5),
+		schemas: []db.Schema{{Name: "public"}},
+		tables:  []db.Table{{Schema: "public", Name: "t"}},
+		cols:    []db.Column{{Name: "c"}},
+		rows:    makeRows(5),
 		describeCols: []db.Column{
 			{Name: "id", DataType: "integer", IsPrimary: true},
 			{Name: "name", DataType: "text", Nullable: true},
@@ -161,9 +166,10 @@ func TestToggleDescriptions(t *testing.T) {
 
 func TestDescriptionsModeLoadsOnSelection(t *testing.T) {
 	f := &fakeDriver{
-		tables: []db.Table{{Schema: "public", Name: "a"}, {Schema: "public", Name: "b"}},
-		cols:   []db.Column{{Name: "c"}},
-		rows:   makeRows(3),
+		schemas: []db.Schema{{Name: "public"}},
+		tables:  []db.Table{{Schema: "public", Name: "a"}, {Schema: "public", Name: "b"}},
+		cols:    []db.Column{{Name: "c"}},
+		rows:    makeRows(3),
 	}
 	m := New(Options{Client: f, Timeout: time.Second})
 	var cmd tea.Cmd
@@ -186,5 +192,46 @@ func TestDescriptionsModeLoadsOnSelection(t *testing.T) {
 	}
 	if m.mode != modeDescriptions {
 		t.Fatalf("expected to stay in descriptions mode, got %v", m.mode)
+	}
+}
+
+func TestSchemaSelectionLoadsSelectedSchema(t *testing.T) {
+	f := &fakeDriver{
+		schemas: []db.Schema{{Name: "analytics"}, {Name: "public"}},
+		tables:  []db.Table{{Schema: "public", Name: "events"}},
+	}
+	m := New(Options{Client: f, Timeout: time.Second})
+
+	var cmd tea.Cmd
+	m, cmd = update(m, schemasLoadedMsg{schemas: f.schemas})
+	if msg := runCmd(cmd); msg != nil {
+		_, _ = update(m, msg)
+	}
+	if f.lastSchema != "public" {
+		t.Fatalf("initial schema = %q, want public", f.lastSchema)
+	}
+
+	m.showSchemas = true
+	m.schema = 0
+	m, cmd = update(m, tea.KeyMsg{Type: tea.KeyEnter})
+	if msg := runCmd(cmd); msg != nil {
+		_, _ = update(m, msg)
+	}
+	if f.lastSchema != "analytics" {
+		t.Fatalf("selected schema = %q, want analytics", f.lastSchema)
+	}
+}
+
+func TestTableFilterMatchesTableNames(t *testing.T) {
+	m := testModel()
+	m.allTables = []db.Table{
+		{Schema: "public", Name: "accounts"},
+		{Schema: "public", Name: "audit_log"},
+		{Schema: "public", Name: "projects"},
+	}
+	m.filterInput.SetValue("AUD")
+	m.applyFilter()
+	if len(m.tables) != 1 || m.tables[0].Name != "audit_log" {
+		t.Fatalf("filtered tables = %#v, want audit_log", m.tables)
 	}
 }

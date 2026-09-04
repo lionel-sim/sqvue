@@ -3,6 +3,10 @@ package tui
 import "sqvue/internal/db"
 
 type (
+	schemasLoadedMsg struct {
+		schemas []db.Schema
+		err     error
+	}
 	tablesLoadedMsg struct {
 		tables []db.Table
 		err    error

@@ -66,6 +66,8 @@ You can also run directly from source with `make run` or `go run ./...`.
 | `b` / `PgUp`     | Previous page         |
 | `d`              | Show column descriptions |
 | `y`              | Show row values       |
+| `s`              | Switch schema         |
+| `/`              | Filter table list     |
 | `r`              | Refresh tables        |
 | `q` / `Esc` / `Ctrl+C` | Quit              |
 

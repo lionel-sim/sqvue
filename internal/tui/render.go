@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	"sqvue/internal/db"
@@ -28,9 +29,17 @@ const (
 func Render(m Model) string {
 	var b strings.Builder
 
-	renderTableList(&b, m.tables, m.selected, m.scroll)
+	if m.showSchemas {
+		renderSchemaList(&b, m.schemas, m.schema)
+	} else {
+		renderTableList(&b, m.currentSchema(), m.tables, m.selected, m.scroll, m.filterInput.Value())
+	}
 	b.WriteString("\n")
-	if m.loading {
+	if m.filtering {
+		b.WriteString(m.filterInput.View() + "\n")
+	} else if m.showSchemas {
+		b.WriteString("Use j/k to choose a schema, then Enter to load its tables.\n")
+	} else if m.loading {
 		b.WriteString("Loading...\n")
 	} else if m.mode == modeDescriptions {
 		renderDescriptions(&b, m.tableInfo.Columns, m.width, m.height-reservedRows)
@@ -45,8 +54,12 @@ func Render(m Model) string {
 	return b.String()
 }
 
-func renderTableList(b *strings.Builder, tables []db.Table, selected, offset int) {
-	b.WriteString("Tables (j/k navigate, pgup/pgdown page, d=columns y=rows, q quit)\n")
+func renderTableList(b *strings.Builder, schema string, tables []db.Table, selected, offset int, filter string) {
+	header := fmt.Sprintf("Tables: %s (s schema, / filter, j/k navigate, d columns, y rows, q quit)", schema)
+	if filter != "" {
+		header += fmt.Sprintf(" [filter: %s]", filter)
+	}
+	b.WriteString(header + "\n")
 	if len(tables) == 0 {
 		b.WriteString("  (no tables found)\n")
 		return
@@ -61,6 +74,17 @@ func renderTableList(b *strings.Builder, tables []db.Table, selected, offset int
 			prefix = "> "
 		}
 		b.WriteString(prefix + tables[i].String() + "\n")
+	}
+}
+
+func renderSchemaList(b *strings.Builder, schemas []db.Schema, selected int) {
+	b.WriteString("Schemas\n")
+	for i, schema := range schemas {
+		prefix := "  "
+		if i == selected {
+			prefix = "> "
+		}
+		b.WriteString(prefix + schema.Name + "\n")
 	}
 }
 
