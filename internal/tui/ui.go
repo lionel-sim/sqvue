@@ -416,7 +416,7 @@ func (m Model) handleBrowseFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if m.browseFilterOperator == db.FilterIsNull || m.browseFilterOperator == db.FilterIsNotNull {
 			value = ""
 		}
-		m.browseFilters = []db.RowFilter{{Column: column.Name, Operator: m.browseFilterOperator, Value: value}}
+		m.browseFilters = append(m.browseFilters, db.RowFilter{Column: column.Name, Operator: m.browseFilterOperator, Value: value})
 		m.referenceFilter = nil
 		m.page = 0
 		m.rowCursor = 0

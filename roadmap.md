@@ -62,7 +62,7 @@ For each driver:
   - [x] Support equality filtering first, including filtered row counts and pagination
   - [x] Show active filters in the status bar and add a clear-filter action
   - [x] Add `contains`, `is null`, and `is not null` operators
-  - [ ] Support multiple filters combined with `AND`
+  - [x] Support multiple filters combined with `AND`
   - [ ] Test TUI filter state and each driver's parameterized query generation
 - [ ] Export results (CSV, JSON)
 - [ ] Streaming / large-result handling (cursor or fetch-more pagination instead of LIMIT/OFFSET)

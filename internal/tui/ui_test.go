@@ -295,6 +295,36 @@ func TestGridFilterPromptCyclesOperators(t *testing.T) {
 	}
 }
 
+func TestGridFilterAddsMultipleFilters(t *testing.T) {
+	m := testModel()
+	m.focused = true
+	m.client = &fakeDriver{cols: []db.Column{{Name: "id"}, {Name: "name"}}, rows: [][]string{{"1", "Ada"}}}
+	m.columns = []db.Column{{Name: "id"}, {Name: "name"}}
+	m.rows = [][]string{{"1", "Ada"}}
+	m.pageSize = 2
+
+	m, _ = update(m, keyMsg("/"))
+	m, cmd := m.handleBrowseFilterKey(tea.KeyMsg{Type: tea.KeyEnter})
+	if msg := runCmd(cmd); msg != nil {
+		m, _ = update(m, msg)
+	}
+	m.cellCursor = 1
+	m, _ = update(m, keyMsg("/"))
+	m, cmd = m.handleBrowseFilterKey(tea.KeyMsg{Type: tea.KeyEnter})
+	if len(m.browseFilters) != 2 {
+		t.Fatalf("browse filters = %#v, want two filters", m.browseFilters)
+	}
+	if msg := runCmd(cmd); msg != nil {
+		m, _ = update(m, msg)
+	}
+	if got := m.client.(*fakeDriver).lastBrowse.Filters; len(got) != 2 || got[0].Column != "id" || got[1].Column != "name" {
+		t.Fatalf("browse request filters = %#v", got)
+	}
+	if !strings.Contains(formatBrowseFilters(m.browseFilters), " AND ") {
+		t.Fatalf("formatted filters = %q", formatBrowseFilters(m.browseFilters))
+	}
+}
+
 func TestEnterOpensAndClosesRowDetails(t *testing.T) {
 	m := testModel()
 	m.focused = true
