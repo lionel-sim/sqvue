@@ -10,7 +10,9 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 
 ## Status
 
-Work in progress. The Postgres driver scaffolding is in place, but data/metadata operations (`ListTables`, `DescribeTable`, `Query`, `Rows`) are not yet implemented.
+Work in progress. PostgreSQL support is functional: sqvue can list tables and views in the `public` schema, browse paginated row data, and display column metadata. The driver also supports arbitrary SQL queries through its internal API.
+
+Schema selection, SQL mode in the TUI, alternate connection flags, and additional database drivers are still planned. See [roadmap.md](roadmap.md) for the current plan.
 
 ## Requirements
 
