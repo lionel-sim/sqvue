@@ -9,6 +9,7 @@ The following findings were resolved after this review:
 - Stale asynchronous result handling
 - Terminal-control escaping and display-cell width handling
 - Safe connection configuration, TLS defaults, and startup connectivity checks
+- Configured startup timeout and direct CLI coverage for connection-string precedence
 - Table ordering and numeric precision
 - Bounded ad-hoc SQL results
 - Schema picker cancellation and scrolling

@@ -59,7 +59,7 @@ You can also run directly from source with `make run` or `go run ./...`.
 | `--password` |             | Postgres password                           |
 | `--db`       |             | Postgres database                           |
 | `--sslmode`  | `require`   | Postgres TLS mode for individual flags      |
-| `--timeout`  | `5s`        | Query timeout                               |
+| `--timeout`  | `5s`        | Connection and query timeout                |
 
 ### Key bindings
 

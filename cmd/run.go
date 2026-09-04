@@ -35,7 +35,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&passwordFlag, "password", "", "Postgres password")
 	rootCmd.PersistentFlags().StringVar(&databaseFlag, "db", "", "Postgres database")
 	rootCmd.PersistentFlags().StringVar(&sslModeFlag, "sslmode", "require", "Postgres TLS mode (disable, require, verify-ca, verify-full)")
-	rootCmd.PersistentFlags().DurationVar(&timeoutFlag, "timeout", 5*time.Second, "query timeout")
+	rootCmd.PersistentFlags().DurationVar(&timeoutFlag, "timeout", 5*time.Second, "connection and query timeout")
 
 	rootCmd.RunE = run
 }
@@ -55,7 +55,7 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(cmd.Context(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(cmd.Context(), cfg.Timeout)
 	defer cancel()
 
 	client, err := db.NewClientWithConfig(ctx, db.ConnectConfig{
