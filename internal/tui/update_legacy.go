@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -567,6 +566,7 @@ func (m Model) handleColumnsKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.schemas[m.schema].Name
 	}
 */
+/*
 func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 	if !m.isCurrent(msg.requestID) {
 		return m, nil
@@ -744,6 +744,7 @@ func (m Model) browseCountKey(t db.Table) string {
 	return b.String()
 }
 
+*/
 func (m *Model) ensureVisibleColumns(key string) {
 	if m.visibleColumnKey == key && len(m.visibleColumns) == len(m.columns) {
 		return
@@ -779,22 +780,23 @@ func (m Model) columnPickerHeight() int {
 	return max(1, m.height-reservedRows-1)
 }
 
-func (m Model) handleDescriptionsLoaded(msg descriptionsLoadedMsg) (Model, tea.Cmd) {
-	if !m.isCurrent(msg.requestID) {
+/*
+	func (m Model) handleDescriptionsLoaded(msg descriptionsLoadedMsg) (Model, tea.Cmd) {
+		if !m.isCurrent(msg.requestID) {
+			return m, nil
+		}
+		m.loading = false
+		if msg.err != nil {
+			return m.fail("describe failed", msg.err)
+		}
+		m.tableInfo = msg.info
+		m.lastErr = nil
+		if t := m.currentTable(); t != nil {
+			m.status = fmt.Sprintf("%s (%d columns)", t.String(), len(msg.info.Columns))
+		}
 		return m, nil
 	}
-	m.loading = false
-	if msg.err != nil {
-		return m.fail("describe failed", msg.err)
-	}
-	m.tableInfo = msg.info
-	m.lastErr = nil
-	if t := m.currentTable(); t != nil {
-		m.status = fmt.Sprintf("%s (%d columns)", t.String(), len(msg.info.Columns))
-	}
-	return m, nil
-}
-
+*/
 func (m *Model) nextRequestID() uint64 {
 	m.loadID++
 	return m.loadID
