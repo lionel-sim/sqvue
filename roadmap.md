@@ -60,7 +60,7 @@ For each driver:
   - [x] Replace the specialised foreign-key lookup with the shared filtered-row path
   - [x] Add a grid filter prompt for the active column, prefilled from its selected cell
   - [x] Support equality filtering first, including filtered row counts and pagination
-  - [ ] Show active filters in the status bar and add a clear-filter action
+  - [x] Show active filters in the status bar and add a clear-filter action
   - [ ] Add `contains`, `is null`, and `is not null` operators
   - [ ] Support multiple filters combined with `AND`
   - [ ] Test TUI filter state and each driver's parameterized query generation

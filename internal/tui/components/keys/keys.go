@@ -4,31 +4,32 @@ import "github.com/charmbracelet/bubbles/key"
 
 // Map holds all key bindings used across the TUI.
 type Map struct {
-	Quit             key.Binding
-	Refresh          key.Binding
-	Up               key.Binding
-	Down             key.Binding
-	Left             key.Binding
-	Right            key.Binding
-	PageUp           key.Binding
-	PageDown         key.Binding
-	HalfPageUp       key.Binding
-	HalfPageDown     key.Binding
-	FirstRow         key.Binding
-	LastRow          key.Binding
-	CopyCell         key.Binding
-	CopyRow          key.Binding
-	OpenReference    key.Binding
-	ShowDescriptions key.Binding
-	ShowValues       key.Binding
-	Schema           key.Binding
-	Filter           key.Binding
-	BrowseFilter     key.Binding
-	Confirm          key.Binding
-	Help             key.Binding
-	SQL              key.Binding
-	Columns          key.Binding
-	Toggle           key.Binding
+	Quit              key.Binding
+	Refresh           key.Binding
+	Up                key.Binding
+	Down              key.Binding
+	Left              key.Binding
+	Right             key.Binding
+	PageUp            key.Binding
+	PageDown          key.Binding
+	HalfPageUp        key.Binding
+	HalfPageDown      key.Binding
+	FirstRow          key.Binding
+	LastRow           key.Binding
+	CopyCell          key.Binding
+	CopyRow           key.Binding
+	OpenReference     key.Binding
+	ShowDescriptions  key.Binding
+	ShowValues        key.Binding
+	Schema            key.Binding
+	Filter            key.Binding
+	BrowseFilter      key.Binding
+	ClearBrowseFilter key.Binding
+	Confirm           key.Binding
+	Help              key.Binding
+	SQL               key.Binding
+	Columns           key.Binding
+	Toggle            key.Binding
 }
 
 // Default returns the default key bindings for navigation and quitting.
@@ -114,6 +115,10 @@ func Default() Map {
 			key.WithKeys("/"),
 			key.WithHelp("/", "filter rows"),
 		),
+		ClearBrowseFilter: key.NewBinding(
+			key.WithKeys("x"),
+			key.WithHelp("x", "clear row filters"),
+		),
 		Confirm: key.NewBinding(
 			key.WithKeys("enter"),
 			key.WithHelp("enter", "select"),
@@ -138,9 +143,9 @@ func Default() Map {
 }
 
 func (m Map) ShortHelp() []key.Binding {
-	return []key.Binding{m.Help, m.SQL, m.Columns, m.Schema, m.Filter, m.BrowseFilter, m.Quit}
+	return []key.Binding{m.Help, m.SQL, m.Columns, m.Schema, m.Filter, m.BrowseFilter, m.ClearBrowseFilter, m.Quit}
 }
 
 func (m Map) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{m.Up, m.Down, m.Left, m.Right, m.PageUp, m.PageDown, m.HalfPageUp, m.HalfPageDown, m.FirstRow, m.LastRow}, {m.CopyCell, m.CopyRow, m.OpenReference, m.BrowseFilter, m.SQL, m.Columns, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
+	return [][]key.Binding{{m.Up, m.Down, m.Left, m.Right, m.PageUp, m.PageDown, m.HalfPageUp, m.HalfPageDown, m.FirstRow, m.LastRow}, {m.CopyCell, m.CopyRow, m.OpenReference, m.BrowseFilter, m.ClearBrowseFilter, m.SQL, m.Columns, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
 }

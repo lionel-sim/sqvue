@@ -340,6 +340,8 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, m.keys.BrowseFilter):
 		return m.openBrowseFilter()
+	case key.Matches(msg, m.keys.ClearBrowseFilter):
+		return m.clearBrowseFilters()
 	case key.Matches(msg, m.keys.Down):
 		return m.moveGridRows(count)
 	case key.Matches(msg, m.keys.Up):
@@ -370,6 +372,18 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.changeGridPage(-1)
 	}
 	return m, nil
+}
+
+func (m Model) clearBrowseFilters() (Model, tea.Cmd) {
+	if len(m.browseFilters) == 0 {
+		m.status = "no active row filters"
+		return m, nil
+	}
+	m.browseFilters = nil
+	m.referenceFilter = nil
+	m.page = 0
+	m.rowCursor = 0
+	return m.startLoadRows()
 }
 
 func (m Model) openBrowseFilter() (Model, tea.Cmd) {
@@ -930,7 +944,19 @@ func (m *Model) setRowsStatus(t db.Table) {
 	} else if count, ok := m.rowCounts[t.String()]; ok {
 		status += fmt.Sprintf(" of %d", count)
 	}
-	m.status = status + ")"
+	status += ")"
+	if len(m.browseFilters) > 0 {
+		status += " filters: " + formatBrowseFilters(m.browseFilters) + " (x clear)"
+	}
+	m.status = status
+}
+
+func formatBrowseFilters(filters []db.RowFilter) string {
+	parts := make([]string, len(filters))
+	for i, filter := range filters {
+		parts[i] = filter.Column + " = " + filter.Value
+	}
+	return strings.Join(parts, " AND ")
 }
 
 func (m Model) browseRequest(t db.Table) db.BrowseRequest {
@@ -1029,6 +1055,7 @@ func (m Model) helpKeyMap() keymap.Map {
 	keys.CopyRow.SetEnabled(m.focused)
 	keys.OpenReference.SetEnabled(m.focused)
 	keys.BrowseFilter.SetEnabled(m.focused)
+	keys.ClearBrowseFilter.SetEnabled(m.focused && len(m.browseFilters) > 0)
 
 	keys.SQL.SetEnabled(!m.focused)
 	keys.Columns.SetEnabled(!m.focused)

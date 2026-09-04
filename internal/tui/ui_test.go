@@ -259,6 +259,27 @@ func TestGridFilterAppliesEqualityFromPrompt(t *testing.T) {
 	}
 }
 
+func TestGridFilterStatusAndClearAction(t *testing.T) {
+	m := testModel()
+	m.focused = true
+	m.client = &fakeDriver{cols: []db.Column{{Name: "name"}}, rows: [][]string{{"Ada"}}}
+	m.columns = []db.Column{{Name: "name"}}
+	m.rows = [][]string{{"Ada"}}
+	m.browseFilters = []db.RowFilter{{Column: "name", Operator: db.FilterEqual, Value: "Ada"}}
+	m.setRowsStatus(m.tables[0])
+	if !strings.Contains(m.status, "filters: name = Ada (x clear)") {
+		t.Fatalf("status = %q", m.status)
+	}
+
+	m, cmd := update(m, keyMsg("x"))
+	if len(m.browseFilters) != 0 || m.page != 0 {
+		t.Fatalf("clear filter state = %#v, page %d", m.browseFilters, m.page)
+	}
+	if msg := runCmd(cmd); msg != nil {
+		_, _ = update(m, msg)
+	}
+}
+
 func TestEnterOpensAndClosesRowDetails(t *testing.T) {
 	m := testModel()
 	m.focused = true
