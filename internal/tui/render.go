@@ -62,7 +62,13 @@ func renderMain(m Model) string {
 		if m.focused {
 			activeRow = m.rowCursor
 		}
-		renderVisibleRows(&b, m.columns, m.rows, m.visibleColumns, m.width, m.height-reservedRows, activeRow, m.cellCursor)
+		renderVisibleRows(&b, m.columns, m.rows, rowRenderOptions{
+			visibleColumns: m.visibleColumns,
+			width:          m.width,
+			maxRows:        m.height - reservedRows,
+			activeRow:      activeRow,
+			activeColumn:   m.cellCursor,
+		})
 	}
 	padToFooter(&b, m.height)
 	b.WriteString(renderFooter(m))

@@ -12,24 +12,30 @@ import (
 // renderRows writes the column header and up to maxRows data rows. A negative
 // maxRows (terminal height unknown) shows all rows without clipping.
 func renderRows(b *strings.Builder, columns []db.Column, rows [][]string, width, maxRows int) {
-	renderVisibleRows(b, columns, rows, nil, width, maxRows, -1, -1)
+	renderVisibleRows(b, columns, rows, rowRenderOptions{width: width, maxRows: maxRows, activeRow: -1, activeColumn: -1})
 }
 
-func renderVisibleRows(b *strings.Builder, columns []db.Column, rows [][]string, visible []bool, width, maxRows, activeRow, activeColumn int) {
-	columns, rows = visibleData(columns, rows, visible)
+type rowRenderOptions struct {
+	visibleColumns          []bool
+	width, maxRows          int
+	activeRow, activeColumn int
+}
+
+func renderVisibleRows(b *strings.Builder, columns []db.Column, rows [][]string, options rowRenderOptions) {
+	columns, rows = visibleData(columns, rows, options.visibleColumns)
 	if len(columns) == 0 {
 		b.WriteString("(no rows to display)\n")
 		return
 	}
-	widths := layoutColumns(width, columns, rows)
+	widths := layoutColumns(options.width, columns, rows)
 	b.WriteString(formatRow(columnNames(columns), widths) + "\n")
 	for i, row := range rows {
-		if maxRows >= 0 && i >= maxRows {
+		if options.maxRows >= 0 && i >= options.maxRows {
 			break
 		}
 		line := formatRow(row, widths)
-		if i == activeRow {
-			line = formatActiveRow(row, widths, activeColumn)
+		if i == options.activeRow {
+			line = formatActiveRow(row, widths, options.activeColumn)
 		}
 		b.WriteString(line + "\n")
 	}

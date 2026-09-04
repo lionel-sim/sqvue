@@ -53,7 +53,7 @@ func TestRenderVisibleRowsHighlightsActiveRow(t *testing.T) {
 	columns := []db.Column{{Name: "name"}}
 	rows := [][]string{{"books"}, {"games"}}
 	var b strings.Builder
-	renderVisibleRows(&b, columns, rows, nil, 20, -1, 1, 0)
+	renderVisibleRows(&b, columns, rows, rowRenderOptions{width: 20, maxRows: -1, activeRow: 1, activeColumn: 0})
 
 	want := theme.ActiveCell.Render(formatRow(rows[1], layoutColumns(20, columns, rows)))
 	if !strings.Contains(b.String(), want) {
@@ -65,7 +65,7 @@ func TestRenderVisibleRowsHighlightsActiveCell(t *testing.T) {
 	columns := []db.Column{{Name: "id"}, {Name: "name"}}
 	rows := [][]string{{"1", "books"}}
 	var b strings.Builder
-	renderVisibleRows(&b, columns, rows, nil, 20, -1, 0, 1)
+	renderVisibleRows(&b, columns, rows, rowRenderOptions{width: 20, maxRows: -1, activeRow: 0, activeColumn: 1})
 
 	widths := layoutColumns(20, columns, rows)
 	want := theme.ActiveCell.Render(formatCell("books", widths[1]))
