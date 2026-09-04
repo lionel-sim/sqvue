@@ -124,7 +124,7 @@ func renderHelpDialog(m Model) string {
 
 func titledDialog(lines []string, width int, title string) string {
 	titleEdge := "━ " + title + " "
-	top := theme.DialogBorder.Render("┏" + titleEdge + strings.Repeat("━", max(0, width-len(titleEdge))) + "┓")
+	top := theme.DialogBorder.Render("┏" + titleEdge + strings.Repeat("━", max(0, width-ansi.StringWidth(titleEdge))) + "┓")
 	bottom := theme.DialogBorder.Render("┗" + strings.Repeat("━", width) + "┛")
 	for i, line := range lines {
 		lines[i] = theme.DialogBorder.Render("┃") + line + theme.DialogBorder.Render("┃")

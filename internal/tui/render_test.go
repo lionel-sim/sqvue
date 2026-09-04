@@ -105,6 +105,16 @@ func TestHelpRendersAsModalOverCurrentView(t *testing.T) {
 			}
 		}
 	}
+	var borderWidths []int
+	for _, line := range strings.Split(out, "\n") {
+		plain := ansi.Strip(line)
+		if strings.Contains(plain, "┏") || strings.Contains(plain, "┗") {
+			borderWidths = append(borderWidths, ansi.StringWidth(plain))
+		}
+	}
+	if len(borderWidths) != 2 || borderWidths[0] != borderWidths[1] {
+		t.Fatalf("modal border widths = %v, want matching top and bottom widths", borderWidths)
+	}
 }
 
 func strPtr(s string) *string { return &s }
