@@ -2,6 +2,8 @@ package tui
 
 import (
 	"strings"
+
+	"sqvue/internal/db"
 )
 
 const (
@@ -46,7 +48,7 @@ func renderMain(m Model) string {
 	} else if m.activeOverlay == overlayFilter {
 		b.WriteString(m.filterInput.View() + "\n")
 	} else if m.activeOverlay == overlayBrowseFilterOperator {
-		renderBrowseFilterOperatorPicker(&b, m.browseFilterColumn, m.browseFilterCursor)
+		renderBrowseFilterOperatorPicker(&b, m.browseFilterColumn, m.browseFilterCursor, m.browseFilterOperators())
 	} else if m.activeOverlay == overlayBrowseFilter {
 		b.WriteString(m.browseFilterInput.View() + "\n")
 	} else if m.activeOverlay == overlaySchemaPicker {
@@ -68,9 +70,9 @@ func renderMain(m Model) string {
 	return b.String()
 }
 
-func renderBrowseFilterOperatorPicker(b *strings.Builder, column string, cursor int) {
+func renderBrowseFilterOperatorPicker(b *strings.Builder, column string, cursor int, operators []db.FilterOperator) {
 	b.WriteString("Filter " + sanitizeText(column) + " with:\n")
-	for i, operator := range browseFilterOperators {
+	for i, operator := range operators {
 		marker := "  "
 		if i == cursor {
 			marker = "> "

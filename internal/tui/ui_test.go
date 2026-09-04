@@ -310,7 +310,7 @@ func TestGridFilterOperatorPickerAppliesNullFilterImmediately(t *testing.T) {
 	m.rows = [][]string{{"NULL"}}
 	m.pageSize = 2
 	m, _ = update(m, keyMsg("/"))
-	for range 5 {
+	for range 6 {
 		m, _ = update(m, keyMsg("j"))
 	}
 	m, cmd := update(m, tea.KeyMsg{Type: tea.KeyEnter})
@@ -323,6 +323,20 @@ func TestGridFilterOperatorPickerAppliesNullFilterImmediately(t *testing.T) {
 	}
 	if msg := runCmd(cmd); msg != nil {
 		_, _ = update(m, msg)
+	}
+}
+
+func TestBrowseFilterOperatorsIncludeILikeOnlyForPostgres(t *testing.T) {
+	m := testModel()
+	for _, operator := range m.browseFilterOperators() {
+		if operator == db.FilterILike {
+			t.Fatal("ILike available without a PostgreSQL driver")
+		}
+	}
+	m.client = &fakeDriver{}
+	operators := m.browseFilterOperators()
+	if len(operators) != len(standardBrowseFilterOperators)+1 || operators[3] != db.FilterILike {
+		t.Fatalf("Postgres operators = %#v", operators)
 	}
 }
 

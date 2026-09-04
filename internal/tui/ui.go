@@ -399,7 +399,7 @@ func (m Model) openBrowseFilter() (Model, tea.Cmd) {
 	return m, nil
 }
 
-var browseFilterOperators = []db.FilterOperator{
+var standardBrowseFilterOperators = []db.FilterOperator{
 	db.FilterEqual,
 	db.FilterContains,
 	db.FilterLike,
@@ -409,17 +409,25 @@ var browseFilterOperators = []db.FilterOperator{
 	db.FilterIsNotNull,
 }
 
+func (m Model) browseFilterOperators() []db.FilterOperator {
+	operators := append([]db.FilterOperator(nil), standardBrowseFilterOperators...)
+	if m.client != nil && m.client.DbType() == db.DbTypePostgres {
+		operators = append(operators[:3], append([]db.FilterOperator{db.FilterILike}, operators[3:]...)...)
+	}
+	return operators
+}
+
 func (m Model) handleBrowseFilterOperatorKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch {
 	case msg.String() == "esc":
 		m.activeOverlay = overlayNone
 		return m, nil
 	case key.Matches(msg, m.keys.Down):
-		m.browseFilterCursor = min(m.browseFilterCursor+1, len(browseFilterOperators)-1)
+		m.browseFilterCursor = min(m.browseFilterCursor+1, len(m.browseFilterOperators())-1)
 	case key.Matches(msg, m.keys.Up):
 		m.browseFilterCursor = max(0, m.browseFilterCursor-1)
 	case key.Matches(msg, m.keys.Confirm):
-		m.browseFilterOperator = browseFilterOperators[m.browseFilterCursor]
+		m.browseFilterOperator = m.browseFilterOperators()[m.browseFilterCursor]
 		if m.browseFilterOperator == db.FilterIsNull || m.browseFilterOperator == db.FilterIsNotNull {
 			m.browseFilters = append(m.browseFilters, db.RowFilter{Column: m.browseFilterColumn, Operator: m.browseFilterOperator})
 			m.page = 0
@@ -463,6 +471,8 @@ func browseFilterOperatorLabel(operator db.FilterOperator) string {
 		return "contains"
 	case db.FilterLike:
 		return "like"
+	case db.FilterILike:
+		return "ilike"
 	case db.FilterGreater:
 		return ">"
 	case db.FilterLess:

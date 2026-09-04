@@ -116,6 +116,12 @@ func TestBrowseWhereUsesParameterizedOperators(t *testing.T) {
 	}
 }
 
+func TestBrowseWhereRejectsILike(t *testing.T) {
+	if _, _, err := sqliteBrowseWhere([]db.RowFilter{{Column: "name", Operator: db.FilterILike, Value: "ada%"}}); err == nil {
+		t.Fatal("sqliteBrowseWhere() accepted PostgreSQL-only ILIKE")
+	}
+}
+
 func TestDriverRejectsOperationsBeforeConnect(t *testing.T) {
 	driver := New()
 	if _, err := driver.Query(context.Background(), db.Query{SQL: "select 1"}); err == nil {

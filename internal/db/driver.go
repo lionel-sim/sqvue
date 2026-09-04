@@ -88,6 +88,7 @@ const (
 	FilterEqual     FilterOperator = "equal"
 	FilterContains  FilterOperator = "contains"
 	FilterLike      FilterOperator = "like"
+	FilterILike     FilterOperator = "ilike"
 	FilterGreater   FilterOperator = "greater_than"
 	FilterLess      FilterOperator = "less_than"
 	FilterIsNull    FilterOperator = "is_null"

@@ -357,6 +357,9 @@ func postgresBrowseWhere(filters []db.RowFilter) (string, []any, error) {
 		case db.FilterLike:
 			parts = append(parts, "cast("+column+" as text) like "+placeholder)
 			args = append(args, filter.Value)
+		case db.FilterILike:
+			parts = append(parts, "cast("+column+" as text) ilike "+placeholder)
+			args = append(args, filter.Value)
 		case db.FilterGreater:
 			parts = append(parts, column+" > "+placeholder)
 			args = append(args, filter.Value)
