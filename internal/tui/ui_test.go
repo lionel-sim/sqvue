@@ -77,6 +77,26 @@ func TestHelpOverlay(t *testing.T) {
 	}
 }
 
+func TestColumnPickerTogglesColumnsButKeepsOneVisible(t *testing.T) {
+	m := testModel()
+	m.columns = []db.Column{{Name: "id"}, {Name: "email"}}
+	m.visibleColumns = []bool{true, true}
+	m.showColumns = true
+
+	m, _ = m.handleColumnsKey(keyMsg(" "))
+	if m.visibleColumns[0] {
+		t.Fatal("expected first column to be hidden")
+	}
+	m.columnCursor = 1
+	m, _ = m.handleColumnsKey(keyMsg(" "))
+	if !m.visibleColumns[1] {
+		t.Fatal("expected final visible column to remain selected")
+	}
+	if !strings.Contains(m.status, "at least one column") {
+		t.Fatalf("status = %q", m.status)
+	}
+}
+
 func TestHandlersReportErrors(t *testing.T) {
 	m := testModel()
 	got, _ := m.handleTablesLoaded(tablesLoadedMsg{err: errBoom})

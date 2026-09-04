@@ -66,12 +66,16 @@ You can also run directly from source with `make run` or `go run ./...`.
 | `b` / `PgUp`     | Previous page         |
 | `d`              | Show column descriptions |
 | `y`              | Show row values       |
+| `c`              | Choose visible columns |
 | `s`              | Switch schema         |
 | `/`              | Filter table list     |
 | `:`              | Run an SQL query      |
 | `?`              | Show keyboard help    |
 | `r`              | Refresh tables        |
 | `q` / `Esc` / `Ctrl+C` | Quit              |
+
+Press `c` in a row or SQL-result view to open the column picker. Use `j`/`k`
+to choose a column, Space to show or hide it, and Enter or Esc to return.
 
 ## Project layout
 

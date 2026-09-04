@@ -43,7 +43,9 @@ func Render(m Model) string {
 		renderTableList(&b, m.currentSchema(), m.tables, m.selected, m.scroll, m.filterInput.Value())
 	}
 	b.WriteString("\n")
-	if m.sqlMode {
+	if m.showColumns {
+		renderColumnPicker(&b, m.columns, m.visibleColumns, m.columnCursor, m.columnScroll, m.columnPickerHeight())
+	} else if m.sqlMode {
 		b.WriteString(m.sqlInput.View() + "\n")
 	} else if m.filtering {
 		b.WriteString(m.filterInput.View() + "\n")
@@ -54,7 +56,7 @@ func Render(m Model) string {
 	} else if m.mode == modeDescriptions {
 		renderDescriptions(&b, m.tableInfo.Columns, m.width, m.height-reservedRows)
 	} else {
-		renderRows(&b, m.columns, m.rows, m.width, m.height-reservedRows)
+		renderVisibleRows(&b, m.columns, m.rows, m.visibleColumns, m.width, m.height-reservedRows)
 	}
 	padToFooter(&b, m.height)
 	b.WriteString(renderFooter(m))
@@ -144,9 +146,32 @@ func renderSchemaList(b *strings.Builder, schemas []db.Schema, selected int) {
 	}
 }
 
+func renderColumnPicker(b *strings.Builder, columns []db.Column, visible []bool, cursor, offset, maxRows int) {
+	b.WriteString(theme.Title.Render("Visible columns (Space toggle, Enter done)") + "\n")
+	end := min(offset+maxRows, len(columns))
+	for i := offset; i < end; i++ {
+		mark := "[ ]"
+		if i < len(visible) && visible[i] {
+			mark = "[x]"
+		}
+		line := fmt.Sprintf("%s %s", mark, columns[i].Name)
+		if i == cursor {
+			line = theme.Selected.Render("> " + line)
+		} else {
+			line = "  " + line
+		}
+		b.WriteString(line + "\n")
+	}
+}
+
 // renderRows writes the column header and up to maxRows data rows. A negative
 // maxRows (terminal height unknown) shows all rows without clipping.
 func renderRows(b *strings.Builder, columns []db.Column, rows [][]string, width, maxRows int) {
+	renderVisibleRows(b, columns, rows, nil, width, maxRows)
+}
+
+func renderVisibleRows(b *strings.Builder, columns []db.Column, rows [][]string, visible []bool, width, maxRows int) {
+	columns, rows = visibleData(columns, rows, visible)
 	if len(columns) == 0 {
 		b.WriteString("(no rows to display)\n")
 		return
@@ -159,6 +184,32 @@ func renderRows(b *strings.Builder, columns []db.Column, rows [][]string, width,
 		}
 		b.WriteString(formatRow(row, widths) + "\n")
 	}
+}
+
+func visibleData(columns []db.Column, rows [][]string, visible []bool) ([]db.Column, [][]string) {
+	if len(visible) == 0 {
+		return columns, rows
+	}
+	indexes := make([]int, 0, len(columns))
+	for i := range columns {
+		if i < len(visible) && visible[i] {
+			indexes = append(indexes, i)
+		}
+	}
+	filteredColumns := make([]db.Column, len(indexes))
+	filteredRows := make([][]string, len(rows))
+	for i, index := range indexes {
+		filteredColumns[i] = columns[index]
+	}
+	for i, row := range rows {
+		filteredRows[i] = make([]string, 0, len(indexes))
+		for _, index := range indexes {
+			if index < len(row) {
+				filteredRows[i] = append(filteredRows[i], row[index])
+			}
+		}
+	}
+	return filteredColumns, filteredRows
 }
 
 func columnNames(cols []db.Column) []string {

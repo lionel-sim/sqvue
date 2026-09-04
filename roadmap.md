@@ -40,6 +40,7 @@ For each driver:
 
 ## Phase 3 — General TUI capabilities
 
+- [x] Column visibility picker for row and SQL-result views
 - [ ] Export results (CSV, JSON)
 - [ ] Streaming / large-result handling (cursor or fetch-more pagination instead of LIMIT/OFFSET)
 - [ ] Saved connections / connection profiles

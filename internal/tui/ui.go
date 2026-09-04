@@ -45,23 +45,27 @@ type Model struct {
 
 	status string
 
-	page          int
-	pageSize      int
-	loading       bool
-	lastErr       error
-	width         int
-	height        int
-	filterInput   textinput.Model
-	filtering     bool
-	sqlInput      textinput.Model
-	sqlMode       bool
-	queryActive   bool
-	queryRows     [][]string
-	queryDuration int64
-	queryAffected int64
-	rowCounts     map[string]int64
-	help          help.Model
-	showHelp      bool
+	page           int
+	pageSize       int
+	loading        bool
+	lastErr        error
+	width          int
+	height         int
+	filterInput    textinput.Model
+	filtering      bool
+	sqlInput       textinput.Model
+	sqlMode        bool
+	queryActive    bool
+	queryRows      [][]string
+	queryDuration  int64
+	queryAffected  int64
+	rowCounts      map[string]int64
+	visibleColumns []bool
+	showColumns    bool
+	columnCursor   int
+	columnScroll   int
+	help           help.Model
+	showHelp       bool
 
 	keys keymap.Map
 }
@@ -143,6 +147,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	if m.sqlMode {
 		return m.handleSQLKey(msg)
 	}
+	if m.showColumns {
+		return m.handleColumnsKey(msg)
+	}
 	if m.filtering {
 		return m.handleFilterKey(msg)
 	}
@@ -174,6 +181,14 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.sqlMode = true
 		m.sqlInput.Focus()
 		return m, nil
+	case key.Matches(msg, m.keys.Columns):
+		if m.mode == modeValues && len(m.columns) > 0 {
+			m.showColumns = true
+			m.columnCursor = 0
+			m.columnScroll = 0
+			m.status = "choose visible columns"
+		}
+		return m, nil
 	case key.Matches(msg, m.keys.Down):
 		return m.moveSelection(+1)
 	case key.Matches(msg, m.keys.Up):
@@ -187,6 +202,37 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.ShowValues):
 		return m.showValues()
 	}
+	return m, nil
+}
+
+func (m Model) handleColumnsKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch {
+	case msg.String() == "esc" || key.Matches(msg, m.keys.Confirm):
+		m.showColumns = false
+		if m.queryActive {
+			m.setQueryPage()
+		} else if t := m.currentTable(); t != nil {
+			m.setRowsStatus(*t)
+		}
+		return m, nil
+	case key.Matches(msg, m.keys.Quit):
+		return m, tea.Quit
+	case key.Matches(msg, m.keys.Down):
+		if m.columnCursor < len(m.columns)-1 {
+			m.columnCursor++
+		}
+	case key.Matches(msg, m.keys.Up):
+		if m.columnCursor > 0 {
+			m.columnCursor--
+		}
+	case key.Matches(msg, m.keys.Toggle):
+		if m.visibleColumnCount() == 1 && m.visibleColumns[m.columnCursor] {
+			m.status = "at least one column must remain visible"
+			return m, nil
+		}
+		m.visibleColumns[m.columnCursor] = !m.visibleColumns[m.columnCursor]
+	}
+	m.columnScroll = keepInView(m.columnCursor, m.columnScroll, m.columnPickerHeight(), len(m.columns))
 	return m, nil
 }
 
@@ -384,6 +430,7 @@ func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 		return m.fail("rows error", msg.err)
 	}
 	m.columns = msg.columns
+	m.ensureVisibleColumns()
 	m.rows = msg.rows
 	m.lastErr = nil
 	if t := m.currentTable(); t != nil {
@@ -420,6 +467,10 @@ func (m Model) handleQueryLoaded(msg queryLoadedMsg) (Model, tea.Cmd) {
 	m.columns = make([]db.Column, len(msg.result.Columns))
 	for i, name := range msg.result.Columns {
 		m.columns[i] = db.Column{Name: name}
+	}
+	m.visibleColumns = make([]bool, len(m.columns))
+	for i := range m.visibleColumns {
+		m.visibleColumns[i] = true
 	}
 	m.queryRows = make([][]string, len(msg.result.Rows))
 	for i, row := range msg.result.Rows {
@@ -459,6 +510,33 @@ func (m *Model) setRowsStatus(t db.Table) {
 		status += fmt.Sprintf(" of %d", count)
 	}
 	m.status = status + ")"
+}
+
+func (m *Model) ensureVisibleColumns() {
+	if len(m.visibleColumns) == len(m.columns) {
+		return
+	}
+	m.visibleColumns = make([]bool, len(m.columns))
+	for i := range m.visibleColumns {
+		m.visibleColumns[i] = true
+	}
+}
+
+func (m Model) visibleColumnCount() int {
+	count := 0
+	for _, visible := range m.visibleColumns {
+		if visible {
+			count++
+		}
+	}
+	return count
+}
+
+func (m Model) columnPickerHeight() int {
+	if m.height <= 0 {
+		return tableListHeight
+	}
+	return max(1, m.height-reservedRows-1)
 }
 
 func (m Model) handleDescriptionsLoaded(msg descriptionsLoadedMsg) (Model, tea.Cmd) {

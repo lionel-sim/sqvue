@@ -64,4 +64,16 @@ func TestRenderFooterStaysOnBottomLine(t *testing.T) {
 	}
 }
 
+func TestVisibleDataHidesUncheckedColumns(t *testing.T) {
+	columns := []db.Column{{Name: "id"}, {Name: "email"}, {Name: "password_hash"}}
+	rows := [][]string{{"1", "a@example.com", "secret"}}
+	gotColumns, gotRows := visibleData(columns, rows, []bool{true, true, false})
+	if len(gotColumns) != 2 || gotColumns[1].Name != "email" {
+		t.Fatalf("columns = %#v", gotColumns)
+	}
+	if len(gotRows) != 1 || strings.Join(gotRows[0], ",") != "1,a@example.com" {
+		t.Fatalf("rows = %#v", gotRows)
+	}
+}
+
 func strPtr(s string) *string { return &s }

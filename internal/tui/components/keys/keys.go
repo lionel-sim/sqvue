@@ -17,6 +17,8 @@ type Map struct {
 	Confirm          key.Binding
 	Help             key.Binding
 	SQL              key.Binding
+	Columns          key.Binding
+	Toggle           key.Binding
 }
 
 // Default returns the default key bindings for navigation and quitting.
@@ -74,13 +76,21 @@ func Default() Map {
 			key.WithKeys(":"),
 			key.WithHelp(":", "run SQL"),
 		),
+		Columns: key.NewBinding(
+			key.WithKeys("c"),
+			key.WithHelp("c", "choose columns"),
+		),
+		Toggle: key.NewBinding(
+			key.WithKeys(" "),
+			key.WithHelp("space", "toggle"),
+		),
 	}
 }
 
 func (m Map) ShortHelp() []key.Binding {
-	return []key.Binding{m.Help, m.SQL, m.Schema, m.Filter, m.ShowDescriptions, m.Quit}
+	return []key.Binding{m.Help, m.SQL, m.Columns, m.Schema, m.Filter, m.Quit}
 }
 
 func (m Map) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{m.Up, m.Down, m.PageUp, m.PageDown}, {m.SQL, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
+	return [][]key.Binding{{m.Up, m.Down, m.PageUp, m.PageDown}, {m.SQL, m.Columns, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
 }
