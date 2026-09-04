@@ -21,7 +21,7 @@ const (
 
 // Render composes the active sqvue screen.
 func Render(m Model) string {
-	if m.showHelp {
+	if m.activeOverlay == overlayHelp {
 		return renderHelpModal(m)
 	}
 	return renderMain(m)
@@ -30,19 +30,19 @@ func Render(m Model) string {
 func renderMain(m Model) string {
 	var b strings.Builder
 
-	if m.showSchemas {
+	if m.activeOverlay == overlaySchemaPicker {
 		renderSchemaList(&b, m.schemas, m.schemaCursor, m.schemaScroll)
 	} else {
 		renderTableList(&b, m.currentSchema(), m.tables, m.selected, m.scroll, m.filterInput.Value())
 	}
 	b.WriteString("\n")
-	if m.showColumns {
+	if m.activeOverlay == overlayColumnPicker {
 		renderColumnPicker(&b, m.columns, m.visibleColumns, m.columnCursor, m.columnScroll, m.columnPickerHeight())
-	} else if m.sqlMode {
+	} else if m.activeOverlay == overlaySQL {
 		b.WriteString(m.sqlInput.View() + "\n")
-	} else if m.filtering {
+	} else if m.activeOverlay == overlayFilter {
 		b.WriteString(m.filterInput.View() + "\n")
-	} else if m.showSchemas {
+	} else if m.activeOverlay == overlaySchemaPicker {
 		b.WriteString("Use j/k to choose a schema, then Enter to load its tables.\n")
 	} else if m.loading {
 		b.WriteString("Loading...\n")

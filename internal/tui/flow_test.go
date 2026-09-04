@@ -219,7 +219,7 @@ func TestSchemaSelectionLoadsSelectedSchema(t *testing.T) {
 		t.Fatalf("initial schema = %q, want public", f.lastSchema)
 	}
 
-	m.showSchemas = true
+	m.activeOverlay = overlaySchemaPicker
 	m.schema = 0
 	m, cmd = update(m, tea.KeyMsg{Type: tea.KeyEnter})
 	if msg := runCmd(cmd); msg != nil {
@@ -253,7 +253,7 @@ func TestSQLQueryPagesResults(t *testing.T) {
 	}}
 	m := New(Options{Client: f, Timeout: time.Second})
 	m.pageSize = 2
-	m.sqlMode = true
+	m.activeOverlay = overlaySQL
 	m.sqlInput.SetValue("select * from things")
 	m, cmd := m.handleSQLKey(tea.KeyMsg{Type: tea.KeyEnter})
 	if msg := runCmd(cmd); msg != nil {

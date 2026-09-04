@@ -10,7 +10,7 @@ import (
 
 func renderHelpModal(m Model) string {
 	background := m
-	background.showHelp = false
+	background.activeOverlay = overlayNone
 	base := renderMain(background)
 	if m.width <= 0 || m.height <= 0 {
 		return renderHelpDialog(m)

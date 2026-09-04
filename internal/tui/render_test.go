@@ -115,7 +115,7 @@ func TestHelpRendersAsModalOverCurrentView(t *testing.T) {
 	m.width = 100
 	m.height = 20
 	m.status = "public.accounts page 1"
-	m.showHelp = true
+	m.activeOverlay = overlayHelp
 
 	out := m.View()
 	if !strings.Contains(out, "Keyboard shortcuts") {

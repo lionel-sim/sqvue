@@ -65,14 +65,14 @@ func TestUpdateQuitKey(t *testing.T) {
 func TestHelpOverlay(t *testing.T) {
 	m := testModel()
 	m, _ = update(m, keyMsg("?"))
-	if !m.showHelp {
+	if m.activeOverlay != overlayHelp {
 		t.Fatal("expected help overlay to open")
 	}
 	if got := m.View(); !strings.Contains(got, "Keyboard shortcuts") {
 		t.Fatalf("help overlay missing heading: %q", got)
 	}
 	m, _ = update(m, keyMsg("x"))
-	if m.showHelp {
+	if m.activeOverlay != overlayNone {
 		t.Fatal("expected any key to close help overlay")
 	}
 }
@@ -81,7 +81,7 @@ func TestColumnPickerTogglesColumnsButKeepsOneVisible(t *testing.T) {
 	m := testModel()
 	m.columns = []db.Column{{Name: "id"}, {Name: "email"}}
 	m.visibleColumns = []bool{true, true}
-	m.showColumns = true
+	m.activeOverlay = overlayColumnPicker
 
 	m, _ = m.handleColumnsKey(keyMsg(" "))
 	if m.visibleColumns[0] {
@@ -112,7 +112,7 @@ func TestSchemaCancelKeepsCommittedSchema(t *testing.T) {
 	m.schemas = []db.Schema{{Name: "public"}, {Name: "analytics"}}
 	m.schema = 0
 	m.schemaCursor = 0
-	m.showSchemas = true
+	m.activeOverlay = overlaySchemaPicker
 	m, _ = m.handleSchemaKey(keyMsg("j"))
 	m, _ = m.handleSchemaKey(tea.KeyMsg{Type: tea.KeyEsc})
 	if m.schema != 0 || m.currentSchema() != "public" {
@@ -133,7 +133,7 @@ func TestColumnVisibilityResetsForDifferentTable(t *testing.T) {
 
 func TestFilterCancelRestoresPreviousFilter(t *testing.T) {
 	m := testModel()
-	m.filtering = true
+	m.activeOverlay = overlayFilter
 	m.filterPrevious = "accounts"
 	m.filterInput.SetValue("events")
 	m, _ = m.handleFilterKey(tea.KeyMsg{Type: tea.KeyEsc})

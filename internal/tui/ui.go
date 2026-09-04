@@ -27,54 +27,88 @@ const (
 )
 
 type Model struct {
-	client       db.Driver
-	timeout      time.Duration
+	client  db.Driver
+	timeout time.Duration
+
+	browserState
+	resultState
+	overlayState
+	viewportState
+	loadState
+	keys keymap.Map
+}
+
+// browserState owns schema and table navigation.
+type browserState struct {
 	schemas      []db.Schema
 	schema       int
-	showSchemas  bool
 	schemaCursor int
 	schemaScroll int
 	allTables    []db.Table
 	tables       []db.Table
 	selected     int
 	scroll       int
-	mode         viewMode
+}
 
-	columns []db.Column
-	rows    [][]string
-
-	tableInfo db.TableInfo
-
-	status string
-
+// resultState owns the currently displayed data and its pagination.
+type resultState struct {
+	mode             viewMode
+	columns          []db.Column
+	rows             [][]string
+	tableInfo        db.TableInfo
 	page             int
 	pageSize         int
 	hasNextPage      bool
-	loading          bool
-	lastErr          error
-	width            int
-	height           int
-	filterInput      textinput.Model
-	filtering        bool
-	filterPrevious   string
-	sqlInput         textinput.Model
-	sqlMode          bool
-	queryActive      bool
-	queryRows        [][]string
-	queryDuration    int64
-	queryAffected    int64
-	queryTruncated   bool
 	rowCounts        map[string]int64
 	visibleColumns   []bool
-	showColumns      bool
-	columnCursor     int
-	columnScroll     int
 	visibleColumnKey string
-	help             help.Model
-	showHelp         bool
-	loadID           uint64
+	queryState
+}
 
-	keys keymap.Map
+// queryState retains an ad-hoc query result so it can be paged locally.
+type queryState struct {
+	queryActive    bool
+	queryRows      [][]string
+	queryDuration  int64
+	queryAffected  int64
+	queryTruncated bool
+}
+
+// overlayMode identifies the sole interactive overlay that can be active.
+type overlayMode uint8
+
+const (
+	overlayNone overlayMode = iota
+	overlayHelp
+	overlaySchemaPicker
+	overlayFilter
+	overlaySQL
+	overlayColumnPicker
+)
+
+// overlayState owns transient inputs, pickers, and the help modal.
+type overlayState struct {
+	activeOverlay  overlayMode
+	filterInput    textinput.Model
+	filterPrevious string
+	sqlInput       textinput.Model
+	help           help.Model
+	columnCursor   int
+	columnScroll   int
+}
+
+// viewportState stores the most recent terminal dimensions.
+type viewportState struct {
+	width  int
+	height int
+}
+
+// loadState tracks asynchronous work and its user-facing outcome.
+type loadState struct {
+	status  string
+	loading bool
+	lastErr error
+	loadID  uint64
 }
 
 func New(opts Options) Model {
@@ -86,16 +120,22 @@ func New(opts Options) Model {
 	sql.Placeholder = "SELECT * FROM ..."
 	sql.CharLimit = 0
 	return Model{
-		client:      opts.Client,
-		timeout:     opts.Timeout,
-		status:      "loading tables...",
-		pageSize:    maxPageSize,
-		loading:     true,
-		keys:        keymap.Default(),
-		filterInput: filter,
-		sqlInput:    sql,
-		rowCounts:   make(map[string]int64),
-		help:        help.New(),
+		client:  opts.Client,
+		timeout: opts.Timeout,
+		resultState: resultState{
+			pageSize:  maxPageSize,
+			rowCounts: make(map[string]int64),
+		},
+		overlayState: overlayState{
+			filterInput: filter,
+			sqlInput:    sql,
+			help:        help.New(),
+		},
+		loadState: loadState{
+			status:  "loading tables...",
+			loading: true,
+		},
+		keys: keymap.Default(),
 	}
 }
 
@@ -147,25 +187,22 @@ func (m Model) computedPageSize() int {
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
-	if m.showHelp {
-		m.showHelp = false
+	switch m.activeOverlay {
+	case overlayHelp:
+		m.activeOverlay = overlayNone
 		return m, nil
-	}
-	if m.sqlMode {
+	case overlaySQL:
 		return m.handleSQLKey(msg)
-	}
-	if m.showColumns {
+	case overlayColumnPicker:
 		return m.handleColumnsKey(msg)
-	}
-	if m.filtering {
+	case overlayFilter:
 		return m.handleFilterKey(msg)
-	}
-	if m.showSchemas {
+	case overlaySchemaPicker:
 		return m.handleSchemaKey(msg)
 	}
 	switch {
 	case key.Matches(msg, m.keys.Help):
-		m.showHelp = true
+		m.activeOverlay = overlayHelp
 		return m, nil
 	case key.Matches(msg, m.keys.Quit):
 		return m, tea.Quit
@@ -176,7 +213,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, loadTablesCmd(m.client, m.currentSchema(), m.timeout, requestID)
 	case key.Matches(msg, m.keys.Schema):
 		if len(m.schemas) > 0 {
-			m.showSchemas = true
+			m.activeOverlay = overlaySchemaPicker
 			m.schemaCursor = m.schema
 			m.schemaScroll = keepInView(m.schemaCursor, m.schemaScroll, tableListHeight, len(m.schemas))
 			m.status = "select a schema"
@@ -184,16 +221,16 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 	case key.Matches(msg, m.keys.Filter):
 		m.filterPrevious = m.filterInput.Value()
-		m.filtering = true
+		m.activeOverlay = overlayFilter
 		m.filterInput.Focus()
 		return m, nil
 	case key.Matches(msg, m.keys.SQL):
-		m.sqlMode = true
+		m.activeOverlay = overlaySQL
 		m.sqlInput.Focus()
 		return m, nil
 	case key.Matches(msg, m.keys.Columns):
 		if m.mode == modeValues && len(m.columns) > 0 {
-			m.showColumns = true
+			m.activeOverlay = overlayColumnPicker
 			m.columnCursor = 0
 			m.columnScroll = 0
 			m.status = "choose visible columns"
@@ -218,7 +255,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 func (m Model) handleColumnsKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch {
 	case msg.String() == "esc" || key.Matches(msg, m.keys.Confirm):
-		m.showColumns = false
+		m.activeOverlay = overlayNone
 		if m.queryActive {
 			m.setQueryPage()
 		} else if t := m.currentTable(); t != nil {
@@ -248,7 +285,7 @@ func (m Model) handleColumnsKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 func (m Model) handleSQLKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	if msg.String() == "esc" {
-		m.sqlMode = false
+		m.activeOverlay = overlayNone
 		m.sqlInput.Blur()
 		return m, nil
 	}
@@ -257,7 +294,7 @@ func (m Model) handleSQLKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if sql == "" {
 			return m, nil
 		}
-		m.sqlMode = false
+		m.activeOverlay = overlayNone
 		m.sqlInput.Blur()
 		m.loading = true
 		m.status = "running query..."
@@ -274,7 +311,7 @@ func (m Model) handleFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if msg.String() == "esc" {
 			m.filterInput.SetValue(m.filterPrevious)
 		}
-		m.filtering = false
+		m.activeOverlay = overlayNone
 		m.filterInput.Blur()
 		m.applyFilter()
 		return m.startLoad()
@@ -288,7 +325,7 @@ func (m Model) handleFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 func (m Model) handleSchemaKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch {
 	case msg.String() == "esc":
-		m.showSchemas = false
+		m.activeOverlay = overlayNone
 		m.status = fmt.Sprintf("schema %s", m.currentSchema())
 		return m, nil
 	case key.Matches(msg, m.keys.Quit):
@@ -307,7 +344,7 @@ func (m Model) handleSchemaKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 	case key.Matches(msg, m.keys.Confirm):
 		m.schema = m.schemaCursor
-		m.showSchemas = false
+		m.activeOverlay = overlayNone
 		m.selected, m.scroll, m.page = 0, 0, 0
 		m.filterInput.SetValue("")
 		m.applyFilter()
