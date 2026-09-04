@@ -69,8 +69,9 @@ type resultState struct {
 
 // gridState tracks whether keyboard input is directed at the displayed rows.
 type gridState struct {
-	focused   bool
-	rowCursor int
+	focused    bool
+	rowCursor  int
+	cellCursor int
 }
 
 // queryState retains an ad-hoc query result so it can be paged locally.
@@ -289,6 +290,10 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 			return m.changeGridPage(-1)
 		}
 		return m.moveGridRow(-1), nil
+	case key.Matches(msg, m.keys.Right):
+		return m.moveGridColumn(+1), nil
+	case key.Matches(msg, m.keys.Left):
+		return m.moveGridColumn(-1), nil
 	case key.Matches(msg, m.keys.HalfPageDown):
 		return m.moveGridRow(max(1, len(m.rows)/2)), nil
 	case key.Matches(msg, m.keys.HalfPageUp):
@@ -323,6 +328,11 @@ func (m Model) changeGridPage(delta int) (Model, tea.Cmd) {
 
 func (m Model) moveGridRow(delta int) Model {
 	m.rowCursor = clamp(m.rowCursor+delta, 0, max(0, len(m.rows)-1))
+	return m
+}
+
+func (m Model) moveGridColumn(delta int) Model {
+	m.cellCursor = clamp(m.cellCursor+delta, 0, max(0, m.displayedColumnCount()-1))
 	return m
 }
 
@@ -458,6 +468,7 @@ func (m Model) moveSelection(delta int) (Model, tea.Cmd) {
 	m.scroll = keepInView(m.selected, m.scroll, tableListHeight, len(m.tables))
 	m.page = 0
 	m.rowCursor = 0
+	m.cellCursor = 0
 	return m.startLoad()
 }
 
@@ -516,6 +527,7 @@ func (m Model) handleTablesLoaded(msg tablesLoadedMsg) (Model, tea.Cmd) {
 		m.scroll = 0
 		m.page = 0
 		m.rowCursor = 0
+		m.cellCursor = 0
 		m.mode = modeValues
 		return m.startLoadRows()
 	}
@@ -587,6 +599,7 @@ func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 	if m.rowCursor >= len(m.rows) {
 		m.rowCursor = max(0, len(m.rows)-1)
 	}
+	m.cellCursor = clamp(m.cellCursor, 0, max(0, m.displayedColumnCount()-1))
 	m.lastErr = nil
 	if t := m.currentTable(); t != nil {
 		m.setRowsStatus(*t)
@@ -624,6 +637,7 @@ func (m Model) handleQueryLoaded(msg queryLoadedMsg) (Model, tea.Cmd) {
 	m.mode = modeValues
 	m.page = 0
 	m.rowCursor = 0
+	m.cellCursor = 0
 	m.queryDuration = msg.result.DurationMs
 	m.queryAffected = msg.result.RowsAffected
 	m.queryTruncated = msg.result.Truncated
@@ -698,6 +712,13 @@ func (m Model) visibleColumnCount() int {
 		}
 	}
 	return count
+}
+
+func (m Model) displayedColumnCount() int {
+	if len(m.visibleColumns) == 0 {
+		return len(m.columns)
+	}
+	return m.visibleColumnCount()
 }
 
 func (m Model) columnPickerHeight() int {

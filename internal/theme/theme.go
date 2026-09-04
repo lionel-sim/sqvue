@@ -20,6 +20,10 @@ var (
 			Bold(true).
 			Foreground(Palette["cyan"]).
 			Background(Palette["charcoal"])
+	ActiveCell = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(Palette["charcoal"]).
+			Background(Palette["light_blue"])
 	Muted  = lipgloss.NewStyle().Foreground(Palette["gray"])
 	Error  = lipgloss.NewStyle().Foreground(Palette["pink"])
 	Status = lipgloss.NewStyle().Foreground(Palette["light_blue"])

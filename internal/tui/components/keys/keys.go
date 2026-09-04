@@ -8,6 +8,8 @@ type Map struct {
 	Refresh          key.Binding
 	Up               key.Binding
 	Down             key.Binding
+	Left             key.Binding
+	Right            key.Binding
 	PageUp           key.Binding
 	PageDown         key.Binding
 	HalfPageUp       key.Binding
@@ -43,6 +45,14 @@ func Default() Map {
 		Down: key.NewBinding(
 			key.WithKeys("j", "down"),
 			key.WithHelp("j/↓", "down"),
+		),
+		Left: key.NewBinding(
+			key.WithKeys("h", "left"),
+			key.WithHelp("h/←", "left"),
+		),
+		Right: key.NewBinding(
+			key.WithKeys("l", "right"),
+			key.WithHelp("l/→", "right"),
 		),
 		PageUp: key.NewBinding(
 			key.WithKeys("pgup", "b"),
@@ -112,5 +122,5 @@ func (m Map) ShortHelp() []key.Binding {
 }
 
 func (m Map) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{m.Up, m.Down, m.PageUp, m.PageDown, m.HalfPageUp, m.HalfPageDown, m.FirstRow, m.LastRow}, {m.SQL, m.Columns, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
+	return [][]key.Binding{{m.Up, m.Down, m.Left, m.Right, m.PageUp, m.PageDown, m.HalfPageUp, m.HalfPageDown, m.FirstRow, m.LastRow}, {m.SQL, m.Columns, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
 }

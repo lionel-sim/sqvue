@@ -125,6 +125,7 @@ or Postgres password file instead.
 | `k` / `↑`        | Previous table or active row |
 | `Ctrl+D` / `Ctrl+U` | Half page down / up in focused rows |
 | `g` / `G`        | First / last focused row |
+| `h` / `←` and `l` / `→` | Previous / next cell in focused rows |
 | `f` / `PgDn`     | Next page             |
 | `b` / `PgUp`     | Previous page         |
 | `d`              | Show column descriptions |

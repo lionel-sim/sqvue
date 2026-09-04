@@ -150,6 +150,26 @@ func TestGridNavigationCrossesPageBoundaries(t *testing.T) {
 	}
 }
 
+func TestGridNavigationMovesActiveCellAcrossVisibleColumns(t *testing.T) {
+	m := testModel()
+	m.focused = true
+	m.columns = []db.Column{{Name: "id"}, {Name: "hidden"}, {Name: "name"}}
+	m.visibleColumns = []bool{true, false, true}
+
+	m, _ = update(m, keyMsg("l"))
+	if m.cellCursor != 1 {
+		t.Fatalf("l moved to column %d, want 1", m.cellCursor)
+	}
+	m, _ = update(m, keyMsg("l"))
+	if m.cellCursor != 1 {
+		t.Fatalf("cursor moved beyond visible columns: %d", m.cellCursor)
+	}
+	m, _ = update(m, keyMsg("h"))
+	if m.cellCursor != 0 {
+		t.Fatalf("h moved to column %d, want 0", m.cellCursor)
+	}
+}
+
 func TestHelpOverlay(t *testing.T) {
 	m := testModel()
 	m, _ = update(m, keyMsg("?"))

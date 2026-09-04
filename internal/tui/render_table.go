@@ -12,10 +12,10 @@ import (
 // renderRows writes the column header and up to maxRows data rows. A negative
 // maxRows (terminal height unknown) shows all rows without clipping.
 func renderRows(b *strings.Builder, columns []db.Column, rows [][]string, width, maxRows int) {
-	renderVisibleRows(b, columns, rows, nil, width, maxRows, -1)
+	renderVisibleRows(b, columns, rows, nil, width, maxRows, -1, -1)
 }
 
-func renderVisibleRows(b *strings.Builder, columns []db.Column, rows [][]string, visible []bool, width, maxRows, activeRow int) {
+func renderVisibleRows(b *strings.Builder, columns []db.Column, rows [][]string, visible []bool, width, maxRows, activeRow, activeColumn int) {
 	columns, rows = visibleData(columns, rows, visible)
 	if len(columns) == 0 {
 		b.WriteString("(no rows to display)\n")
@@ -29,10 +29,23 @@ func renderVisibleRows(b *strings.Builder, columns []db.Column, rows [][]string,
 		}
 		line := formatRow(row, widths)
 		if i == activeRow {
-			line = theme.ActiveRow.Render(line)
+			line = formatActiveRow(row, widths, activeColumn)
 		}
 		b.WriteString(line + "\n")
 	}
+}
+
+func formatActiveRow(cells []string, widths []int, activeColumn int) string {
+	parts := make([]string, len(cells))
+	for i, cell := range cells {
+		part := formatCell(cell, widths[i])
+		if i == activeColumn {
+			parts[i] = theme.ActiveCell.Render(part)
+		} else {
+			parts[i] = theme.ActiveRow.Render(part)
+		}
+	}
+	return strings.Join(parts, colSep)
 }
 
 func visibleData(columns []db.Column, rows [][]string, visible []bool) ([]db.Column, [][]string) {
