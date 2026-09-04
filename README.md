@@ -134,7 +134,7 @@ or Postgres password file instead.
 | `s`              | Switch schema         |
 | `/`              | Filter table list     |
 | `:`              | Run an SQL query      |
-| `Enter`          | Focus displayed rows  |
+| `Enter`          | Focus displayed rows, or show selected-row details |
 | `?`              | Show keyboard help    |
 | `r`              | Refresh tables        |
 | `Esc`            | Return from rows to table picker, or quit |

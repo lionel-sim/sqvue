@@ -51,7 +51,7 @@ For each driver:
   - [x] Navigate rows with `j`/`k`, arrow keys, `Ctrl-d`/`Ctrl-u`, and `g`/`G`
   - [x] Keep the selected row visible while scrolling and when visible columns change
   - [x] Navigate cells left and right, highlighting the active cell
-  - [ ] Open a row-detail popup with full, untruncated values
+  - [x] Open a row-detail popup with full, untruncated values
   - [ ] Copy the active cell (`y`) or whole row (`Y`)
   - [ ] Follow a foreign-key cell to its referenced table or row when possible
 - [ ] Export results (CSV, JSON)

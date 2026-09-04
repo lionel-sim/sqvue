@@ -93,6 +93,7 @@ const (
 	overlayFilter
 	overlaySQL
 	overlayColumnPicker
+	overlayRowDetail
 )
 
 // overlayState owns transient inputs, pickers, and the help modal.
@@ -104,6 +105,7 @@ type overlayState struct {
 	help           help.Model
 	columnCursor   int
 	columnScroll   int
+	detailScroll   int
 }
 
 // viewportState stores the most recent terminal dimensions.
@@ -210,6 +212,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.handleSQLKey(msg)
 	case overlayColumnPicker:
 		return m.handleColumnsKey(msg)
+	case overlayRowDetail:
+		return m.handleRowDetailKey(msg)
 	case overlayFilter:
 		return m.handleFilterKey(msg)
 	case overlaySchemaPicker:
@@ -226,6 +230,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		}
 		return m, tea.Quit
 	case key.Matches(msg, m.keys.Confirm):
+		if m.focused {
+			m.activeOverlay = overlayRowDetail
+			m.detailScroll = 0
+			return m, nil
+		}
 		if m.mode == modeValues && len(m.rows) > 0 {
 			m.focused = true
 		}
@@ -274,6 +283,21 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.showDescriptions()
 	case key.Matches(msg, m.keys.ShowValues):
 		return m.showValues()
+	}
+	return m, nil
+}
+
+func (m Model) handleRowDetailKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch {
+	case msg.String() == "esc" || key.Matches(msg, m.keys.Confirm):
+		m.activeOverlay = overlayNone
+		return m, nil
+	case key.Matches(msg, m.keys.Quit):
+		return m, tea.Quit
+	case key.Matches(msg, m.keys.Down):
+		m.detailScroll = min(m.detailScroll+1, m.maxDetailScroll())
+	case key.Matches(msg, m.keys.Up):
+		m.detailScroll = max(0, m.detailScroll-1)
 	}
 	return m, nil
 }

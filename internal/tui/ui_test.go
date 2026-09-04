@@ -170,6 +170,36 @@ func TestGridNavigationMovesActiveCellAcrossVisibleColumns(t *testing.T) {
 	}
 }
 
+func TestEnterOpensAndClosesRowDetails(t *testing.T) {
+	m := testModel()
+	m.focused = true
+	m.rows = [][]string{{"1"}}
+	m.columns = []db.Column{{Name: "id"}}
+
+	m, _ = update(m, tea.KeyMsg{Type: tea.KeyEnter})
+	if m.activeOverlay != overlayRowDetail {
+		t.Fatalf("overlay after Enter = %v, want row details", m.activeOverlay)
+	}
+	m, _ = update(m, tea.KeyMsg{Type: tea.KeyEsc})
+	if m.activeOverlay != overlayNone {
+		t.Fatalf("overlay after Esc = %v, want none", m.activeOverlay)
+	}
+}
+
+func TestRowDetailsScroll(t *testing.T) {
+	m := testModel()
+	m.width = 40
+	m.height = 5
+	m.activeOverlay = overlayRowDetail
+	m.rows = [][]string{{"1", "2", "3"}}
+	m.columns = []db.Column{{Name: "id"}, {Name: "parent_id"}, {Name: "name"}}
+
+	m, _ = update(m, keyMsg("j"))
+	if m.detailScroll != 1 {
+		t.Fatalf("detail scroll = %d, want 1", m.detailScroll)
+	}
+}
+
 func TestHelpOverlay(t *testing.T) {
 	m := testModel()
 	m, _ = update(m, keyMsg("?"))

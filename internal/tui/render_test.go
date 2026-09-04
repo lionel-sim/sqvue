@@ -58,6 +58,25 @@ func TestRenderVisibleRowsHighlightsActiveCell(t *testing.T) {
 	}
 }
 
+func TestRenderRowDetailShowsFullValue(t *testing.T) {
+	m := testModel()
+	m.width = 60
+	m.height = 20
+	m.rows = [][]string{{"a complete customer account name"}}
+	m.columns = []db.Column{{Name: "name"}}
+
+	out := ansi.Strip(renderRowDetailModal(m))
+	if !strings.Contains(out, "name: a complete customer account name") {
+		t.Fatalf("row details missing full value:\n%s", out)
+	}
+}
+
+func TestWrapDetailValueWrapsLongValues(t *testing.T) {
+	if got := strings.Join(wrapDetailValue("abcdef", 3), ","); got != "abc,def" {
+		t.Fatalf("wrapped value = %q", got)
+	}
+}
+
 func TestRenderDescriptions(t *testing.T) {
 	cols := []db.Column{
 		{Name: "id", DataType: "integer", IsPrimary: true},

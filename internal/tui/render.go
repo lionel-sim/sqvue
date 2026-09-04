@@ -21,8 +21,11 @@ const (
 
 // Render composes the active sqvue screen.
 func Render(m Model) string {
-	if m.activeOverlay == overlayHelp {
+	switch m.activeOverlay {
+	case overlayHelp:
 		return renderHelpModal(m)
+	case overlayRowDetail:
+		return renderRowDetailModal(m)
 	}
 	return renderMain(m)
 }
