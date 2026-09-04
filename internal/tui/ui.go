@@ -60,6 +60,7 @@ type Model struct {
 	queryRows      [][]string
 	queryDuration  int64
 	queryAffected  int64
+	queryTruncated bool
 	rowCounts      map[string]int64
 	visibleColumns []bool
 	showColumns    bool
@@ -472,6 +473,7 @@ func (m Model) handleQueryLoaded(msg queryLoadedMsg) (Model, tea.Cmd) {
 	m.page = 0
 	m.queryDuration = msg.result.DurationMs
 	m.queryAffected = msg.result.RowsAffected
+	m.queryTruncated = msg.result.Truncated
 	m.columns = make([]db.Column, len(msg.result.Columns))
 	for i, name := range msg.result.Columns {
 		m.columns[i] = db.Column{Name: name}
@@ -510,6 +512,9 @@ func (m *Model) setQueryPage() {
 	end := min(start+m.pageSize, len(m.queryRows))
 	m.rows = m.queryRows[start:end]
 	m.status = fmt.Sprintf("query page %d (%d/%d rows, %d ms, %d affected)", m.page+1, len(m.rows), len(m.queryRows), m.queryDuration, m.queryAffected)
+	if m.queryTruncated {
+		m.status += " [limited to 1000 rows]"
+	}
 }
 
 func (m *Model) setRowsStatus(t db.Table) {

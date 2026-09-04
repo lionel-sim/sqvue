@@ -16,6 +16,7 @@ type ConnectConfig struct {
 	User     string
 	Password string
 	Database string
+	SSLMode  string
 }
 
 type Driver interface {
@@ -73,6 +74,7 @@ type Result struct {
 	Rows         [][]any
 	RowsAffected int64
 	DurationMs   int64
+	Truncated    bool
 }
 
 func NewClient(ctx context.Context, connString string) (Driver, error) {

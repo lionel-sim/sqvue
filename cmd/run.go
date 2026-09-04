@@ -24,6 +24,7 @@ var (
 	userFlag     string
 	passwordFlag string
 	databaseFlag string
+	sslModeFlag  string
 )
 
 func init() {
@@ -33,6 +34,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&userFlag, "user", "postgres", "Postgres user")
 	rootCmd.PersistentFlags().StringVar(&passwordFlag, "password", "", "Postgres password")
 	rootCmd.PersistentFlags().StringVar(&databaseFlag, "db", "", "Postgres database")
+	rootCmd.PersistentFlags().StringVar(&sslModeFlag, "sslmode", "require", "Postgres TLS mode (disable, require, verify-ca, verify-full)")
 	rootCmd.PersistentFlags().DurationVar(&timeoutFlag, "timeout", 5*time.Second, "query timeout")
 
 	rootCmd.RunE = run
@@ -46,6 +48,7 @@ func run(cmd *cobra.Command, args []string) error {
 		User:       userFlag,
 		Password:   passwordFlag,
 		Database:   databaseFlag,
+		SSLMode:    sslModeFlag,
 		Timeout:    timeoutFlag,
 	}
 	if err := cfg.Validate(); err != nil {
@@ -63,6 +66,7 @@ func run(cmd *cobra.Command, args []string) error {
 		User:     cfg.User,
 		Password: cfg.Password,
 		Database: cfg.Database,
+		SSLMode:  cfg.SSLMode,
 	})
 	if err != nil {
 		return fmt.Errorf("connect: %w", err)

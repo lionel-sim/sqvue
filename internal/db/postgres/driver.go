@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
+	"net/url"
 	"sqvue/internal/db"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -17,22 +20,50 @@ type Driver struct {
 	pool *pgxpool.Pool
 }
 
+const maxQueryRows = 1_000
+
 func New() *Driver                  { return &Driver{} }
 func (d *Driver) DbType() db.DbType { return db.DbTypePostgres }
 
 func (d *Driver) Connect(ctx context.Context, cfg db.ConnectConfig) error {
-	dsn := cfg.DSN
-	if dsn == "" {
-		dsn = fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable",
-			cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Database,
-		)
-	}
-	pool, err := pgxpool.New(ctx, dsn)
+	poolConfig, err := poolConfig(cfg)
 	if err != nil {
 		return err
 	}
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	if err != nil {
+		return err
+	}
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		return err
+	}
+	oldPool := d.pool
 	d.pool = pool
+	if oldPool != nil {
+		oldPool.Close()
+	}
 	return nil
+}
+
+func poolConfig(cfg db.ConnectConfig) (*pgxpool.Config, error) {
+	if cfg.DSN != "" {
+		return pgxpool.ParseConfig(cfg.DSN)
+	}
+	sslMode := cfg.SSLMode
+	if sslMode == "" {
+		sslMode = "require"
+	}
+	u := &url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(cfg.User, cfg.Password),
+		Host:   net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),
+		Path:   "/" + cfg.Database,
+	}
+	query := u.Query()
+	query.Set("sslmode", sslMode)
+	u.RawQuery = query.Encode()
+	return pgxpool.ParseConfig(u.String())
 }
 
 func (d *Driver) Close() error {
@@ -138,6 +169,7 @@ func (d *Driver) Query(ctx context.Context, q db.Query) (db.Result, error) {
 	}
 
 	var out [][]any
+	truncated := false
 	values := make([]any, len(columns))
 	scanTargets := make([]any, len(columns))
 	for i := range values {
@@ -151,17 +183,24 @@ func (d *Driver) Query(ctx context.Context, q db.Query) (db.Result, error) {
 		row := make([]any, len(values))
 		copy(row, values)
 		out = append(out, row)
+		if len(out) > maxQueryRows {
+			out = out[:maxQueryRows]
+			truncated = true
+			break
+		}
 	}
 
 	rowsAffected := rows.CommandTag().RowsAffected()
 	durationMs := time.Since(start).Milliseconds()
 
-	return db.Result{
+	result := db.Result{
 		Columns:      columns,
 		Rows:         out,
 		RowsAffected: rowsAffected,
 		DurationMs:   durationMs,
-	}, rows.Err()
+		Truncated:    truncated,
+	}
+	return result, rows.Err()
 }
 
 func (d *Driver) Rows(ctx context.Context, tbl db.Table, limit, offset int) ([]db.Column, [][]string, error) {
@@ -175,7 +214,11 @@ func (d *Driver) Rows(ctx context.Context, tbl db.Table, limit, offset int) ([]d
 	}
 
 	ident := pgx.Identifier{tbl.Schema, tbl.Name}.Sanitize()
-	query := fmt.Sprintf("select * from %s order by 1 limit $1 offset $2", ident)
+	query := fmt.Sprintf("select * from %s", ident)
+	if orderBy := rowOrder(tbl, cols); orderBy != "" {
+		query += " order by " + orderBy
+	}
+	query += " limit $1 offset $2"
 	rows, err := d.pool.Query(ctx, query, limit, offset)
 	if err != nil {
 		return nil, nil, err
@@ -200,6 +243,22 @@ func (d *Driver) Rows(ctx context.Context, tbl db.Table, limit, offset int) ([]d
 		out = append(out, row)
 	}
 	return cols, out, rows.Err()
+}
+
+func rowOrder(tbl db.Table, cols []db.Column) string {
+	var primary []string
+	for _, col := range cols {
+		if col.IsPrimary {
+			primary = append(primary, pgx.Identifier{col.Name}.Sanitize())
+		}
+	}
+	if len(primary) > 0 {
+		return strings.Join(primary, ", ")
+	}
+	if tbl.Type == "table" {
+		return "ctid"
+	}
+	return ""
 }
 
 func (d *Driver) CountRows(ctx context.Context, tbl db.Table) (int64, error) {
@@ -264,17 +323,44 @@ func formatValue(v any) string {
 	case []byte:
 		return string(x)
 	case pgtype.Numeric:
-		f8, err := x.Float64Value()
-		if err != nil || !f8.Valid {
-			return "NULL"
-		}
-		return strconv.FormatFloat(f8.Float64, 'f', -1, 64)
+		return formatNumeric(x)
 	case map[string]any, []any, []string:
 		// jsonb / array columns decode to these shapes; render as JSON
 		return marshalJSON(x)
 	default:
 		return fmt.Sprintf("%v", x)
 	}
+}
+
+func formatNumeric(n pgtype.Numeric) string {
+	if !n.Valid {
+		return "NULL"
+	}
+	if n.NaN {
+		return "NaN"
+	}
+	if n.InfinityModifier == pgtype.Infinity {
+		return "Infinity"
+	}
+	if n.InfinityModifier == pgtype.NegativeInfinity {
+		return "-Infinity"
+	}
+	digits := "0"
+	if n.Int != nil {
+		digits = n.Int.String()
+	}
+	if n.Exp >= 0 {
+		return digits + strings.Repeat("0", int(n.Exp))
+	}
+	sign := ""
+	if strings.HasPrefix(digits, "-") {
+		sign, digits = "-", digits[1:]
+	}
+	point := len(digits) + int(n.Exp)
+	if point <= 0 {
+		return sign + "0." + strings.Repeat("0", -point) + digits
+	}
+	return sign + digits[:point] + "." + digits[point:]
 }
 
 func marshalJSON(v any) string {

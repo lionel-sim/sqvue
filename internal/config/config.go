@@ -12,6 +12,7 @@ type DBProfile struct {
 	User       string
 	Password   string
 	Database   string
+	SSLMode    string
 	Timeout    time.Duration
 }
 
