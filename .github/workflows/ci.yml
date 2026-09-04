@@ -57,3 +57,31 @@ jobs:
           cache: true
       - name: Test with race detector
         run: go test -race ./...
+
+  postgres-integration:
+    name: PostgreSQL integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: sqvue
+          POSTGRES_USER: sqvue
+          POSTGRES_PASSWORD: sqvue
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sqvue -d sqvue"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      SQVUE_TEST_POSTGRES_DSN: postgres://sqvue:sqvue@localhost:5432/sqvue?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Test PostgreSQL driver against PostgreSQL
+        run: go test ./internal/db/postgres -run '^TestPostgresDriverIntegration$'

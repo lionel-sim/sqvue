@@ -19,7 +19,7 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 
 Work in progress. PostgreSQL, SQLite, and MySQL are supported: sqvue can connect with a DSN or individual connection flags; browse schemas, tables, and views; inspect column and foreign-key metadata and paginated row data; and run ad-hoc SQL in the TUI.
 
-Additional database drivers, exporting, streaming large results, and CI remain planned. See [roadmap.md](roadmap.md) for the current plan.
+Additional database drivers, exporting, and streaming large results remain planned. See [roadmap.md](roadmap.md) for the current plan.
 
 ## Requirements
 
@@ -148,6 +148,17 @@ or Postgres password file instead.
 Press `c` in a row or SQL-result view to open the column picker. Use `j`/`k`
 to choose a column, Space to show or hide it, and Enter or Esc to return.
 
+## Testing
+
+Most tests run without external services. The PostgreSQL integration test is
+skipped unless `SQVUE_TEST_POSTGRES_DSN` is set; it creates and removes an
+isolated schema in that database:
+
+```sh
+SQVUE_TEST_POSTGRES_DSN="postgres://sqvue:sqvue@localhost:5432/sqvue?sslmode=disable" \
+  go test ./internal/db/postgres -run '^TestPostgresDriverIntegration$'
+```
+
 ## Project layout
 
 ```
@@ -160,8 +171,7 @@ internal/
     mysql/      MySQL implementation
   logging/      Log setup helpers
   theme/        Shared Lip Gloss UI styles
-  tui/          Bubble Tea model and rendering
-    components/ Reusable UI components (key bindings)
+  tui/          Bubble Tea model, key bindings, and rendering
 ```
 
 ## License

@@ -77,7 +77,7 @@ For each driver:
 - [ ] Export results (CSV, JSON)
 - [ ] Streaming / large-result handling (cursor or fetch-more pagination instead of LIMIT/OFFSET)
 - [x] Saved connections / connection profiles (XDG config file, named profiles, and `--profile`)
-- [ ] Test coverage for drivers (integration tests against a real Postgres via testcontainers or a local instance)
+- [x] Test coverage for drivers (integration tests against a real Postgres via testcontainers or a local instance)
 - [x] CI: lint, build, and test matrix (GitHub Actions on Linux, macOS, and Windows)
 
 ## Phase 4 — Multi-DB / future
