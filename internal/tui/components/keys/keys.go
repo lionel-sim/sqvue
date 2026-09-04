@@ -18,6 +18,7 @@ type Map struct {
 	LastRow          key.Binding
 	CopyCell         key.Binding
 	CopyRow          key.Binding
+	OpenReference    key.Binding
 	ShowDescriptions key.Binding
 	ShowValues       key.Binding
 	Schema           key.Binding
@@ -88,6 +89,10 @@ func Default() Map {
 			key.WithKeys("Y"),
 			key.WithHelp("Y", "copy row"),
 		),
+		OpenReference: key.NewBinding(
+			key.WithKeys("o"),
+			key.WithHelp("o", "open reference"),
+		),
 		ShowDescriptions: key.NewBinding(
 			key.WithKeys("d"),
 			key.WithHelp("d", "show columns"),
@@ -132,5 +137,5 @@ func (m Map) ShortHelp() []key.Binding {
 }
 
 func (m Map) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{m.Up, m.Down, m.Left, m.Right, m.PageUp, m.PageDown, m.HalfPageUp, m.HalfPageDown, m.FirstRow, m.LastRow}, {m.CopyCell, m.CopyRow, m.SQL, m.Columns, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
+	return [][]key.Binding{{m.Up, m.Down, m.Left, m.Right, m.PageUp, m.PageDown, m.HalfPageUp, m.HalfPageDown, m.FirstRow, m.LastRow}, {m.CopyCell, m.CopyRow, m.OpenReference, m.SQL, m.Columns, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
 }

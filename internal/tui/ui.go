@@ -329,6 +329,8 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, writeClipboardCmd(m.activeCellValue(), "cell")
 	case key.Matches(msg, m.keys.CopyRow):
 		return m, writeClipboardCmd(m.activeRowValue(), "row")
+	case key.Matches(msg, m.keys.OpenReference):
+		return m.followActiveForeignKey()
 	case key.Matches(msg, m.keys.HalfPageDown):
 		return m.moveGridRow(max(1, len(m.rows)/2)), nil
 	case key.Matches(msg, m.keys.HalfPageUp):
@@ -385,6 +387,51 @@ func (m Model) activeRowValue() string {
 		return ""
 	}
 	return strings.Join(rows[m.rowCursor], "\t")
+}
+
+func (m Model) activeColumn() *db.Column {
+	indexes := visibleColumnIndexes(m.columns, m.visibleColumns)
+	if m.cellCursor < 0 || m.cellCursor >= len(indexes) {
+		return nil
+	}
+	return &m.columns[indexes[m.cellCursor]]
+}
+
+func (m Model) followActiveForeignKey() (Model, tea.Cmd) {
+	column := m.activeColumn()
+	if column == nil || column.ForeignKey == nil {
+		m.status = "active cell is not a foreign key"
+		return m, nil
+	}
+
+	foreignKey := column.ForeignKey
+	schema := foreignKey.Schema
+	if schema == "" {
+		schema = m.currentSchema()
+	}
+	if schema != m.currentSchema() {
+		m.status = "referenced table is in another schema"
+		return m, nil
+	}
+
+	if m.filterInput.Value() != "" {
+		m.filterInput.SetValue("")
+		m.applyFilter()
+	}
+	for i, table := range m.tables {
+		if table.Schema == schema && table.Name == foreignKey.Table {
+			m.focused = false
+			m.selected = i
+			m.scroll = keepInView(m.selected, m.scroll, tableListHeight, len(m.tables))
+			m.page = 0
+			m.rowCursor = 0
+			m.cellCursor = 0
+			m.mode = modeValues
+			return m.startLoadRows()
+		}
+	}
+	m.status = "referenced table is not available"
+	return m, nil
 }
 
 func (m Model) handleColumnsKey(msg tea.KeyMsg) (Model, tea.Cmd) {

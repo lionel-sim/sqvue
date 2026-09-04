@@ -201,6 +201,37 @@ func TestGridCopyValuesUseVisibleColumns(t *testing.T) {
 	}
 }
 
+func TestGridFollowsForeignKeyToReferencedTable(t *testing.T) {
+	m := testModel()
+	m.schemas = []db.Schema{{Name: "public"}}
+	m.tables = []db.Table{{Schema: "public", Name: "categories"}, {Schema: "public", Name: "products"}}
+	m.selected = 1
+	m.focused = true
+	m.columns = []db.Column{{Name: "category_id", ForeignKey: &db.ForeignKey{Schema: "public", Table: "categories", Column: "id"}}}
+	m.rows = [][]string{{"1"}}
+
+	m, cmd := update(m, keyMsg("o"))
+	if cmd == nil {
+		t.Fatal("expected referenced table rows to load")
+	}
+	if m.selected != 0 || m.focused {
+		t.Fatalf("reference navigation selected %d, focused %t; want 0, false", m.selected, m.focused)
+	}
+}
+
+func TestGridForeignKeyNavigationReportsUnavailableTarget(t *testing.T) {
+	m := testModel()
+	m.schemas = []db.Schema{{Name: "public"}}
+	m.focused = true
+	m.columns = []db.Column{{Name: "owner_id", ForeignKey: &db.ForeignKey{Schema: "public", Table: "owners", Column: "id"}}}
+	m.rows = [][]string{{"1"}}
+
+	m, _ = update(m, keyMsg("o"))
+	if m.status != "referenced table is not available" {
+		t.Fatalf("reference navigation status = %q", m.status)
+	}
+}
+
 func TestClipboardResultUpdatesStatus(t *testing.T) {
 	m := testModel()
 	m, _ = update(m, clipboardWrittenMsg{kind: "cell"})

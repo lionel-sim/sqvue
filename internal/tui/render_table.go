@@ -49,15 +49,7 @@ func formatActiveRow(cells []string, widths []int, activeColumn int) string {
 }
 
 func visibleData(columns []db.Column, rows [][]string, visible []bool) ([]db.Column, [][]string) {
-	if len(visible) == 0 {
-		return columns, rows
-	}
-	indexes := make([]int, 0, len(columns))
-	for i := range columns {
-		if i < len(visible) && visible[i] {
-			indexes = append(indexes, i)
-		}
-	}
+	indexes := visibleColumnIndexes(columns, visible)
 	filteredColumns := make([]db.Column, len(indexes))
 	filteredRows := make([][]string, len(rows))
 	for i, index := range indexes {
@@ -72,6 +64,23 @@ func visibleData(columns []db.Column, rows [][]string, visible []bool) ([]db.Col
 		}
 	}
 	return filteredColumns, filteredRows
+}
+
+func visibleColumnIndexes(columns []db.Column, visible []bool) []int {
+	if len(visible) == 0 {
+		indexes := make([]int, len(columns))
+		for i := range columns {
+			indexes[i] = i
+		}
+		return indexes
+	}
+	indexes := make([]int, 0, len(columns))
+	for i := range columns {
+		if i < len(visible) && visible[i] {
+			indexes = append(indexes, i)
+		}
+	}
+	return indexes
 }
 
 func columnNames(cols []db.Column) []string {
