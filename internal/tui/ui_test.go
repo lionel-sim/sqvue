@@ -70,6 +70,9 @@ func TestEnterFocusesGridAndEscapeReturnsToTablePicker(t *testing.T) {
 	if !m.focused {
 		t.Fatal("expected Enter to focus the data grid")
 	}
+	if m.rowCursor != 0 {
+		t.Fatalf("row cursor = %d, want 0", m.rowCursor)
+	}
 
 	m, _ = update(m, keyMsg("j"))
 	if m.selected != 0 {

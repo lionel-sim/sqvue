@@ -49,7 +49,11 @@ func renderMain(m Model) string {
 	} else if m.mode == modeDescriptions {
 		renderDescriptions(&b, m.tableInfo.Columns, m.width, m.height-reservedRows)
 	} else {
-		renderVisibleRows(&b, m.columns, m.rows, m.visibleColumns, m.width, m.height-reservedRows)
+		activeRow := -1
+		if m.focused {
+			activeRow = m.rowCursor
+		}
+		renderVisibleRows(&b, m.columns, m.rows, m.visibleColumns, m.width, m.height-reservedRows, activeRow)
 	}
 	padToFooter(&b, m.height)
 	b.WriteString(renderFooter(m))

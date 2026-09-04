@@ -69,7 +69,8 @@ type resultState struct {
 
 // gridState tracks whether keyboard input is directed at the displayed rows.
 type gridState struct {
-	focused bool
+	focused   bool
+	rowCursor int
 }
 
 // queryState retains an ad-hoc query result so it can be paged locally.
@@ -226,6 +227,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Confirm):
 		if m.mode == modeValues && len(m.rows) > 0 {
 			m.focused = true
+			m.rowCursor = 0
 		}
 		return m, nil
 	case m.focused:
@@ -533,6 +535,9 @@ func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 	m.hasNextPage = len(m.rows) > m.pageSize
 	if m.hasNextPage {
 		m.rows = m.rows[:m.pageSize]
+	}
+	if m.rowCursor >= len(m.rows) {
+		m.rowCursor = max(0, len(m.rows)-1)
 	}
 	m.lastErr = nil
 	if t := m.currentTable(); t != nil {

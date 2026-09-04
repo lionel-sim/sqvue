@@ -47,7 +47,7 @@ For each driver:
 - [x] Column visibility picker for row and SQL-result views
 - [ ] Data-grid focus mode
   - [x] Press Enter to move focus between the table picker and data grid; Esc returns to the picker
-  - [ ] Highlight the active row and show the current focus state in the footer
+  - [x] Highlight the active row and show the current focus state in the footer
   - [ ] Navigate rows with `j`/`k`, arrow keys, `Ctrl-d`/`Ctrl-u`, and `g`/`G`
   - [ ] Keep the selected row visible while scrolling and when visible columns change
   - [ ] Navigate cells left and right, highlighting the active cell

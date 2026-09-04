@@ -14,14 +14,18 @@ var Palette = map[string]lipgloss.Color{
 }
 
 var (
-	Title    = lipgloss.NewStyle().Bold(true).Foreground(Palette["blue"])
-	Selected = lipgloss.NewStyle().Bold(true).Foreground(Palette["cyan"])
-	Muted    = lipgloss.NewStyle().Foreground(Palette["gray"])
-	Error    = lipgloss.NewStyle().Foreground(Palette["pink"])
-	Status   = lipgloss.NewStyle().Foreground(Palette["light_blue"])
-	Dialog   = lipgloss.NewStyle().
-			Background(Palette["charcoal"]).
-			Padding(1, 2)
+	Title     = lipgloss.NewStyle().Bold(true).Foreground(Palette["blue"])
+	Selected  = lipgloss.NewStyle().Bold(true).Foreground(Palette["cyan"])
+	ActiveRow = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(Palette["cyan"]).
+			Background(Palette["charcoal"])
+	Muted  = lipgloss.NewStyle().Foreground(Palette["gray"])
+	Error  = lipgloss.NewStyle().Foreground(Palette["pink"])
+	Status = lipgloss.NewStyle().Foreground(Palette["light_blue"])
+	Dialog = lipgloss.NewStyle().
+		Background(Palette["charcoal"]).
+		Padding(1, 2)
 	DialogBorder = lipgloss.NewStyle().
 			Foreground(Palette["blue"]).
 			Background(Palette["charcoal"])

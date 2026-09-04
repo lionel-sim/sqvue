@@ -21,6 +21,11 @@ func padToFooter(b *strings.Builder, height int) {
 
 func renderFooter(m Model) string {
 	bindings := "s schema | / filter | j/k navigate | d columns | y rows | q quit"
+	focus := "Focus: tables"
+	if m.focused {
+		focus = "Focus: rows"
+	}
+	bindings += " | " + focus
 	status := "Status: " + sanitizeText(m.status)
 	gap := m.width - 1 - ansi.StringWidth(bindings) - ansi.StringWidth(status)
 	if gap < 1 {

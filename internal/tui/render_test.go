@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"sqvue/internal/db"
+	"sqvue/internal/theme"
 )
 
 func TestRenderRowsClips(t *testing.T) {
@@ -29,6 +30,18 @@ func TestRenderRowsClips(t *testing.T) {
 	lines = strings.Split(strings.TrimRight(b.String(), "\n"), "\n")
 	if len(lines) != 11 {
 		t.Fatalf("want 11 lines (no clip), got %d", len(lines))
+	}
+}
+
+func TestRenderVisibleRowsHighlightsActiveRow(t *testing.T) {
+	columns := []db.Column{{Name: "name"}}
+	rows := [][]string{{"books"}, {"games"}}
+	var b strings.Builder
+	renderVisibleRows(&b, columns, rows, nil, 20, -1, 1)
+
+	want := theme.ActiveRow.Render(formatRow(rows[1], layoutColumns(20, columns, rows)))
+	if !strings.Contains(b.String(), want) {
+		t.Fatalf("active row is not highlighted:\n%s", b.String())
 	}
 }
 
@@ -88,6 +101,15 @@ func TestRenderFooterStaysOnBottomLine(t *testing.T) {
 	}
 	if !strings.Contains(footer, "Status: public.accounts page 1 (2 rows)") {
 		t.Fatalf("footer missing status: %q", footer)
+	}
+}
+
+func TestRenderFooterShowsGridFocus(t *testing.T) {
+	m := testModel()
+	m.width = 100
+	m.focused = true
+	if got := ansi.Strip(renderFooter(m)); !strings.Contains(got, "Focus: rows") {
+		t.Fatalf("footer missing grid focus: %q", got)
 	}
 }
 

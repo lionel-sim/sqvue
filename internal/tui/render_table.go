@@ -6,15 +6,16 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"sqvue/internal/db"
+	"sqvue/internal/theme"
 )
 
 // renderRows writes the column header and up to maxRows data rows. A negative
 // maxRows (terminal height unknown) shows all rows without clipping.
 func renderRows(b *strings.Builder, columns []db.Column, rows [][]string, width, maxRows int) {
-	renderVisibleRows(b, columns, rows, nil, width, maxRows)
+	renderVisibleRows(b, columns, rows, nil, width, maxRows, -1)
 }
 
-func renderVisibleRows(b *strings.Builder, columns []db.Column, rows [][]string, visible []bool, width, maxRows int) {
+func renderVisibleRows(b *strings.Builder, columns []db.Column, rows [][]string, visible []bool, width, maxRows, activeRow int) {
 	columns, rows = visibleData(columns, rows, visible)
 	if len(columns) == 0 {
 		b.WriteString("(no rows to display)\n")
@@ -26,7 +27,11 @@ func renderVisibleRows(b *strings.Builder, columns []db.Column, rows [][]string,
 		if maxRows >= 0 && i >= maxRows {
 			break
 		}
-		b.WriteString(formatRow(row, widths) + "\n")
+		line := formatRow(row, widths)
+		if i == activeRow {
+			line = theme.ActiveRow.Render(line)
+		}
+		b.WriteString(line + "\n")
 	}
 }
 
