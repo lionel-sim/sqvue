@@ -54,17 +54,20 @@ func TestBrowseWhereUsesParameterizedOperators(t *testing.T) {
 	where, args, err := postgresBrowseWhere([]db.RowFilter{
 		{Column: "name", Operator: db.FilterEqual, Value: "Ada"},
 		{Column: "note", Operator: db.FilterContains, Value: "vip"},
+		{Column: "code", Operator: db.FilterLike, Value: "A_%"},
+		{Column: "rank", Operator: db.FilterGreater, Value: "10"},
+		{Column: "rank", Operator: db.FilterLess, Value: "20"},
 		{Column: "deleted_at", Operator: db.FilterIsNull},
 		{Column: "email", Operator: db.FilterIsNotNull},
 	})
 	if err != nil {
 		t.Fatalf("postgresBrowseWhere() error = %v", err)
 	}
-	wantWhere := " where sqvue_row.\"name\" = $1 and cast(sqvue_row.\"note\" as text) ilike $2 and sqvue_row.\"deleted_at\" is null and sqvue_row.\"email\" is not null"
+	wantWhere := " where sqvue_row.\"name\" = $1 and cast(sqvue_row.\"note\" as text) ilike $2 and cast(sqvue_row.\"code\" as text) like $3 and sqvue_row.\"rank\" > $4 and sqvue_row.\"rank\" < $5 and sqvue_row.\"deleted_at\" is null and sqvue_row.\"email\" is not null"
 	if where != wantWhere {
 		t.Fatalf("where = %q, want %q", where, wantWhere)
 	}
-	if len(args) != 2 || args[0] != "Ada" || args[1] != "%vip%" {
+	if len(args) != 5 || args[0] != "Ada" || args[1] != "%vip%" || args[2] != "A_%" || args[3] != "10" || args[4] != "20" {
 		t.Fatalf("args = %#v", args)
 	}
 }

@@ -87,6 +87,9 @@ type FilterOperator string
 const (
 	FilterEqual     FilterOperator = "equal"
 	FilterContains  FilterOperator = "contains"
+	FilterLike      FilterOperator = "like"
+	FilterGreater   FilterOperator = "greater_than"
+	FilterLess      FilterOperator = "less_than"
 	FilterIsNull    FilterOperator = "is_null"
 	FilterIsNotNull FilterOperator = "is_not_null"
 )

@@ -310,8 +310,9 @@ func TestGridFilterOperatorPickerAppliesNullFilterImmediately(t *testing.T) {
 	m.rows = [][]string{{"NULL"}}
 	m.pageSize = 2
 	m, _ = update(m, keyMsg("/"))
-	m, _ = update(m, keyMsg("j"))
-	m, _ = update(m, keyMsg("j"))
+	for range 5 {
+		m, _ = update(m, keyMsg("j"))
+	}
 	m, cmd := update(m, tea.KeyMsg{Type: tea.KeyEnter})
 
 	if m.activeOverlay != overlayNone {

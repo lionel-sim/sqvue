@@ -402,6 +402,9 @@ func (m Model) openBrowseFilter() (Model, tea.Cmd) {
 var browseFilterOperators = []db.FilterOperator{
 	db.FilterEqual,
 	db.FilterContains,
+	db.FilterLike,
+	db.FilterGreater,
+	db.FilterLess,
 	db.FilterIsNull,
 	db.FilterIsNotNull,
 }
@@ -458,6 +461,12 @@ func browseFilterOperatorLabel(operator db.FilterOperator) string {
 	switch operator {
 	case db.FilterContains:
 		return "contains"
+	case db.FilterLike:
+		return "like"
+	case db.FilterGreater:
+		return ">"
+	case db.FilterLess:
+		return "<"
 	case db.FilterIsNull:
 		return "is null"
 	case db.FilterIsNotNull:

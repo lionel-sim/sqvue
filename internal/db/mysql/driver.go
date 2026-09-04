@@ -250,6 +250,15 @@ func mysqlBrowseWhere(filters []db.RowFilter) (string, []any, error) {
 		case db.FilterContains:
 			parts = append(parts, "cast("+column+" as char) like ?")
 			args = append(args, "%"+filter.Value+"%")
+		case db.FilterLike:
+			parts = append(parts, "cast("+column+" as char) like ?")
+			args = append(args, filter.Value)
+		case db.FilterGreater:
+			parts = append(parts, column+" > ?")
+			args = append(args, filter.Value)
+		case db.FilterLess:
+			parts = append(parts, column+" < ?")
+			args = append(args, filter.Value)
 		case db.FilterIsNull:
 			parts = append(parts, column+" is null")
 		case db.FilterIsNotNull:
