@@ -92,13 +92,13 @@ func TestHelpRendersAsModalOverCurrentView(t *testing.T) {
 	if !strings.Contains(out, "Status: public.accounts page 1") {
 		t.Fatalf("background footer missing from modal: %q", out)
 	}
-	if !strings.Contains(out, "╔") {
-		t.Fatalf("help dialog missing border: %q", out)
+	if !strings.Contains(out, "┏━ Keyboard shortcuts") {
+		t.Fatalf("help dialog missing titled border: %q", out)
 	}
 	for _, line := range strings.Split(out, "\n") {
 		plain := ansi.Strip(line)
-		if strings.Contains(plain, "╔") {
-			left := strings.Index(plain, "╔")
+		if strings.Contains(plain, "┏") {
+			left := strings.Index(plain, "┏")
 			right := len(plain) - len(strings.TrimRight(plain, " "))
 			if left != right {
 				t.Fatalf("help dialog is not horizontally centered: %q", plain)

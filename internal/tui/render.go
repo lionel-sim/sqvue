@@ -115,10 +115,21 @@ func renderHelpDialog(m Model) string {
 	m.help.Styles.FullDesc = m.help.Styles.FullDesc.Background(panelBackground)
 	m.help.Styles.FullSeparator = m.help.Styles.FullSeparator.Background(panelBackground)
 	helpText := strings.ReplaceAll(m.help.View(m.keys), "\x1b[0m", "\x1b[0m\x1b[48;5;235m")
-	title := theme.Title.Background(panelBackground).Render("Keyboard shortcuts")
 	dismiss := theme.Muted.Background(panelBackground).Render("Press any key to return.")
-	content := title + "\n\n" + helpText + "\n\n" + dismiss
-	return theme.Dialog.Width(width).Render(content)
+	content := helpText + "\n\n" + dismiss
+	panelLines := strings.Split(theme.Dialog.Width(width).Render(content), "\n")
+	panelWidth := ansi.StringWidth(panelLines[0])
+	return titledDialog(panelLines, panelWidth, "Keyboard shortcuts")
+}
+
+func titledDialog(lines []string, width int, title string) string {
+	titleEdge := "━ " + title + " "
+	top := theme.DialogBorder.Render("┏" + titleEdge + strings.Repeat("━", max(0, width-len(titleEdge))) + "┓")
+	bottom := theme.DialogBorder.Render("┗" + strings.Repeat("━", width) + "┛")
+	for i, line := range lines {
+		lines[i] = theme.DialogBorder.Render("┃") + line + theme.DialogBorder.Render("┃")
+	}
+	return top + "\n" + strings.Join(lines, "\n") + "\n" + bottom
 }
 
 func padToFooter(b *strings.Builder, height int) {
