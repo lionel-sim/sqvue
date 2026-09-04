@@ -20,4 +20,13 @@ type (
 		info db.TableInfo
 		err  error
 	}
+	countLoadedMsg struct {
+		table db.Table
+		count int64
+		err   error
+	}
+	queryLoadedMsg struct {
+		result db.Result
+		err    error
+	}
 )

@@ -44,7 +44,9 @@ func Render(m Model) string {
 	}
 	m.help.ShowAll = false
 	b.WriteString(m.help.View(m.keys) + "\n")
-	if m.filtering {
+	if m.sqlMode {
+		b.WriteString(m.sqlInput.View() + "\n")
+	} else if m.filtering {
 		b.WriteString(m.filterInput.View() + "\n")
 	} else if m.showSchemas {
 		b.WriteString("Use j/k to choose a schema, then Enter to load its tables.\n")

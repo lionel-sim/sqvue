@@ -202,6 +202,18 @@ func (d *Driver) Rows(ctx context.Context, tbl db.Table, limit, offset int) ([]d
 	return cols, out, rows.Err()
 }
 
+func (d *Driver) CountRows(ctx context.Context, tbl db.Table) (int64, error) {
+	if d.pool == nil {
+		return 0, fmt.Errorf("not connected")
+	}
+	ident := pgx.Identifier{tbl.Schema, tbl.Name}.Sanitize()
+	var count int64
+	if err := d.pool.QueryRow(ctx, fmt.Sprintf("select count(*) from %s", ident)).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func (d *Driver) columnMetadata(ctx context.Context, schema, table string) ([]db.Column, error) {
 	rows, err := d.pool.Query(ctx, `
 		select c.column_name, c.data_type, c.is_nullable, c.column_default,

@@ -19,9 +19,9 @@ Finish the Postgres driver so the TUI is actually usable end-to-end.
   - [x] Schema switcher — select schemas via `ListSchemas` instead of hardcoded `public`
   - [x] Table filter — type-ahead search over the table list
   - [ ] Column metadata view for the selected table (via `DescribeTable`)
-  - [ ] Ad-hoc SQL mode — input prompt to run raw SQL through `Query` and page through results
-  - [ ] Inline error handling for per-query failures without killing the session
-  - [ ] QoL: total row count in the status bar, table type marker (view/table), footer key bar
+  - [x] Ad-hoc SQL mode — input prompt to run raw SQL through `Query` and page through results
+  - [x] Inline error handling for per-query failures without killing the session
+  - [x] QoL: total row count in the status bar, table type marker (view/table), footer key bar
 - [x] Reuse `theme` package for a cohesive (and later themable) look
 
 ## Phase 2 — Broaden relational DB support

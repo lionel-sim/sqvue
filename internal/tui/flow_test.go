@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -21,6 +22,9 @@ type fakeDriver struct {
 	lastSchema    string
 	lastDescribe  string
 	describeCalls int
+	count         int64
+	queryResult   db.Result
+	lastQuery     string
 }
 
 func (f *fakeDriver) DbType() db.DbType                               { return db.DbTypePostgres }
@@ -39,7 +43,10 @@ func (f *fakeDriver) DescribeTable(_ context.Context, schema, table string) (db.
 	f.describeCalls++
 	return db.TableInfo{Schema: schema, Name: table, Columns: f.describeCols}, nil
 }
-func (f *fakeDriver) Query(context.Context, db.Query) (db.Result, error) { return db.Result{}, nil }
+func (f *fakeDriver) Query(_ context.Context, q db.Query) (db.Result, error) {
+	f.lastQuery = q.SQL
+	return f.queryResult, nil
+}
 func (f *fakeDriver) Rows(ctx context.Context, tbl db.Table, limit, offset int) ([]db.Column, [][]string, error) {
 	f.lastLimit = limit
 	f.lastOffset = offset
@@ -49,6 +56,7 @@ func (f *fakeDriver) Rows(ctx context.Context, tbl db.Table, limit, offset int) 
 	}
 	return f.cols, rows, nil
 }
+func (f *fakeDriver) CountRows(context.Context, db.Table) (int64, error) { return f.count, nil }
 
 func makeRows(n int) [][]string {
 	rows := make([][]string, n)
@@ -233,5 +241,61 @@ func TestTableFilterMatchesTableNames(t *testing.T) {
 	m.applyFilter()
 	if len(m.tables) != 1 || m.tables[0].Name != "audit_log" {
 		t.Fatalf("filtered tables = %#v, want audit_log", m.tables)
+	}
+}
+
+func TestSQLQueryPagesResults(t *testing.T) {
+	f := &fakeDriver{queryResult: db.Result{
+		Columns:      []string{"id", "name"},
+		Rows:         [][]any{{1, "one"}, {2, "two"}, {3, "three"}},
+		RowsAffected: 3,
+		DurationMs:   4,
+	}}
+	m := New(Options{Client: f, Timeout: time.Second})
+	m.pageSize = 2
+	m.sqlMode = true
+	m.sqlInput.SetValue("select * from things")
+	m, cmd := m.handleSQLKey(tea.KeyMsg{Type: tea.KeyEnter})
+	if msg := runCmd(cmd); msg != nil {
+		m, _ = update(m, msg)
+	}
+	if f.lastQuery != "select * from things" || !m.queryActive {
+		t.Fatalf("query = %q, active = %t", f.lastQuery, m.queryActive)
+	}
+	if len(m.rows) != 2 || m.rows[0][0] != "1" {
+		t.Fatalf("first query page = %#v", m.rows)
+	}
+	m, _ = m.changePage(+1)
+	if m.page != 1 || len(m.rows) != 1 || m.rows[0][0] != "3" {
+		t.Fatalf("second query page = %#v", m.rows)
+	}
+}
+
+func TestRowCountUpdatesStatus(t *testing.T) {
+	f := &fakeDriver{
+		tables: []db.Table{{Schema: "public", Name: "events"}},
+		count:  42,
+	}
+	m := New(Options{Client: f, Timeout: time.Second})
+	m.tables = f.tables
+	m.rows = [][]string{{"value"}}
+	m, _ = m.handleCountLoaded(countLoadedMsg{table: f.tables[0], count: f.count})
+	if !strings.Contains(m.status, "of 42") {
+		t.Fatalf("status = %q, want row count", m.status)
+	}
+}
+
+func TestQueryResizeRepagesWithoutLoadingTableRows(t *testing.T) {
+	m := New(Options{Client: &fakeDriver{}, Timeout: time.Second})
+	m.queryActive = true
+	m.queryRows = makeRows(10)
+	m.page = 1
+	m.pageSize = 5
+	m, cmd := m.handleWindowSize(tea.WindowSizeMsg{Width: 100, Height: 10})
+	if cmd != nil {
+		t.Fatal("query resize should page local results without loading table rows")
+	}
+	if len(m.rows) != 1 {
+		t.Fatalf("query rows after resize = %d, want 1", len(m.rows))
 	}
 }

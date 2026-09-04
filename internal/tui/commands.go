@@ -46,6 +46,24 @@ func loadDescriptionsCmd(c db.Driver, tbl db.Table, timeout time.Duration) tea.C
 	}
 }
 
+func loadCountCmd(c db.Driver, tbl db.Table, timeout time.Duration) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		count, err := c.CountRows(ctx, tbl)
+		return countLoadedMsg{table: tbl, count: count, err: err}
+	}
+}
+
+func runQueryCmd(c db.Driver, sql string, timeout time.Duration) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		result, err := c.Query(ctx, db.Query{SQL: sql})
+		return queryLoadedMsg{result: result, err: err}
+	}
+}
+
 // startLoad dispatches to the loader for the current view mode.
 func (m Model) startLoad() (Model, tea.Cmd) {
 	if m.mode == modeDescriptions {
@@ -56,6 +74,7 @@ func (m Model) startLoad() (Model, tea.Cmd) {
 
 func (m Model) startLoadRows() (Model, tea.Cmd) {
 	if t := m.currentTable(); t != nil {
+		m.queryActive = false
 		m.loading = true
 		m.status = fmt.Sprintf("loading %s page %d...", t.String(), m.page+1)
 		offset := m.page * m.pageSize

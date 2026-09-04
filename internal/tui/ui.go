@@ -45,16 +45,23 @@ type Model struct {
 
 	status string
 
-	page        int
-	pageSize    int
-	loading     bool
-	lastErr     error
-	width       int
-	height      int
-	filterInput textinput.Model
-	filtering   bool
-	help        help.Model
-	showHelp    bool
+	page          int
+	pageSize      int
+	loading       bool
+	lastErr       error
+	width         int
+	height        int
+	filterInput   textinput.Model
+	filtering     bool
+	sqlInput      textinput.Model
+	sqlMode       bool
+	queryActive   bool
+	queryRows     [][]string
+	queryDuration int64
+	queryAffected int64
+	rowCounts     map[string]int64
+	help          help.Model
+	showHelp      bool
 
 	keys keymap.Map
 }
@@ -63,6 +70,10 @@ func New(opts Options) Model {
 	filter := textinput.New()
 	filter.Prompt = "Filter tables: "
 	filter.Placeholder = "type to search"
+	sql := textinput.New()
+	sql.Prompt = "SQL> "
+	sql.Placeholder = "SELECT * FROM ..."
+	sql.CharLimit = 0
 	return Model{
 		client:      opts.Client,
 		timeout:     opts.Timeout,
@@ -71,6 +82,8 @@ func New(opts Options) Model {
 		loading:     true,
 		keys:        keymap.Default(),
 		filterInput: filter,
+		sqlInput:    sql,
+		rowCounts:   make(map[string]int64),
 		help:        help.New(),
 	}
 }
@@ -93,6 +106,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleRowsLoaded(msg)
 	case descriptionsLoadedMsg:
 		return m.handleDescriptionsLoaded(msg)
+	case countLoadedMsg:
+		return m.handleCountLoaded(msg)
+	case queryLoadedMsg:
+		return m.handleQueryLoaded(msg)
 	}
 	return m, nil
 }
@@ -103,6 +120,10 @@ func (m Model) handleWindowSize(msg tea.WindowSizeMsg) (Model, tea.Cmd) {
 	m.height = msg.Height
 	if msg.Height > 0 {
 		m.pageSize = m.computedPageSize()
+	}
+	if m.pageSize != oldSize && m.queryActive {
+		m.setQueryPage()
+		return m, nil
 	}
 	if m.pageSize != oldSize && len(m.tables) > 0 {
 		return m.startLoad()
@@ -118,6 +139,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	if m.showHelp {
 		m.showHelp = false
 		return m, nil
+	}
+	if m.sqlMode {
+		return m.handleSQLKey(msg)
 	}
 	if m.filtering {
 		return m.handleFilterKey(msg)
@@ -146,6 +170,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.filterInput.SetValue("")
 		m.filterInput.Focus()
 		return m, nil
+	case key.Matches(msg, m.keys.SQL):
+		m.sqlMode = true
+		m.sqlInput.Focus()
+		return m, nil
 	case key.Matches(msg, m.keys.Down):
 		return m.moveSelection(+1)
 	case key.Matches(msg, m.keys.Up):
@@ -162,12 +190,34 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) handleFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+func (m Model) handleSQLKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	if msg.String() == "esc" {
+		m.sqlMode = false
+		m.sqlInput.Blur()
+		return m, nil
+	}
+	if key.Matches(msg, m.keys.Confirm) {
+		sql := strings.TrimSpace(m.sqlInput.Value())
+		if sql == "" {
+			return m, nil
+		}
+		m.sqlMode = false
+		m.sqlInput.Blur()
+		m.loading = true
+		m.status = "running query..."
+		return m, runQueryCmd(m.client, sql, m.timeout)
+	}
+	var cmd tea.Cmd
+	m.sqlInput, cmd = m.sqlInput.Update(msg)
+	return m, cmd
+}
+
+func (m Model) handleFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	if msg.String() == "esc" || key.Matches(msg, m.keys.Confirm) {
 		m.filtering = false
 		m.filterInput.Blur()
 		m.applyFilter()
-		return m, nil
+		return m.startLoad()
 	}
 	var cmd tea.Cmd
 	m.filterInput, cmd = m.filterInput.Update(msg)
@@ -205,6 +255,7 @@ func (m Model) handleSchemaKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 
 func (m Model) showDescriptions() (Model, tea.Cmd) {
 	if m.mode != modeDescriptions {
+		m.queryActive = false
 		m.mode = modeDescriptions
 		return m.startLoadDescriptions()
 	}
@@ -212,7 +263,8 @@ func (m Model) showDescriptions() (Model, tea.Cmd) {
 }
 
 func (m Model) showValues() (Model, tea.Cmd) {
-	if m.mode != modeValues {
+	if m.mode != modeValues || m.queryActive {
+		m.queryActive = false
 		m.mode = modeValues
 		m.page = 0
 		return m.startLoadRows()
@@ -253,6 +305,14 @@ func (m Model) changePage(delta int) (Model, tea.Cmd) {
 	if m.page+delta < 0 {
 		return m, nil
 	}
+	if m.queryActive {
+		if delta > 0 && (m.page+1)*m.pageSize >= len(m.queryRows) {
+			return m, nil
+		}
+		m.page += delta
+		m.setQueryPage()
+		return m, nil
+	}
 	m.page += delta
 	return m.startLoadRows()
 }
@@ -263,6 +323,8 @@ func (m Model) handleTablesLoaded(msg tablesLoadedMsg) (Model, tea.Cmd) {
 		return m.fail("failed to load tables", msg.err)
 	}
 	m.allTables = msg.tables
+	m.lastErr = nil
+	m.rowCounts = make(map[string]int64)
 	m.applyFilter()
 	m.status = fmt.Sprintf("found %d tables", len(m.tables))
 	if len(m.tables) > 0 {
@@ -281,6 +343,7 @@ func (m Model) handleSchemasLoaded(msg schemasLoadedMsg) (Model, tea.Cmd) {
 		return m.fail("failed to load schemas", msg.err)
 	}
 	m.schemas = msg.schemas
+	m.lastErr = nil
 	if len(m.schemas) == 0 {
 		return m.fail("failed to load schemas", fmt.Errorf("no user schemas found"))
 	}
@@ -322,10 +385,80 @@ func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 	}
 	m.columns = msg.columns
 	m.rows = msg.rows
+	m.lastErr = nil
 	if t := m.currentTable(); t != nil {
-		m.status = fmt.Sprintf("%s page %d (%d rows)", t.String(), m.page+1, len(m.rows))
+		m.setRowsStatus(*t)
+		if _, ok := m.rowCounts[t.String()]; !ok {
+			return m, loadCountCmd(m.client, *t, m.timeout)
+		}
 	}
 	return m, nil
+}
+
+func (m Model) handleCountLoaded(msg countLoadedMsg) (Model, tea.Cmd) {
+	if msg.err != nil {
+		return m, nil
+	}
+	m.rowCounts[msg.table.String()] = msg.count
+	if t := m.currentTable(); t != nil && *t == msg.table && !m.queryActive {
+		m.setRowsStatus(*t)
+	}
+	return m, nil
+}
+
+func (m Model) handleQueryLoaded(msg queryLoadedMsg) (Model, tea.Cmd) {
+	m.loading = false
+	if msg.err != nil {
+		return m.fail("query failed", msg.err)
+	}
+	m.queryActive = true
+	m.lastErr = nil
+	m.mode = modeValues
+	m.page = 0
+	m.queryDuration = msg.result.DurationMs
+	m.queryAffected = msg.result.RowsAffected
+	m.columns = make([]db.Column, len(msg.result.Columns))
+	for i, name := range msg.result.Columns {
+		m.columns[i] = db.Column{Name: name}
+	}
+	m.queryRows = make([][]string, len(msg.result.Rows))
+	for i, row := range msg.result.Rows {
+		m.queryRows[i] = make([]string, len(row))
+		for j, value := range row {
+			m.queryRows[i][j] = formatQueryValue(value)
+		}
+	}
+	m.setQueryPage()
+	m.sqlInput.SetValue("")
+	return m, nil
+}
+
+func formatQueryValue(value any) string {
+	if value == nil {
+		return "NULL"
+	}
+	if bytes, ok := value.([]byte); ok {
+		return string(bytes)
+	}
+	return fmt.Sprint(value)
+}
+
+func (m *Model) setQueryPage() {
+	start := m.page * m.pageSize
+	if start > len(m.queryRows) {
+		start = len(m.queryRows)
+	}
+	end := min(start+m.pageSize, len(m.queryRows))
+	m.rows = m.queryRows[start:end]
+	m.status = fmt.Sprintf("query page %d (%d/%d rows, %d ms, %d affected)", m.page+1, len(m.rows), len(m.queryRows), m.queryDuration, m.queryAffected)
+}
+
+func (m *Model) setRowsStatus(t db.Table) {
+	status := fmt.Sprintf("%s page %d (%d rows", t.String(), m.page+1, len(m.rows))
+	if count, ok := m.rowCounts[t.String()]; ok {
+		status += fmt.Sprintf(" of %d", count)
+	}
+	m.status = status + ")"
 }
 
 func (m Model) handleDescriptionsLoaded(msg descriptionsLoadedMsg) (Model, tea.Cmd) {
@@ -334,6 +467,7 @@ func (m Model) handleDescriptionsLoaded(msg descriptionsLoadedMsg) (Model, tea.C
 		return m.fail("describe failed", msg.err)
 	}
 	m.tableInfo = msg.info
+	m.lastErr = nil
 	if t := m.currentTable(); t != nil {
 		m.status = fmt.Sprintf("%s (%d columns)", t.String(), len(msg.info.Columns))
 	}
