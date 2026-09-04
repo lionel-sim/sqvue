@@ -1,6 +1,8 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -42,5 +44,78 @@ func TestDBProfileValidate(t *testing.T) {
 				t.Fatalf("Validate() error = %v, want %q", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestLoadOrCreate(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config", "config.toml")
+
+	file, created, err := LoadOrCreate(path)
+	if err != nil {
+		t.Fatalf("LoadOrCreate() error = %v", err)
+	}
+	if !created {
+		t.Fatal("LoadOrCreate() did not report a newly-created config")
+	}
+	if file.Settings.DefaultProfile != "" || len(file.Connections) != 0 {
+		t.Fatalf("new config = %#v, want empty configuration", file)
+	}
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	if !strings.Contains(string(contents), "[connections.local]") {
+		t.Fatalf("default config missing example profile:\n%s", contents)
+	}
+
+	_, created, err = LoadOrCreate(path)
+	if err != nil {
+		t.Fatalf("second LoadOrCreate() error = %v", err)
+	}
+	if created {
+		t.Fatal("LoadOrCreate() reported an existing config as newly created")
+	}
+}
+
+func TestLoadOrCreateLoadsProfile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	contents := `[settings]
+default_profile = "work"
+
+[connections.work]
+host = "db.example.com"
+port = 5433
+user = "reader"
+database = "analytics"
+sslmode = "verify-full"
+`
+	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	file, created, err := LoadOrCreate(path)
+	if err != nil {
+		t.Fatalf("LoadOrCreate() error = %v", err)
+	}
+	if created {
+		t.Fatal("LoadOrCreate() reported an existing config as newly created")
+	}
+	if file.Settings.DefaultProfile != "work" {
+		t.Fatalf("default profile = %q, want work", file.Settings.DefaultProfile)
+	}
+	profile, err := file.Profile("work")
+	if err != nil {
+		t.Fatalf("Profile() error = %v", err)
+	}
+	if profile.Host != "db.example.com" || profile.Port != 5433 || profile.SSLMode != "verify-full" {
+		t.Fatalf("Profile() = %#v", profile)
+	}
+}
+
+func TestDBProfileMerge(t *testing.T) {
+	base := DefaultDBProfile()
+	got := base.Merge(DBProfile{Host: "db.example.com", Database: "analytics", SSLMode: "verify-full"})
+	if got.Host != "db.example.com" || got.Port != 5432 || got.User != "postgres" || got.Database != "analytics" || got.SSLMode != "verify-full" {
+		t.Fatalf("Merge() = %#v", got)
 	}
 }

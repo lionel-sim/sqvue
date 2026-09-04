@@ -44,7 +44,7 @@ For each driver:
 - [x] Column visibility picker for row and SQL-result views
 - [ ] Export results (CSV, JSON)
 - [ ] Streaming / large-result handling (cursor or fetch-more pagination instead of LIMIT/OFFSET)
-- [ ] Saved connections / connection profiles
+- [x] Saved connections / connection profiles (XDG config file, named profiles, and `--profile`)
 - [ ] Test coverage for drivers (integration tests against a real Postgres via testcontainers or a local instance)
 - [ ] CI: lint, build, and test matrix
 

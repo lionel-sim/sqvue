@@ -16,7 +16,7 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 
 Work in progress. PostgreSQL support is functional: sqvue can connect with a DSN or individual connection flags; browse schemas, tables, and views; inspect column metadata and paginated row data; and run ad-hoc SQL in the TUI.
 
-Additional database drivers, exporting, streaming large results, saved connections, and CI remain planned. See [roadmap.md](roadmap.md) for the current plan.
+Additional database drivers, exporting, streaming large results, and CI remain planned. See [roadmap.md](roadmap.md) for the current plan.
 
 ## Requirements
 
@@ -48,11 +48,41 @@ DATABASE_URL="postgres://user:pass@localhost:5432/mydb?sslmode=disable" ./bin/sq
 
 You can also run directly from source with `make run` or `go run ./...`.
 
+### Connection profiles
+
+On its first run, sqvue creates a commented configuration template. The file is
+located at `$XDG_CONFIG_HOME/sqvue/config.toml` (or `~/.config/sqvue/config.toml`)
+on Linux, and `~/Library/Application Support/sqvue/config.toml` on macOS.
+
+Define named connections under `connections` and set `settings.default_profile`
+to select one automatically:
+
+```toml
+[settings]
+default_profile = "local"
+
+[connections.local]
+host = "localhost"
+port = 5432
+user = "postgres"
+database = "my_database"
+sslmode = "disable"
+```
+
+Select another profile for one launch with `--profile work`. A profile may also
+use `conn = "postgres://..."`; use either `conn` or the individual connection
+fields in a profile. `--conn` wins over every other source. Without an explicit
+`--profile`, `DATABASE_URL` takes precedence over the configured default profile.
+Explicitly supplied connection flags override matching profile fields. Avoid
+storing passwords in the config file—use a connection URL, environment variable,
+or Postgres password file instead.
+
 ### Flags
 
 | Flag         | Default     | Description                                |
 | ------------ | ----------- | ------------------------------------------ |
 | `--conn`     |             | Postgres connection string                 |
+| `--profile`  |             | Named connection profile from the config file |
 | `--host`     | `localhost` | Postgres host (used when `--conn` is unset) |
 | `--port`     | `5432`      | Postgres port                               |
 | `--user`     | `postgres`  | Postgres user                               |

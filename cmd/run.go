@@ -25,10 +25,12 @@ var (
 	passwordFlag string
 	databaseFlag string
 	sslModeFlag  string
+	profileFlag  string
 )
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&connFlag, "conn", "", "Postgres connection string (or set DATABASE_URL)")
+	rootCmd.PersistentFlags().StringVar(&profileFlag, "profile", "", "Named connection profile from the config file")
 	rootCmd.PersistentFlags().StringVar(&hostFlag, "host", "localhost", "Postgres host")
 	rootCmd.PersistentFlags().IntVar(&portFlag, "port", 5432, "Postgres port")
 	rootCmd.PersistentFlags().StringVar(&userFlag, "user", "postgres", "Postgres user")
@@ -41,15 +43,12 @@ func init() {
 }
 
 func run(cmd *cobra.Command, args []string) error {
-	cfg := config.DBProfile{
-		ConnString: firstNonEmpty(connFlag, os.Getenv("DATABASE_URL")),
-		Host:       hostFlag,
-		Port:       portFlag,
-		User:       userFlag,
-		Password:   passwordFlag,
-		Database:   databaseFlag,
-		SSLMode:    sslModeFlag,
-		Timeout:    timeoutFlag,
+	cfg, created, path, err := loadProfile(cmd)
+	if err != nil {
+		return err
+	}
+	if created {
+		fmt.Fprintf(cmd.ErrOrStderr(), "Created config file at %s\n", path)
 	}
 	if err := cfg.Validate(); err != nil {
 		return err
@@ -84,6 +83,58 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	return nil
+}
+
+func loadProfile(cmd *cobra.Command) (config.DBProfile, bool, string, error) {
+	path, err := config.DefaultPath()
+	if err != nil {
+		return config.DBProfile{}, false, "", err
+	}
+	file, created, err := config.LoadOrCreate(path)
+	if err != nil {
+		return config.DBProfile{}, false, "", fmt.Errorf("load config: %w", err)
+	}
+
+	cfg := config.DefaultDBProfile()
+	profileName := firstNonEmpty(profileFlag, file.Settings.DefaultProfile)
+	if profileName != "" {
+		profile, err := file.Profile(profileName)
+		if err != nil {
+			return config.DBProfile{}, false, "", err
+		}
+		cfg = cfg.Merge(profile)
+	}
+
+	if connFlag != "" {
+		cfg.ConnString = connFlag
+	} else if profileFlag == "" {
+		if dsn := os.Getenv("DATABASE_URL"); dsn != "" {
+			cfg.ConnString = dsn
+		}
+	}
+	flags := cmd.Flags()
+	if flags.Changed("host") {
+		cfg.Host = hostFlag
+	}
+	if flags.Changed("port") {
+		cfg.Port = portFlag
+	}
+	if flags.Changed("user") {
+		cfg.User = userFlag
+	}
+	if flags.Changed("password") {
+		cfg.Password = passwordFlag
+	}
+	if flags.Changed("db") {
+		cfg.Database = databaseFlag
+	}
+	if flags.Changed("sslmode") {
+		cfg.SSLMode = sslModeFlag
+	}
+	if flags.Changed("timeout") {
+		cfg.Timeout = timeoutFlag
+	}
+	return cfg, created, path, nil
 }
 
 func firstNonEmpty(values ...string) string {
