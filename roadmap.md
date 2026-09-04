@@ -48,7 +48,7 @@ For each driver:
 - [ ] Data-grid focus mode
   - [x] Press Enter to move focus between the table picker and data grid; Esc returns to the picker
   - [x] Highlight the active row and show the current focus state in the footer
-  - [ ] Navigate rows with `j`/`k`, arrow keys, `Ctrl-d`/`Ctrl-u`, and `g`/`G`
+  - [x] Navigate rows with `j`/`k`, arrow keys, `Ctrl-d`/`Ctrl-u`, and `g`/`G`
   - [ ] Keep the selected row visible while scrolling and when visible columns change
   - [ ] Navigate cells left and right, highlighting the active cell
   - [ ] Open a row-detail popup with full, untruncated values

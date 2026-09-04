@@ -10,6 +10,10 @@ type Map struct {
 	Down             key.Binding
 	PageUp           key.Binding
 	PageDown         key.Binding
+	HalfPageUp       key.Binding
+	HalfPageDown     key.Binding
+	FirstRow         key.Binding
+	LastRow          key.Binding
 	ShowDescriptions key.Binding
 	ShowValues       key.Binding
 	Schema           key.Binding
@@ -47,6 +51,22 @@ func Default() Map {
 		PageDown: key.NewBinding(
 			key.WithKeys("pgdown", "f"),
 			key.WithHelp("PgDn/f", "next page"),
+		),
+		HalfPageUp: key.NewBinding(
+			key.WithKeys("ctrl+u"),
+			key.WithHelp("Ctrl+u", "half page up"),
+		),
+		HalfPageDown: key.NewBinding(
+			key.WithKeys("ctrl+d"),
+			key.WithHelp("Ctrl+d", "half page down"),
+		),
+		FirstRow: key.NewBinding(
+			key.WithKeys("g"),
+			key.WithHelp("g", "first row"),
+		),
+		LastRow: key.NewBinding(
+			key.WithKeys("G"),
+			key.WithHelp("G", "last row"),
 		),
 		ShowDescriptions: key.NewBinding(
 			key.WithKeys("d"),
@@ -92,5 +112,5 @@ func (m Map) ShortHelp() []key.Binding {
 }
 
 func (m Map) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{m.Up, m.Down, m.PageUp, m.PageDown}, {m.SQL, m.Columns, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
+	return [][]key.Binding{{m.Up, m.Down, m.PageUp, m.PageDown, m.HalfPageUp, m.HalfPageDown, m.FirstRow, m.LastRow}, {m.SQL, m.Columns, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
 }

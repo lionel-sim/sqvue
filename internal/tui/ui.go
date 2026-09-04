@@ -231,9 +231,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		}
 		return m, nil
 	case m.focused:
-		// Grid navigation is added separately; until then, prevent row-focused
-		// input from changing the selected table.
-		return m, nil
+		return m.handleGridKey(msg)
 	case key.Matches(msg, m.keys.Refresh):
 		m.loading = true
 		m.status = "reloading tables..."
@@ -278,6 +276,35 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.showValues()
 	}
 	return m, nil
+}
+
+func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.Down):
+		return m.moveGridRow(+1), nil
+	case key.Matches(msg, m.keys.Up):
+		return m.moveGridRow(-1), nil
+	case key.Matches(msg, m.keys.HalfPageDown):
+		return m.moveGridRow(max(1, len(m.rows)/2)), nil
+	case key.Matches(msg, m.keys.HalfPageUp):
+		return m.moveGridRow(-max(1, len(m.rows)/2)), nil
+	case key.Matches(msg, m.keys.FirstRow):
+		m.rowCursor = 0
+		return m, nil
+	case key.Matches(msg, m.keys.LastRow):
+		m.rowCursor = max(0, len(m.rows)-1)
+		return m, nil
+	case key.Matches(msg, m.keys.PageDown):
+		return m.changePage(+1)
+	case key.Matches(msg, m.keys.PageUp):
+		return m.changePage(-1)
+	}
+	return m, nil
+}
+
+func (m Model) moveGridRow(delta int) Model {
+	m.rowCursor = clamp(m.rowCursor+delta, 0, max(0, len(m.rows)-1))
+	return m
 }
 
 func (m Model) handleColumnsKey(msg tea.KeyMsg) (Model, tea.Cmd) {

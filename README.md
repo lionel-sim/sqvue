@@ -120,8 +120,10 @@ or Postgres password file instead.
 
 | Key              | Action                |
 | ---------------- | --------------------- |
-| `j` / `↓`        | Next table            |
-| `k` / `↑`        | Previous table        |
+| `j` / `↓`        | Next table or active row |
+| `k` / `↑`        | Previous table or active row |
+| `Ctrl+D` / `Ctrl+U` | Half page down / up in focused rows |
+| `g` / `G`        | First / last focused row |
 | `f` / `PgDn`     | Next page             |
 | `b` / `PgUp`     | Previous page         |
 | `d`              | Show column descriptions |

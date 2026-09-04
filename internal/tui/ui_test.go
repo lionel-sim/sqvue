@@ -85,6 +85,33 @@ func TestEnterFocusesGridAndEscapeReturnsToTablePicker(t *testing.T) {
 	}
 }
 
+func TestGridNavigationMovesActiveRow(t *testing.T) {
+	m := testModel()
+	m.rows = makeRows(10)
+	m.focused = true
+
+	m, _ = update(m, keyMsg("j"))
+	if m.rowCursor != 1 {
+		t.Fatalf("j moved to row %d, want 1", m.rowCursor)
+	}
+	m, _ = update(m, tea.KeyMsg{Type: tea.KeyCtrlD})
+	if m.rowCursor != 6 {
+		t.Fatalf("Ctrl-D moved to row %d, want 6", m.rowCursor)
+	}
+	m, _ = update(m, tea.KeyMsg{Type: tea.KeyCtrlU})
+	if m.rowCursor != 1 {
+		t.Fatalf("Ctrl-U moved to row %d, want 1", m.rowCursor)
+	}
+	m, _ = update(m, keyMsg("G"))
+	if m.rowCursor != 9 {
+		t.Fatalf("G moved to row %d, want 9", m.rowCursor)
+	}
+	m, _ = update(m, keyMsg("g"))
+	if m.rowCursor != 0 {
+		t.Fatalf("g moved to row %d, want 0", m.rowCursor)
+	}
+}
+
 func TestHelpOverlay(t *testing.T) {
 	m := testModel()
 	m, _ = update(m, keyMsg("?"))
