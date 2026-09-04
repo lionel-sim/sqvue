@@ -126,6 +126,7 @@ or Postgres password file instead.
 | `Ctrl+D` / `Ctrl+U` | Half page down / up in focused rows |
 | `g` / `G`        | First / last focused row |
 | `h` / `←` and `l` / `→` | Previous / next cell in focused rows |
+| `count` + `j` / `k` / `h` / `l` | Repeat focused-grid movement (for example, `23j`) |
 | `y` / `Y`        | Copy focused cell / visible row |
 | `o`              | Open the matching row in the focused cell's foreign-key table |
 | `f` / `PgDn`     | Next page             |

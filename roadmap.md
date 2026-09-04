@@ -51,6 +51,7 @@ For each driver:
   - [x] Navigate rows with `j`/`k`, arrow keys, `Ctrl-d`/`Ctrl-u`, and `g`/`G`
   - [x] Keep the selected row visible while scrolling and when visible columns change
   - [x] Navigate cells left and right, highlighting the active cell
+  - [x] Vim-style count prefixes for `j`/`k`/`h`/`l` movement
   - [x] Open a row-detail popup with full, untruncated values
   - [x] Copy the active cell (`y`) or whole row (`Y`)
   - [x] Follow a foreign-key cell to its matching referenced row when its table is available in the current schema

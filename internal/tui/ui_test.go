@@ -119,6 +119,42 @@ func TestGridNavigationMovesActiveRow(t *testing.T) {
 	}
 }
 
+func TestGridCountPrefixRepeatsRowAndCellMovement(t *testing.T) {
+	m := testModel()
+	m.focused = true
+	m.rows = makeRows(30)
+	m.columns = []db.Column{{Name: "id"}, {Name: "name"}, {Name: "price"}}
+
+	m, _ = update(m, keyMsg("2"))
+	m, _ = update(m, keyMsg("3"))
+	if m.countPrefix != 23 {
+		t.Fatalf("count prefix = %d, want 23", m.countPrefix)
+	}
+	m, _ = update(m, keyMsg("j"))
+	if m.rowCursor != 23 || m.countPrefix != 0 {
+		t.Fatalf("23j = row %d, prefix %d; want row 23, prefix 0", m.rowCursor, m.countPrefix)
+	}
+	m, _ = update(m, keyMsg("2"))
+	m, _ = update(m, keyMsg("l"))
+	if m.cellCursor != 2 {
+		t.Fatalf("2l = column %d, want 2", m.cellCursor)
+	}
+}
+
+func TestGridCountPrefixCrossesQueryPages(t *testing.T) {
+	m := testModel()
+	m.focused = true
+	m.queryActive = true
+	m.pageSize = 2
+	m.queryRows = makeRows(5)
+	m.setQueryPage()
+	m, _ = update(m, keyMsg("3"))
+	m, _ = update(m, keyMsg("j"))
+	if m.page != 1 || m.rowCursor != 1 {
+		t.Fatalf("3j = page %d, row %d; want page 1, row 1", m.page, m.rowCursor)
+	}
+}
+
 func TestGridSelectionPersistsAcrossFocusAndColumnChanges(t *testing.T) {
 	m := testModel()
 	m.rows = makeRows(4)

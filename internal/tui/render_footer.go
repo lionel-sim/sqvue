@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/x/ansi"
@@ -24,6 +25,9 @@ func renderFooter(m Model) string {
 	focus := "Focus: tables"
 	if m.focused {
 		focus = "Focus: rows"
+	}
+	if m.countPrefix > 0 {
+		focus += " | Jump: " + strconv.Itoa(m.countPrefix)
 	}
 	bindings += " | " + focus
 	status := "Status: " + sanitizeText(m.status)

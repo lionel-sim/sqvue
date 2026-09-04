@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -75,9 +76,11 @@ type referenceFilter struct {
 
 // gridState tracks whether keyboard input is directed at the displayed rows.
 type gridState struct {
-	focused    bool
-	rowCursor  int
-	cellCursor int
+	focused         bool
+	rowCursor       int
+	cellCursor      int
+	countPrefix     int
+	pendingRowMoves int
 }
 
 // queryState retains an ad-hoc query result so it can be paged locally.
@@ -315,21 +318,23 @@ func (m Model) handleRowDetailKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 }
 
 func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	if msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && unicode.IsDigit(msg.Runes[0]) {
+		digit := int(msg.Runes[0] - '0')
+		if m.countPrefix > 0 || digit > 0 {
+			m.countPrefix = min(maxPageSize*1000, m.countPrefix*10+digit)
+		}
+		return m, nil
+	}
+	count := m.consumeGridCount()
 	switch {
 	case key.Matches(msg, m.keys.Down):
-		if m.rowCursor == len(m.rows)-1 {
-			return m.changeGridPage(+1)
-		}
-		return m.moveGridRow(+1), nil
+		return m.moveGridRows(count)
 	case key.Matches(msg, m.keys.Up):
-		if m.rowCursor == 0 {
-			return m.changeGridPage(-1)
-		}
-		return m.moveGridRow(-1), nil
+		return m.moveGridRows(-count)
 	case key.Matches(msg, m.keys.Right):
-		return m.moveGridColumn(+1), nil
+		return m.moveGridColumn(count), nil
 	case key.Matches(msg, m.keys.Left):
-		return m.moveGridColumn(-1), nil
+		return m.moveGridColumn(-count), nil
 	case key.Matches(msg, m.keys.CopyCell):
 		return m, writeClipboardCmd(m.activeCellValue(), "cell")
 	case key.Matches(msg, m.keys.CopyRow):
@@ -352,6 +357,47 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.changeGridPage(-1)
 	}
 	return m, nil
+}
+
+func (m *Model) consumeGridCount() int {
+	count := max(1, m.countPrefix)
+	m.countPrefix = 0
+	return count
+}
+
+func (m Model) moveGridRows(delta int) (Model, tea.Cmd) {
+	if len(m.rows) == 0 {
+		return m, nil
+	}
+	if m.queryActive {
+		absolute := clamp(m.page*m.pageSize+m.rowCursor+delta, 0, max(0, len(m.queryRows)-1))
+		m.page = absolute / m.pageSize
+		m.setQueryPage()
+		m.rowCursor = absolute % m.pageSize
+		return m, nil
+	}
+
+	target := m.rowCursor + delta
+	if target >= 0 && target < len(m.rows) {
+		m.rowCursor = target
+		return m, nil
+	}
+	if target < 0 {
+		if m.page == 0 {
+			m.rowCursor = 0
+			return m, nil
+		}
+		m.page--
+		m.pendingRowMoves = target
+		return m.startLoadRows()
+	}
+	if !m.hasNextPage {
+		m.rowCursor = len(m.rows) - 1
+		return m, nil
+	}
+	m.page++
+	m.pendingRowMoves = target - len(m.rows)
+	return m.startLoadRows()
 }
 
 func (m Model) changeGridPage(delta int) (Model, tea.Cmd) {
@@ -704,6 +750,25 @@ func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 	}
 	if m.rowCursor >= len(m.rows) {
 		m.rowCursor = max(0, len(m.rows)-1)
+	}
+	if m.pendingRowMoves != 0 {
+		pending := m.pendingRowMoves
+		m.pendingRowMoves = 0
+		if pending >= 0 && pending < len(m.rows) {
+			m.rowCursor = pending
+		} else if pending >= len(m.rows) && m.hasNextPage {
+			m.page++
+			m.pendingRowMoves = pending - len(m.rows)
+			return m.startLoadRows()
+		} else if pending < 0 && m.page > 0 {
+			m.page--
+			m.pendingRowMoves = pending + len(m.rows)
+			return m.startLoadRows()
+		} else if pending < 0 {
+			m.rowCursor = 0
+		} else {
+			m.rowCursor = max(0, len(m.rows)-1)
+		}
 	}
 	m.cellCursor = clamp(m.cellCursor, 0, max(0, m.displayedColumnCount()-1))
 	m.lastErr = nil

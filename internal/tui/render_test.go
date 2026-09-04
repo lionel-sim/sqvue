@@ -145,6 +145,16 @@ func TestRenderFooterShowsGridFocus(t *testing.T) {
 	}
 }
 
+func TestRenderFooterShowsGridCountPrefix(t *testing.T) {
+	m := testModel()
+	m.width = 100
+	m.focused = true
+	m.countPrefix = 23
+	if got := ansi.Strip(renderFooter(m)); !strings.Contains(got, "Jump: 23") {
+		t.Fatalf("footer missing count prefix: %q", got)
+	}
+}
+
 func TestHelpShowsBindingsForCurrentFocus(t *testing.T) {
 	m := testModel()
 	m.width = 100
