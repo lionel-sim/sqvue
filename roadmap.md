@@ -33,13 +33,11 @@ Keep the `Driver` interface as the seam; add one driver at a time behind feature
 
 - [x] SQLite (file-based, great for local dev and testing)
 - [x] MySQL
-- [ ] MariaDB compatibility verification
-- [ ] SQL Server
 
 For each driver:
 
-- [ ] New package under `internal/db/` registering itself via `db.Register`
-- [ ] Support driver-specific DSNs and dialect quirks in metadata queries
+- [x] New package under `internal/db/` registering itself via `db.Register`
+- [x] Support driver-specific DSNs and dialect quirks in metadata queries
 - [x] Extend the driver registry with a `--db-type` flag
 
 ## Phase 3 — General TUI capabilities
