@@ -90,10 +90,10 @@ type overlayState struct {
 }
 type viewportState struct{ width, height int }
 type loadState struct {
-	status  string
-	loading bool
-	lastErr error
-	loadID  uint64
+	status, copyStatusKind string
+	loading                bool
+	lastErr                error
+	loadID, copyStatusID   uint64
 }
 
 func New(opts Options) Model {

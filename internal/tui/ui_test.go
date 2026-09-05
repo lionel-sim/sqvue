@@ -523,6 +523,31 @@ func TestClipboardResultUpdatesStatus(t *testing.T) {
 	}
 }
 
+func TestCopiedStatusReturnsToBrowseStatus(t *testing.T) {
+	m := testModel()
+	m.columns = []db.Column{{Name: "id"}}
+	m.rows = [][]string{{"1"}}
+	m.rowCounts[m.tables[0].String()] = 1
+	m.copyStatusID = 1
+
+	m, _ = update(m, clipboardWrittenMsg{kind: "cell", copyStatusID: 1})
+	m, _ = update(m, copyStatusClearedMsg{kind: "cell", copyStatusID: 1})
+	if got, want := m.status, "public.a page 1 (1 rows of 1)"; got != want {
+		t.Fatalf("status = %q, want %q", got, want)
+	}
+}
+
+func TestOlderCopiedStatusDoesNotOverrideNewStatus(t *testing.T) {
+	m := testModel()
+	m.copyStatusID = 2
+	m.status = "loading public.a page 1..."
+
+	m, _ = update(m, copyStatusClearedMsg{kind: "cell", copyStatusID: 1})
+	if got, want := m.status, "loading public.a page 1..."; got != want {
+		t.Fatalf("status = %q, want %q", got, want)
+	}
+}
+
 func TestRowDetailsScroll(t *testing.T) {
 	m := testModel()
 	m.width = 40

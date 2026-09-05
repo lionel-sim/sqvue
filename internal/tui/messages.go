@@ -37,7 +37,12 @@ type (
 		err       error
 	}
 	clipboardWrittenMsg struct {
-		kind string
-		err  error
+		kind         string
+		copyStatusID uint64
+		err          error
+	}
+	copyStatusClearedMsg struct {
+		kind         string
+		copyStatusID uint64
 	}
 )

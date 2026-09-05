@@ -138,6 +138,16 @@ func (m *Model) setRowsStatus(t db.Table) {
 	}
 	m.status = status
 }
+
+func (m *Model) restoreBrowseStatus() {
+	if m.queryActive {
+		m.setQueryPage()
+		return
+	}
+	if table := m.currentTable(); table != nil {
+		m.setRowsStatus(*table)
+	}
+}
 func formatBrowseFilters(filters []db.RowFilter) string {
 	parts := make([]string, len(filters))
 	for i, filter := range filters {

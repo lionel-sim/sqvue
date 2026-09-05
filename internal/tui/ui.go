@@ -26,10 +26,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case queryLoadedMsg:
 		return m.handleQueryLoaded(msg)
 	case clipboardWrittenMsg:
+		if msg.copyStatusID != m.copyStatusID {
+			return m, nil
+		}
 		if msg.err != nil {
 			return m.fail("copy failed", msg.err)
 		}
-		m.status, m.lastErr = "copied "+msg.kind, nil
+		m.status, m.copyStatusKind, m.lastErr = "copied "+msg.kind, msg.kind, nil
+		return m, clearCopyStatusCmd(msg.kind, msg.copyStatusID)
+	case copyStatusClearedMsg:
+		if msg.copyStatusID != m.copyStatusID || msg.kind != m.copyStatusKind || m.status != "copied "+msg.kind {
+			return m, nil
+		}
+		m.restoreBrowseStatus()
 	}
 	return m, nil
 }

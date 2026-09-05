@@ -44,9 +44,9 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Left):
 		return m.moveGridColumn(-count), nil
 	case key.Matches(msg, m.keys.CopyCell):
-		return m, writeClipboardCmd(m.activeCellValue(), "cell")
+		return m.copyToClipboard(m.activeCellValue(), "cell")
 	case key.Matches(msg, m.keys.CopyRow):
-		return m, writeClipboardCmd(m.activeRowValue(), "row")
+		return m.copyToClipboard(m.activeRowValue(), "row")
 	case key.Matches(msg, m.keys.OpenReference):
 		return m.followActiveForeignKey()
 	case key.Matches(msg, m.keys.HalfPageDown):
@@ -63,6 +63,11 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.changeGridPage(-1)
 	}
 	return m, nil
+}
+
+func (m Model) copyToClipboard(value, kind string) (Model, tea.Cmd) {
+	m.copyStatusID++
+	return m, writeClipboardCmd(value, kind, m.copyStatusID)
 }
 
 func (m *Model) consumeGridCount() int {

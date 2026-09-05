@@ -91,10 +91,18 @@ func runQueryCmd(c db.Driver, sql string, timeout time.Duration, requestID uint6
 	}
 }
 
-func writeClipboardCmd(value, kind string) tea.Cmd {
+func writeClipboardCmd(value, kind string, copyStatusID uint64) tea.Cmd {
 	return func() tea.Msg {
-		return clipboardWrittenMsg{kind: kind, err: clipboard.WriteAll(value)}
+		return clipboardWrittenMsg{kind: kind, copyStatusID: copyStatusID, err: clipboard.WriteAll(value)}
 	}
+}
+
+const copyStatusDuration = 2 * time.Second
+
+func clearCopyStatusCmd(kind string, copyStatusID uint64) tea.Cmd {
+	return tea.Tick(copyStatusDuration, func(time.Time) tea.Msg {
+		return copyStatusClearedMsg{kind: kind, copyStatusID: copyStatusID}
+	})
 }
 
 // startLoad dispatches to the loader for the current view mode.
