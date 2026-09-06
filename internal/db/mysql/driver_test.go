@@ -17,12 +17,13 @@ func TestQuoteIdent(t *testing.T) {
 }
 
 func TestUpdateCellStatementUsesParametersAndPrimaryKey(t *testing.T) {
-	query, args, err := mysqlUpdateCellStatement(db.CellUpdateRequest{
+	request := db.CellUpdateRequest{
 		Table:      db.Table{Schema: "app", Name: "order items"},
 		Column:     "note",
 		Value:      "updated",
 		PrimaryKey: []db.PrimaryKeyValue{{Column: "tenant_id", Value: "north"}, {Column: "id", Value: "7"}},
-	})
+	}
+	query, args, err := mysqlUpdateCellStatement(request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,6 +32,16 @@ func TestUpdateCellStatementUsesParametersAndPrimaryKey(t *testing.T) {
 	}
 	if len(args) != 3 || args[0] != "updated" || args[1] != "north" || args[2] != "7" {
 		t.Fatalf("args = %#v", args)
+	}
+	existsQuery, existsArgs, err := mysqlCellExistsStatement(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "select 1 from `app`.`order items` where `tenant_id` = ? and `id` = ? for update"; existsQuery != want {
+		t.Fatalf("exists query = %q, want %q", existsQuery, want)
+	}
+	if len(existsArgs) != 2 || existsArgs[0] != "north" || existsArgs[1] != "7" {
+		t.Fatalf("exists args = %#v", existsArgs)
 	}
 }
 

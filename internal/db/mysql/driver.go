@@ -238,7 +238,23 @@ func (d *Driver) UpdateCell(ctx context.Context, request db.CellUpdateRequest) e
 	if err != nil {
 		return err
 	}
-	result, err := d.db.ExecContext(ctx, query, args...)
+	existsQuery, existsArgs, err := mysqlCellExistsStatement(request)
+	if err != nil {
+		return err
+	}
+	tx, err := d.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	var found int
+	if err := tx.QueryRowContext(ctx, existsQuery, existsArgs...).Scan(&found); err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("cell update affected 0 rows, want 1")
+		}
+		return err
+	}
+	result, err := tx.ExecContext(ctx, query, args...)
 	if err != nil {
 		return err
 	}
@@ -246,10 +262,10 @@ func (d *Driver) UpdateCell(ctx context.Context, request db.CellUpdateRequest) e
 	if err != nil {
 		return err
 	}
-	if affected != 1 {
+	if affected > 1 {
 		return fmt.Errorf("cell update affected %d rows, want 1", affected)
 	}
-	return nil
+	return tx.Commit()
 }
 
 func mysqlUpdateCellStatement(request db.CellUpdateRequest) (string, []any, error) {
@@ -264,6 +280,20 @@ func mysqlUpdateCellStatement(request db.CellUpdateRequest) (string, []any, erro
 		args = append(args, key.Value)
 	}
 	query := "update " + qualifiedName(request.Table.Schema, request.Table.Name) + " set " + quoteIdent(request.Column) + " = ? where " + strings.Join(where, " and ")
+	return query, args, nil
+}
+
+func mysqlCellExistsStatement(request db.CellUpdateRequest) (string, []any, error) {
+	if err := request.Validate(); err != nil {
+		return "", nil, err
+	}
+	args := make([]any, 0, len(request.PrimaryKey))
+	where := make([]string, 0, len(request.PrimaryKey))
+	for _, key := range request.PrimaryKey {
+		where = append(where, quoteIdent(key.Column)+" = ?")
+		args = append(args, key.Value)
+	}
+	query := "select 1 from " + qualifiedName(request.Table.Schema, request.Table.Name) + " where " + strings.Join(where, " and ") + " for update"
 	return query, args, nil
 }
 
