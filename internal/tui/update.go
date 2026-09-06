@@ -24,6 +24,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		}
 	case key.Matches(msg, m.keys.ExportCSV):
 		return m.beginCSVExport()
+	case key.Matches(msg, m.keys.Backup):
+		return m.beginBackup()
 	case m.focused:
 		return m.handleGridKey(msg)
 	default:

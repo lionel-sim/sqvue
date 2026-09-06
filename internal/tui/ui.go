@@ -92,6 +92,9 @@ func (m Model) handleOverlayKey(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
 	case overlayExportCSV:
 		m, cmd := m.handleCSVExportKey(msg)
 		return m, cmd, true
+	case overlayBackupScope:
+		m, cmd := m.handleBackupScopeKey(msg)
+		return m, cmd, true
 	case overlayColumnPicker:
 		m, cmd := m.handleColumnsKey(msg)
 		return m, cmd, true

@@ -77,6 +77,7 @@ const (
 	overlayColumnPicker
 	overlayRowDetail
 	overlayExportCSV
+	overlayBackupScope
 )
 
 type overlayState struct {

@@ -75,6 +75,10 @@ func (f *fakeDriver) CountBrowseRows(context.Context, db.BrowseRequest) (int64, 
 	return f.count, nil
 }
 func (f *fakeDriver) CountRows(context.Context, db.Table) (int64, error) { return f.count, nil }
+func (f *fakeDriver) BackupCapabilities() db.BackupCapabilities {
+	return db.BackupCapabilities{Database: true, FileExtension: "sql"}
+}
+func (f *fakeDriver) Backup(context.Context, db.BackupRequest) error { return nil }
 
 func makeRows(n int) [][]string {
 	rows := make([][]string, n)

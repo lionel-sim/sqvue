@@ -83,7 +83,7 @@ For each driver:
 - [x] CI: lint, build, and test matrix (GitHub Actions on Linux, macOS, and Windows)
 - [ ] Generate database backups
   - [x] Define a driver-specific backup interface so backups preserve database schema, data, indexes, and constraints without putting database-specific behavior in `internal/db`
-  - [ ] Add a `b` key binding and keyboard-help entry that opens a backup-scope picker
+  - [x] Add a `B` key binding and keyboard-help entry that opens a backup-scope picker
   - [ ] Offer `Entire database` (the default) and `Current table`; add `Current schema` only for drivers that support schemas
   - [ ] Follow the scope picker with a save-path prompt, provide timestamped driver-appropriate filenames, refuse to overwrite existing files, and report asynchronous progress, success, and errors in the TUI
   - [ ] Implement PostgreSQL full-database and table backups with `pg_dump`, including a clear preflight error when the command is unavailable

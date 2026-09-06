@@ -97,6 +97,7 @@ func (m Model) helpKeyMap() Map {
 	keys.SQL.SetEnabled(!m.focused)
 	keys.Columns.SetEnabled(!m.focused)
 	keys.ExportCSV.SetEnabled(m.mode == modeValues && len(m.columns) > 0)
+	keys.Backup.SetEnabled(m.backupDriver() != nil)
 	keys.Schema.SetEnabled(!m.focused)
 	keys.Filter.SetEnabled(!m.focused)
 	keys.ShowDescriptions.SetEnabled(!m.focused)
