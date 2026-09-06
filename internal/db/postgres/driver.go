@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/url"
 	"sqvue/internal/db"
@@ -20,6 +21,8 @@ type Driver struct {
 	pool          *pgxpool.Pool
 	backupConnect db.ConnectConfig
 }
+
+var _ db.TableRowStreamer = (*Driver)(nil)
 
 const maxQueryRows = 1_000
 
@@ -323,6 +326,73 @@ func (d *Driver) BrowseRows(ctx context.Context, req db.BrowseRequest) ([]db.Col
 		result = append(result, row)
 	}
 	return columns, result, rows.Err()
+}
+
+func (d *Driver) OpenTableRowStream(ctx context.Context, req db.TableRowStreamRequest) ([]db.Column, db.RowStream, error) {
+	if d.pool == nil {
+		return nil, nil, fmt.Errorf("not connected")
+	}
+	columns, err := d.columnMetadata(ctx, req.Table.Schema, req.Table.Name)
+	if err != nil {
+		return nil, nil, err
+	}
+	where, args, err := postgresBrowseWhere(req.Filters)
+	if err != nil {
+		return nil, nil, err
+	}
+	ident := pgx.Identifier{req.Table.Schema, req.Table.Name}.Sanitize()
+	query := fmt.Sprintf("select * from %s as sqvue_row", ident) + where
+	if orderBy := rowOrder(req.Table, columns); orderBy != "" {
+		query += " order by " + orderBy
+	}
+	rows, err := d.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, nil, err
+	}
+	values := make([]any, len(columns))
+	scanTargets := make([]any, len(columns))
+	for i := range values {
+		scanTargets[i] = &values[i]
+	}
+	return columns, &rowStream{rows: rows, values: values, scanTargets: scanTargets}, nil
+}
+
+type rowStream struct {
+	rows        pgx.Rows
+	values      []any
+	scanTargets []any
+	closed      bool
+}
+
+func (s *rowStream) Next() ([]string, error) {
+	if s.closed {
+		return nil, io.EOF
+	}
+	if !s.rows.Next() {
+		err := s.rows.Err()
+		_ = s.Close()
+		if err != nil {
+			return nil, err
+		}
+		return nil, io.EOF
+	}
+	if err := s.rows.Scan(s.scanTargets...); err != nil {
+		_ = s.Close()
+		return nil, err
+	}
+	row := make([]string, len(s.values))
+	for i, value := range s.values {
+		row[i] = formatValue(value)
+	}
+	return row, nil
+}
+
+func (s *rowStream) Close() error {
+	if !s.closed {
+		s.closed = true
+		s.rows.Close()
+	}
+	return nil
 }
 
 func (d *Driver) CountBrowseRows(ctx context.Context, req db.BrowseRequest) (int64, error) {

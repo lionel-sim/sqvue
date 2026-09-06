@@ -69,6 +69,30 @@ func TestDriverBrowsesAndQueriesSQLite(t *testing.T) {
 		t.Fatalf("BrowseRows() = columns %#v, rows %#v, error %v", columns, rows, err)
 	}
 
+	streamColumns, stream, err := driver.OpenTableRowStream(ctx, db.TableRowStreamRequest{Table: tables[0]})
+	if err != nil {
+		t.Fatalf("OpenTableRowStream() error = %v", err)
+	}
+	streamRows, exhausted, err := db.ReadRowStream(stream, 10)
+	if err != nil || !exhausted || len(streamColumns) != 4 || len(streamRows) != 3 || streamRows[2][2] != "music" {
+		t.Fatalf("unfiltered stream = columns %#v, rows %#v, exhausted %t, error %v", streamColumns, streamRows, exhausted, err)
+	}
+	if err := stream.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	_, stream, err = driver.OpenTableRowStream(ctx, db.TableRowStreamRequest{Table: tables[0], Filters: []db.RowFilter{{Column: "id", Operator: db.FilterEqual, Value: "2"}}})
+	if err != nil {
+		t.Fatalf("OpenTableRowStream() with filter error = %v", err)
+	}
+	streamRows, exhausted, err = db.ReadRowStream(stream, 10)
+	if err != nil || !exhausted || len(streamRows) != 1 || streamRows[0][2] != "games" {
+		t.Fatalf("filtered stream = rows %#v, exhausted %t, error %v", streamRows, exhausted, err)
+	}
+	if err := stream.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
 	count, err := driver.CountRows(ctx, tables[0])
 	if err != nil || count != 3 {
 		t.Fatalf("CountRows() = %d, %v; want 3, nil", count, err)

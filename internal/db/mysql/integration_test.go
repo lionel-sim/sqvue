@@ -22,6 +22,7 @@ func TestMySQLDriverIntegration(t *testing.T) {
 	verifyMySQLDescription(t, ctx, driver, schema, names)
 	verifyMySQLRows(t, ctx, driver, books)
 	verifyMySQLBrowse(t, ctx, driver, books)
+	verifyMySQLStream(t, ctx, driver, books)
 	verifyMySQLQuery(t, ctx, driver, names.books)
 }
 
@@ -141,6 +142,30 @@ func verifyMySQLBrowse(t *testing.T, ctx context.Context, driver *Driver, books 
 	count, err := driver.CountBrowseRows(ctx, req)
 	if err != nil || count != 2 {
 		t.Fatalf("CountBrowseRows() = %d, %v", count, err)
+	}
+}
+
+func verifyMySQLStream(t *testing.T, ctx context.Context, driver *Driver, books db.Table) {
+	t.Helper()
+	for _, test := range []struct {
+		name    string
+		filters []db.RowFilter
+		want    int
+	}{
+		{name: "unfiltered", want: 3},
+		{name: "filtered", filters: []db.RowFilter{{Column: "rating", Operator: db.FilterGreaterOrEqual, Value: "4"}}, want: 2},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			columns, stream, err := driver.OpenTableRowStream(ctx, db.TableRowStreamRequest{Table: books, Filters: test.filters})
+			if err != nil {
+				t.Fatalf("OpenTableRowStream() error = %v", err)
+			}
+			t.Cleanup(func() { _ = stream.Close() })
+			rows, exhausted, err := db.ReadRowStream(stream, 10)
+			if err != nil || !exhausted || len(columns) != 5 || len(rows) != test.want {
+				t.Fatalf("stream = columns %#v, rows %#v, exhausted %t, error %v", columns, rows, exhausted, err)
+			}
+		})
 	}
 }
 
