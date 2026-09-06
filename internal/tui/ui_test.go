@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"sqvue/internal/config"
 	"sqvue/internal/db"
@@ -47,6 +48,9 @@ func TestNewAppliesThemeToInputsAndHelp(t *testing.T) {
 	m := New(Options{Theme: styles})
 	if m.sqlInput.FocusedStyle.Prompt.GetForeground() != styles.Title.GetForeground() {
 		t.Fatal("SQL prompt did not receive the theme title style")
+	}
+	if _, ok := m.sqlInput.FocusedStyle.CursorLine.GetBackground().(lipgloss.NoColor); !ok {
+		t.Fatal("SQL cursor line should not paint a background")
 	}
 	if m.browseFilterInput.PlaceholderStyle.GetForeground() != styles.Muted.GetForeground() {
 		t.Fatal("filter placeholder did not receive the theme muted style")

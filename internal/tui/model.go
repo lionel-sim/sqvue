@@ -213,7 +213,10 @@ func newThemedTextarea(styles theme.Theme) textarea.Model {
 	input.FocusedStyle.Prompt = styles.Title
 	input.FocusedStyle.Text = styles.Selected
 	input.FocusedStyle.Placeholder = styles.Muted
-	input.FocusedStyle.CursorLine = styles.ActiveCell
+	// Keep the editor on the terminal background; a full-width highlighted
+	// cursor line is visually distracting for multi-line SQL.
+	input.FocusedStyle.CursorLine = styles.Selected
+	input.FocusedStyle.CursorLineNumber = styles.Muted
 	input.BlurredStyle.Prompt = styles.Title
 	input.BlurredStyle.Text = styles.Selected
 	input.BlurredStyle.Placeholder = styles.Muted
