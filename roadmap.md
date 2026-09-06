@@ -109,8 +109,8 @@ For each driver:
 
 ## Phase 4 — Power-user TUI workflows
 
-Build on the completed browsing foundation with faster recurring investigation,
-safer query execution, and richer relational navigation.
+Build on the completed browsing foundation with faster recurring investigation
+and richer relational navigation.
 
 - [x] Edit active table cells
   - [x] Bind `e` to edit the active grid cell while retaining CSV export outside grid focus; keep SQL-result grids read-only
@@ -127,10 +127,6 @@ safer query execution, and richer relational navigation.
   - [x] Add a driver-neutral sort specification to browse requests and implement dialect-safe identifier handling per driver
   - [x] Choose the active column and ascending/descending order from the data grid
   - [x] Show active sort order in the footer and preserve it through filtering, streaming, export, and pagination
-- [ ] Safe SQL execution mode
-  - [ ] Default ad-hoc SQL sessions to read-only where each driver supports it
-  - [ ] Add an explicit, clearly labelled session-level write-mode confirmation
-  - [ ] Surface transaction/read-only state in the SQL UI and test driver-specific enforcement
 - [ ] Relationship explorer
   - [ ] Add a compact table relationship view using existing foreign-key metadata
   - [ ] Navigate inbound and outbound relationships and open related rows with parameterized filters

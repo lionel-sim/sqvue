@@ -125,9 +125,11 @@ uses Enter to run, `r` to rename, and `d` to open a deletion confirmation
 
 The SQL editor accepts multiple lines: Enter adds a line, while `Ctrl+R` runs the
 query. `Ctrl+F` reformats the editor contents without running them, and `Ctrl+E`
-opens an `EXPLAIN` result for one `SELECT` statement only; it refuses statements
-that could mutate data. Database errors that report a character position are shown
-with their line and column, and the editor stays open with the query intact.
+opens an `EXPLAIN` result for one `SELECT` statement only. SQL runs with the
+permissions of the connected database account; use database credentials with the
+appropriate privileges for your intended access. Database errors that report a
+character position are shown with their line and column, and the editor stays open
+with the query intact.
 
 `settings.export_directory` sets the directory prefilled when exporting CSV, JSON, or
 creating a backup.
