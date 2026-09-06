@@ -3,6 +3,7 @@ package tui
 import (
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -60,12 +61,17 @@ func renderHelpDialog(m Model) string {
 	m.help.Styles.FullKey = m.help.Styles.FullKey.Background(panelBackground)
 	m.help.Styles.FullDesc = m.help.Styles.FullDesc.Background(panelBackground)
 	m.help.Styles.FullSeparator = m.help.Styles.FullSeparator.Background(panelBackground)
-	helpText := strings.ReplaceAll(m.help.View(m.helpKeyMap()), "\x1b[0m", "\x1b[0m\x1b[48;5;235m")
+	helpText := strings.ReplaceAll(m.help.View(m.helpKeyMap()), "\x1b[0m", "\x1b[0m"+backgroundPrefix(panelBackground))
 	dismiss := m.theme.Muted.Background(panelBackground).Render("Press any key to return.")
 	content := helpText + "\n\n" + dismiss
 	panelLines := strings.Split(m.theme.Dialog.Width(width).Render(content), "\n")
 	panelWidth := ansi.StringWidth(panelLines[0])
 	return titledDialog(m, panelLines, panelWidth, "Keyboard shortcuts")
+}
+
+func backgroundPrefix(color lipgloss.Color) string {
+	styledSpace := lipgloss.NewStyle().Background(color).Render(" ")
+	return strings.TrimSuffix(strings.TrimSuffix(styledSpace, "\x1b[0m"), " ")
 }
 
 func renderRowDetailDialog(m Model) string {

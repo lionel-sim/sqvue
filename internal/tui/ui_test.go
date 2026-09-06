@@ -35,6 +35,23 @@ func TestNewDefaultsThemeWhenNoneIsProvided(t *testing.T) {
 	}
 }
 
+func TestNewAppliesThemeToInputsAndHelp(t *testing.T) {
+	styles, err := theme.ByName("high-contrast")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(Options{Theme: styles})
+	if m.sqlInput.PromptStyle.GetForeground() != styles.Title.GetForeground() {
+		t.Fatal("SQL prompt did not receive the theme title style")
+	}
+	if m.browseFilterInput.PlaceholderStyle.GetForeground() != styles.Muted.GetForeground() {
+		t.Fatal("filter placeholder did not receive the theme muted style")
+	}
+	if m.help.Styles.FullKey.GetForeground() != styles.Selected.GetForeground() {
+		t.Fatal("help keys did not receive the theme selected style")
+	}
+}
+
 func keyMsg(k string) tea.KeyMsg {
 	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)}
 }

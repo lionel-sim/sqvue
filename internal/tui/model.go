@@ -127,28 +127,50 @@ func New(opts Options) Model {
 	if styles.DialogBackground == "" {
 		styles = theme.Default()
 	}
-	filter := textinput.New()
+	filter := newThemedTextInput(styles)
 	filter.Prompt = "Filter tables: "
 	filter.Placeholder = "type to search"
-	browseFilter := textinput.New()
+	browseFilter := newThemedTextInput(styles)
 	browseFilter.Placeholder = "value"
-	sql := textinput.New()
+	sql := newThemedTextInput(styles)
 	sql.Prompt = "SQL> "
 	sql.Placeholder = "SELECT * FROM ..."
 	sql.CharLimit = 0
-	export := textinput.New()
+	export := newThemedTextInput(styles)
 	export.Prompt = "Export CSV to: "
 	export.Placeholder = "path/to/results.csv"
 	export.CharLimit = 0
-	backup := textinput.New()
+	backup := newThemedTextInput(styles)
 	backup.Prompt = "Back up to: "
 	backup.Placeholder = "path/to/backup"
 	backup.CharLimit = 0
+	helpModel := help.New()
+	applyHelpTheme(&helpModel, styles)
 	return Model{client: opts.Client, timeout: opts.Timeout,
 		resultState:  resultState{pageSize: maxPageSize, rowCounts: make(map[string]int64), browseRowCounts: make(map[string]int64)},
-		overlayState: overlayState{filterInput: filter, browseFilterInput: browseFilter, sqlInput: sql, exportInput: export, backupInput: backup, help: help.New()},
+		overlayState: overlayState{filterInput: filter, browseFilterInput: browseFilter, sqlInput: sql, exportInput: export, backupInput: backup, help: helpModel},
 		loadState:    loadState{status: "loading tables...", loading: true}, keys: Default(), exportDirectory: opts.ExportDirectory, theme: styles,
 	}
+}
+
+func newThemedTextInput(styles theme.Theme) textinput.Model {
+	input := textinput.New()
+	input.PromptStyle = styles.Title
+	input.TextStyle = styles.Selected
+	input.PlaceholderStyle = styles.Muted
+	input.Cursor.Style = styles.ActiveCell
+	input.Cursor.TextStyle = styles.Selected
+	return input
+}
+
+func applyHelpTheme(helpModel *help.Model, styles theme.Theme) {
+	helpModel.Styles.ShortKey = styles.Selected
+	helpModel.Styles.ShortDesc = styles.Muted
+	helpModel.Styles.ShortSeparator = styles.Muted
+	helpModel.Styles.FullKey = styles.Selected
+	helpModel.Styles.FullDesc = styles.Muted
+	helpModel.Styles.FullSeparator = styles.Muted
+	helpModel.Styles.Ellipsis = styles.Muted
 }
 
 func (m Model) Init() tea.Cmd { return loadSchemasCmd(m.client, m.timeout, m.loadID) }

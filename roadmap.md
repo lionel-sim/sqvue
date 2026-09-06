@@ -92,7 +92,7 @@ For each driver:
   - [x] Add named ANSI-256 presets (`default`, `light`, and `high-contrast`)
   - [x] Add a `settings.theme` configuration value with validation and startup resolution
   - [x] Pass the resolved theme through command setup, TUI options, and model state
-  - [ ] Apply themes consistently to renderers, inputs, help, and all dialogs
+  - [x] Apply themes consistently to renderers, inputs, help, and all dialogs
   - [ ] Add configuration/rendering coverage and document available themes
 - [x] Test coverage for drivers (integration tests against real Postgres and MySQL instances, plus SQLite temporary databases)
 - [x] CI: lint, build, and test matrix (GitHub Actions on Linux, macOS, and Windows)
