@@ -96,6 +96,9 @@ For each driver:
   - [x] Add configuration/rendering coverage and document available themes
 - [x] Test coverage for drivers (integration tests against real Postgres and MySQL instances, plus SQLite temporary databases)
 - [x] CI: lint, build, and test matrix (GitHub Actions on Linux, macOS, and Windows)
+- [x] Release automation
+  - [x] Expose the build version through `sqvue --version`
+  - [x] Publish checksummed macOS, Linux, and Windows archives from version tags
 - [x] Generate database backups
   - [x] Define a driver-specific backup interface so backups preserve database schema, data, indexes, and constraints without putting database-specific behavior in `internal/db`
   - [x] Add a `B` key binding and keyboard-help entry that opens a backup-scope picker

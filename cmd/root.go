@@ -7,9 +7,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var version = "dev"
+
 var rootCmd = &cobra.Command{
-	Use:   "sqvue",
-	Short: "Terminal DB viewer",
+	Use:     "sqvue",
+	Short:   "Terminal DB viewer",
+	Version: version,
 }
 
 func Execute() {

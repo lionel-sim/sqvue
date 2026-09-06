@@ -4,6 +4,8 @@
 
 A terminal-based database viewer built with Go. sqvue gives you a lightweight TUI to browse schemas, tables, and row data directly from your terminal.
 
+sqvue supports PostgreSQL, SQLite, and MySQL.
+
 ## Features
 
 - Browse schemas, tables, and views with keyboard navigation; views are marked in the table list
@@ -21,20 +23,22 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 - Pluggable database driver abstraction with a registry pattern
 - Built on [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Cobra](https://github.com/spf13/cobra)
 
-## Status
-
-Work in progress. PostgreSQL, SQLite, and MySQL are supported: sqvue can connect with a DSN or individual connection flags; browse schemas, tables, and views; inspect column and foreign-key metadata and paginated row data; run and save ad-hoc SQL in the TUI; and create database backups.
-
-Large table and query results stream incrementally, including complete exports
-without retaining every row in TUI memory. See [roadmap.md](roadmap.md) for the
-current plan.
-
 ## Requirements
 
 - Go 1.25+
 - A running Postgres or MySQL database, or a SQLite database file
 
 ## Installation
+
+### Download a release
+
+Download the archive for your operating system and architecture from the
+[GitHub releases page](https://github.com/lionel-sim/sqvue/releases). Each
+release includes a `checksums.txt` file for verifying the downloaded archive.
+Extract the archive and place `sqvue` (or `sqvue.exe` on Windows) somewhere on
+your `PATH`.
+
+### Build from source
 
 ```sh
 make build
@@ -45,6 +49,9 @@ This produces a binary at `bin/sqvue`. To clean up build artifacts:
 ```sh
 make clean
 ```
+
+Run `sqvue --version` to show the binary version. Locally built binaries report
+`dev` unless a release version is supplied at build time.
 
 ## Usage
 

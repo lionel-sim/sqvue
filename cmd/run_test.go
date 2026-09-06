@@ -1,12 +1,33 @@
 package cmd
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"sqvue/internal/config"
 )
+
+func TestRootCommandVersion(t *testing.T) {
+	originalVersion := rootCmd.Version
+	var output bytes.Buffer
+	rootCmd.Version = "v0.1.0-beta.1"
+	rootCmd.SetArgs([]string{"--version"})
+	rootCmd.SetOut(&output)
+	t.Cleanup(func() {
+		rootCmd.Version = originalVersion
+		rootCmd.SetArgs(nil)
+		rootCmd.SetOut(nil)
+	})
+
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("rootCmd.Execute() error = %v", err)
+	}
+	if got, want := output.String(), "sqvue version v0.1.0-beta.1\n"; got != want {
+		t.Fatalf("version output = %q, want %q", got, want)
+	}
+}
 
 func TestFirstNonEmpty(t *testing.T) {
 	if got := firstNonEmpty("", "DATABASE_URL", "fallback"); got != "DATABASE_URL" {
