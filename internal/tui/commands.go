@@ -47,26 +47,22 @@ func loadBrowseRowsCmd(c db.Driver, req db.BrowseRequest, timeout time.Duration,
 	}
 }
 
-func openTableRowStreamCmd(c db.TableRowStreamer, request db.TableRowStreamRequest, pageSize, skip int, requestID uint64) tea.Cmd {
+func openTableRowStreamCmd(ctx context.Context, cancel func(), c db.TableRowStreamer, request db.TableRowStreamRequest, pageSize, skip int, requestID uint64) tea.Cmd {
 	return func() tea.Msg {
-		ctx, cancel := context.WithCancel(context.Background())
 		columns, stream, err := c.OpenTableRowStream(ctx, request)
 		if err != nil {
-			cancel()
-			return tableStreamRowsLoadedMsg{requestID: requestID, err: err}
+			return tableStreamRowsLoadedMsg{requestID: requestID, cancel: cancel, err: err}
 		}
 		if skip > 0 {
 			if _, _, err := db.ReadRowStream(stream, skip); err != nil {
 				_ = stream.Close()
-				cancel()
-				return tableStreamRowsLoadedMsg{requestID: requestID, err: err}
+				return tableStreamRowsLoadedMsg{requestID: requestID, cancel: cancel, err: err}
 			}
 		}
 		rows, exhausted, err := db.ReadRowStream(stream, pageSize)
 		if err != nil {
 			_ = stream.Close()
-			cancel()
-			return tableStreamRowsLoadedMsg{requestID: requestID, err: err}
+			return tableStreamRowsLoadedMsg{requestID: requestID, cancel: cancel, err: err}
 		}
 		return tableStreamRowsLoadedMsg{requestID: requestID, columns: columns, rows: rows, exhausted: exhausted, stream: stream, cancel: cancel}
 	}
@@ -123,26 +119,22 @@ func runQueryCmd(c db.Driver, sql string, timeout time.Duration, requestID uint6
 	}
 }
 
-func openQueryRowStreamCmd(c db.QueryRowStreamer, query db.Query, pageSize, skip int, requestID uint64, initial bool) tea.Cmd {
+func openQueryRowStreamCmd(ctx context.Context, cancel func(), c db.QueryRowStreamer, query db.Query, pageSize, skip int, requestID uint64, initial bool) tea.Cmd {
 	return func() tea.Msg {
-		ctx, cancel := context.WithCancel(context.Background())
 		stream, err := c.OpenQueryRowStream(ctx, query)
 		if err != nil {
-			cancel()
-			return queryStreamRowsLoadedMsg{requestID: requestID, sql: query.SQL, initial: initial, err: err}
+			return queryStreamRowsLoadedMsg{requestID: requestID, sql: query.SQL, initial: initial, cancel: cancel, err: err}
 		}
 		if skip > 0 {
 			if _, _, err := db.ReadRowStream(stream, skip); err != nil {
 				_ = stream.Close()
-				cancel()
-				return queryStreamRowsLoadedMsg{requestID: requestID, sql: query.SQL, initial: initial, err: err}
+				return queryStreamRowsLoadedMsg{requestID: requestID, sql: query.SQL, initial: initial, cancel: cancel, err: err}
 			}
 		}
 		rows, exhausted, err := db.ReadRowStream(stream, pageSize)
 		if err != nil {
 			_ = stream.Close()
-			cancel()
-			return queryStreamRowsLoadedMsg{requestID: requestID, sql: query.SQL, initial: initial, err: err}
+			return queryStreamRowsLoadedMsg{requestID: requestID, sql: query.SQL, initial: initial, cancel: cancel, err: err}
 		}
 		return queryStreamRowsLoadedMsg{requestID: requestID, sql: query.SQL, initial: initial, columns: stream.Columns(), rows: rows, exhausted: exhausted, stream: stream, cancel: cancel, duration: stream.DurationMs(), affected: stream.RowsAffected()}
 	}
@@ -191,7 +183,9 @@ func (m Model) startLoadRows() (Model, tea.Cmd) {
 				return m, readTableRowStreamCmd(m.tableStream.stream, m.pageSize, requestID)
 			}
 			m.closeTableStream()
-			return m, openTableRowStreamCmd(streamer, db.TableRowStreamRequest{Table: *t, Filters: append([]db.RowFilter(nil), m.browseFilters...)}, m.pageSize, m.page*m.pageSize, requestID)
+			ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
+			m.tableStream = tableStreamState{cancel: cancel, key: key}
+			return m, openTableRowStreamCmd(ctx, cancel, streamer, db.TableRowStreamRequest{Table: *t, Filters: append([]db.RowFilter(nil), m.browseFilters...)}, m.pageSize, m.page*m.pageSize, requestID)
 		}
 		offset := m.page * m.pageSize
 		if len(m.browseFilters) > 0 {

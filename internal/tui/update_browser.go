@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -27,7 +28,9 @@ func (m Model) handleSQLKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.sqlInput.Blur()
 		requestID := m.nextRequestID()
 		if streamer, ok := m.client.(db.QueryRowStreamer); ok && isStreamableQuery(sql) {
-			return m, openQueryRowStreamCmd(streamer, db.Query{SQL: sql}, m.pageSize, 0, requestID, true)
+			ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
+			m.queryStreamCancel = cancel
+			return m, openQueryRowStreamCmd(ctx, cancel, streamer, db.Query{SQL: sql}, m.pageSize, 0, requestID, true)
 		}
 		return m, runQueryCmd(m.client, sql, m.timeout, requestID)
 	}

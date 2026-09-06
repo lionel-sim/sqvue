@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -206,7 +207,6 @@ func (m Model) handleQueryStreamRowsLoaded(msg queryStreamRowsLoadedMsg) (Model,
 		return m.fail("query failed", msg.err)
 	}
 	if msg.initial {
-		m.closeQueryStream()
 		m.queryActive, m.queryStreaming, m.lastErr, m.mode, m.page, m.rowCursor, m.cellCursor = true, true, nil, modeValues, 0, 0, 0
 		m.querySQL, m.queryRows, m.queryTruncated = msg.sql, nil, false
 		m.columns = make([]db.Column, len(msg.columns))
@@ -365,7 +365,9 @@ func (m Model) startLoadQueryRows() (Model, tea.Cmd) {
 		return m, readQueryRowStreamCmd(m.queryStream, m.pageSize, requestID)
 	}
 	m.closeQueryStream()
-	return m, openQueryRowStreamCmd(streamer, db.Query{SQL: m.querySQL}, m.pageSize, m.page*m.pageSize, requestID, false)
+	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
+	m.queryStreamCancel = cancel
+	return m, openQueryRowStreamCmd(ctx, cancel, streamer, db.Query{SQL: m.querySQL}, m.pageSize, m.page*m.pageSize, requestID, false)
 }
 
 func (m Model) loadCurrentRowCount(t db.Table) tea.Cmd {
