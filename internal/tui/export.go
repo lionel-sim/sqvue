@@ -79,6 +79,8 @@ func (m Model) handleExportKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if err != nil {
 			return m.fail(string(m.exportFormat)+" export failed", err)
 		}
+		m.closeTableStream()
+		m.closeQueryStream()
 		m.activeOverlay = overlayNone
 		m.exportInput.Blur()
 		m.exportID++

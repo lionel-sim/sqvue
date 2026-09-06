@@ -317,6 +317,21 @@ func TestStaleTableStreamResultIsClosedAndCancelled(t *testing.T) {
 	}
 }
 
+func TestExportClosesActiveStreamBeforeStarting(t *testing.T) {
+	m := New(Options{Client: &fakeDriver{}, ExportDirectory: t.TempDir(), Timeout: time.Second})
+	m.columns = []db.Column{{Name: "id"}}
+	m.queryActive = true
+	m.queryRows = [][]string{{"1"}}
+	stream := &fakeRowStream{}
+	m.tableStream = tableStreamState{stream: stream}
+	m, _ = m.beginJSONExport()
+
+	m, cmd := m.handleExportKey(keyMsg("enter"))
+	if cmd == nil || !stream.closed {
+		t.Fatalf("export stream cleanup = command %t, closed %t", cmd != nil, stream.closed)
+	}
+}
+
 func update(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	model, cmd := m.Update(msg)
 	return model.(Model), cmd

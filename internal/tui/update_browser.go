@@ -101,6 +101,7 @@ func (m Model) handleSchemaKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.schemaScroll = keepInView(m.schemaCursor, m.schemaScroll, tableListHeight, len(m.schemas))
 	case key.Matches(msg, m.keys.Confirm):
 		m.closeTableStream()
+		m.closeQueryStream()
 		m.schema, m.activeOverlay = m.schemaCursor, overlayNone
 		m.selected, m.scroll, m.page = 0, 0, 0
 		m.filterInput.SetValue("")
