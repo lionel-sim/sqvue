@@ -117,7 +117,8 @@ History and saved queries are isolated by connection profile (or the `default`
 profile when no name is selected). SQL is preserved verbatim, including multiple
 lines. In the SQL prompt, use Up/Down (or `k`/`j`) to browse history, `Ctrl+S` to
 save the current query, and `Ctrl+O` to open saved queries. The saved-query picker
-uses Enter to run, `r` to rename, and `d` followed by Enter to delete.
+uses Enter to run, `r` to rename, and `d` to open a deletion confirmation
+(then Enter confirms it).
 
 The SQL editor accepts multiple lines: Enter adds a line, while `Ctrl+R` runs the
 query. `Ctrl+F` reformats the editor contents without running them, and `Ctrl+E`
@@ -207,7 +208,7 @@ does not include other tables referenced by foreign keys.
 | `Ctrl+F` (in SQL editor) | Format the editor contents without running it |
 | `Ctrl+E` (in SQL editor) | Show an `EXPLAIN` plan for one `SELECT` query |
 | `Ctrl+S` (in SQL prompt) | Save the current named query |
-| `Ctrl+O` (in SQL prompt) | List saved queries (Enter runs; `r` renames; `d`, Enter deletes) |
+| `Ctrl+O` (in SQL prompt) | List saved queries (Enter runs; `r` renames; `d` opens deletion confirmation) |
 | `j` / `k` or `↓` / `↑` (in SQL prompt) | Next / previous query history entry |
 | `Enter`          | Focus displayed rows, or show selected-row details (focused grid) |
 | `?`              | Show keyboard help    |
