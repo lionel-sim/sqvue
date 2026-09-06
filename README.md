@@ -30,6 +30,24 @@ sqvue supports PostgreSQL, SQLite, and MySQL.
 
 ## Installation
 
+### One-command install (macOS and Linux)
+
+Install the latest stable release to `~/.local/bin`:
+
+```sh
+curl -fsSL https://github.com/lionel-sim/sqvue/releases/latest/download/install.sh | sh
+```
+
+For a prerelease, use its tag explicitly:
+
+```sh
+curl -fsSL https://github.com/lionel-sim/sqvue/releases/download/v0.1.0-beta.1/install.sh | SQVUE_VERSION=v0.1.0-beta.1 sh
+```
+
+The installer downloads the matching archive, verifies its SHA-256 checksum,
+and reports if `~/.local/bin` is not on your `PATH`. Set `INSTALL_DIR` after
+the pipe to choose another destination.
+
 ### Download a release
 
 Download the archive for your operating system and architecture from the

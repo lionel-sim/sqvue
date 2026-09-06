@@ -99,6 +99,7 @@ For each driver:
 - [x] Release automation
   - [x] Expose the build version through `sqvue --version`
   - [x] Publish checksummed macOS, Linux, and Windows archives from version tags
+  - [x] Provide a checksum-verifying macOS and Linux one-command installer
 - [x] Generate database backups
   - [x] Define a driver-specific backup interface so backups preserve database schema, data, indexes, and constraints without putting database-specific behavior in `internal/db`
   - [x] Add a `B` key binding and keyboard-help entry that opens a backup-scope picker

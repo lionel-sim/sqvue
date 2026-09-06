@@ -37,6 +37,8 @@ checksum:
 
 release:
   prerelease: auto
+  extra_files:
+    - glob: ./scripts/install.sh
 
 changelog:
   use: git
