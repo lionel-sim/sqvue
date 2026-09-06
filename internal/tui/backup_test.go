@@ -38,7 +38,7 @@ func TestBackupScopeConfirmPromptsForDestination(t *testing.T) {
 	if m.activeOverlay != overlayBackupPath {
 		t.Fatalf("active overlay = %v, want backup path prompt", m.activeOverlay)
 	}
-	if !strings.HasPrefix(m.backupInput.Value(), "/backups/sqvue-backup-") || !strings.HasSuffix(m.backupInput.Value(), ".sql") {
+	if !strings.HasPrefix(m.backupInput.Value(), filepath.Join("/backups", "sqvue-backup-")) || !strings.HasSuffix(m.backupInput.Value(), ".sql") {
 		t.Fatalf("default backup path = %q, want SQL backup under /backups", m.backupInput.Value())
 	}
 }
@@ -49,7 +49,7 @@ func TestDefaultBackupPathUsesSelectedTableAndDriverExtension(t *testing.T) {
 	m.backupScopeCursor = 1
 
 	got := m.defaultBackupPath(time.Date(2026, 9, 6, 1, 2, 3, 0, time.UTC))
-	if want := "/backups/sqvue-backup-main-order_items-20260906-010203.db"; got != want {
+	if want := filepath.Join("/backups", "sqvue-backup-main-order_items-20260906-010203.db"); got != want {
 		t.Fatalf("defaultBackupPath() = %q, want %q", got, want)
 	}
 }

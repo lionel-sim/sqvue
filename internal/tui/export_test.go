@@ -280,7 +280,7 @@ func TestCSVExportPromptUsesConfiguredDirectory(t *testing.T) {
 	m.tables = []db.Table{{Schema: "public", Name: "order items"}}
 	m.columns = []db.Column{{Name: "id"}}
 	path := m.defaultCSVExportPath(time.Date(2026, 9, 6, 1, 2, 3, 0, time.UTC))
-	if want := "/exports/sqvue-public-order_items-20260906-010203.csv"; path != want {
+	if want := filepath.Join("/exports", "sqvue-public-order_items-20260906-010203.csv"); path != want {
 		t.Fatalf("defaultCSVExportPath() = %q, want %q", path, want)
 	}
 	m, _ = m.beginCSVExport()
@@ -294,7 +294,7 @@ func TestJSONExportPromptUsesConfiguredDirectory(t *testing.T) {
 	m.tables = []db.Table{{Schema: "public", Name: "order items"}}
 	m.columns = []db.Column{{Name: "id"}}
 	path := m.defaultJSONExportPath(time.Date(2026, 9, 6, 1, 2, 3, 0, time.UTC))
-	if want := "/exports/sqvue-public-order_items-20260906-010203.json"; path != want {
+	if want := filepath.Join("/exports", "sqvue-public-order_items-20260906-010203.json"); path != want {
 		t.Fatalf("defaultJSONExportPath() = %q, want %q", path, want)
 	}
 	m, _ = m.beginJSONExport()
