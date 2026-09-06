@@ -341,11 +341,18 @@ func visibleCSVRow(row []string, visible []bool) []string {
 
 func visibleJSONRow(columns []db.Column, row []string, visible []bool) map[string]string {
 	values := make(map[string]string, len(columns))
+	keys := make(map[string]int, len(columns))
 	for i, column := range columns {
 		if (len(visible) > 0 && (i >= len(visible) || !visible[i])) || i >= len(row) {
 			continue
 		}
-		values[column.Name] = row[i]
+		key := column.Name
+		for keys[key] > 0 {
+			keys[column.Name]++
+			key = fmt.Sprintf("%s_%d", column.Name, keys[column.Name])
+		}
+		keys[key]++
+		values[key] = row[i]
 	}
 	return values
 }

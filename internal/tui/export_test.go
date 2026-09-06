@@ -106,6 +106,31 @@ func TestWriteJSONExportsVisibleQueryColumns(t *testing.T) {
 	}
 }
 
+func TestWriteJSONKeepsDuplicateColumnLabels(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "query.json")
+	_, err := writeJSON(nil, time.Second, exportRequest{
+		path:           path,
+		columns:        []db.Column{{Name: "id"}, {Name: "id"}, {Name: "id_2"}},
+		visibleColumns: []bool{true, true, true},
+		queryRows:      [][]string{{"1", "2", "3"}},
+	})
+	if err != nil {
+		t.Fatalf("writeJSON() error = %v", err)
+	}
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	var records []map[string]string
+	if err := json.Unmarshal(contents, &records); err != nil {
+		t.Fatalf("JSON export is invalid: %v", err)
+	}
+	want := []map[string]string{{"id": "1", "id_2": "2", "id_2_2": "3"}}
+	if !reflect.DeepEqual(records, want) {
+		t.Fatalf("JSON records = %#v, want %#v", records, want)
+	}
+}
+
 func TestWriteJSONExportsAllFilteredTableRows(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "table.json")
 	client := &fakeDriver{cols: []db.Column{{Name: "id"}, {Name: "name"}}}

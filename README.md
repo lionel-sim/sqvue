@@ -114,7 +114,8 @@ filters. `SELECT` results stream incrementally; their exports rerun the active
 query from the beginning so they include rows beyond the currently displayed
 page. Other SQL results remain materialized to avoid replaying mutations.
 Press `e` for CSV or `E` for JSON. JSON exports are arrays of objects whose
-keys are the visible column names.
+keys are the visible column names; duplicate labels receive stable numeric
+suffixes.
 
 ### Backups
 
