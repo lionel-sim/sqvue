@@ -193,7 +193,7 @@ does not include other tables referenced by foreign keys.
 | `f` / `PgDn`     | Next page             |
 | `b` / `PgUp`     | Previous page         |
 | `d`              | Show column descriptions |
-| `y`              | Show row values       |
+| `Enter`          | Show row values for the active row |
 | `c`              | Choose visible columns |
 | `e`              | Edit the active cell in a focused table grid (primary-key tables only); otherwise export visible columns as CSV |
 | `E`              | Export visible columns as JSON |
