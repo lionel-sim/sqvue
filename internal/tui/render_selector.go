@@ -58,26 +58,6 @@ func tableListWidth(terminalWidth int, title string) int {
 	return max(1, terminalWidth-2)
 }
 
-func renderSchemaList(b *strings.Builder, styles theme.Theme, schemas []db.Schema, selected, offset int) {
-	b.WriteString(styles.Title.Render("Schemas") + "\n")
-	end := min(offset+tableListHeight, len(schemas))
-	for i := offset; i < end; i++ {
-		schema := schemas[i]
-		prefix := "  "
-		if i == selected {
-			prefix = "> "
-		}
-		line := prefix + sanitizeText(schema.Name)
-		if i == selected {
-			line = styles.Selected.Render(line)
-		}
-		b.WriteString(line + "\n")
-	}
-	for i := end - offset; i < tableListHeight; i++ {
-		b.WriteByte('\n')
-	}
-}
-
 func renderColumnPicker(b *strings.Builder, styles theme.Theme, columns []db.Column, visible []bool, cursor, offset, maxRows int) {
 	b.WriteString(styles.Title.Render("Visible columns (Space toggle, Enter done)") + "\n")
 	end := min(offset+maxRows, len(columns))

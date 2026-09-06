@@ -29,6 +29,8 @@ func Render(m Model) string {
 		return renderHelpModal(m)
 	case overlayRowDetail:
 		return renderRowDetailModal(m)
+	case overlaySchemaPicker:
+		return renderModalOverMain(m, renderSchemaPickerModal(m))
 	case overlayBackupScope:
 		return renderModalOverMain(m, renderBackupScopeModal(m))
 	case overlayBackupPath:
@@ -54,11 +56,7 @@ func Render(m Model) string {
 func renderMain(m Model) string {
 	var b strings.Builder
 
-	if m.activeOverlay == overlaySchemaPicker {
-		renderSchemaList(&b, m.theme, m.schemas, m.schemaCursor, m.schemaScroll)
-	} else {
-		renderTableList(&b, m.theme, m.width, m.currentSchema(), m.tables, m.selected, m.scroll, m.filterInput.Value())
-	}
+	renderTableList(&b, m.theme, m.width, m.currentSchema(), m.tables, m.selected, m.scroll, m.filterInput.Value())
 	b.WriteString("\n")
 	if m.activeOverlay == overlayColumnPicker {
 		renderColumnPicker(&b, m.theme, m.columns, m.visibleColumns, m.columnCursor, m.columnScroll, m.columnPickerHeight())
@@ -74,8 +72,6 @@ func renderMain(m Model) string {
 		renderBrowseFilterOperatorPicker(&b, m.browseFilterColumn, m.browseFilterCursor, m.browseFilterOperators(), max(1, m.height-reservedRows-1))
 	} else if m.activeOverlay == overlayBrowseFilter {
 		b.WriteString(m.browseFilterInput.View() + "\n")
-	} else if m.activeOverlay == overlaySchemaPicker {
-		b.WriteString("Use j/k to choose a schema, then Enter to load its tables.\n")
 	} else if m.loading {
 		b.WriteString("Loading...\n")
 	} else if m.mode == modeDescriptions {

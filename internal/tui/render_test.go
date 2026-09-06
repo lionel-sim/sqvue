@@ -213,6 +213,21 @@ func TestRenderTableListUsesSchemaHeaderAndMarksViews(t *testing.T) {
 	}
 }
 
+func TestSchemaPickerRendersAsModalOverCurrentView(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 100, 20
+	m.schemas = []db.Schema{{Name: "public"}, {Name: "analytics"}}
+	m.schemaCursor = 1
+	m.activeOverlay = overlaySchemaPicker
+
+	out := ansi.Strip(m.View())
+	for _, want := range []string{"┏━ Schemas", "  public", "> analytics", "j/k choose · Enter loads · Esc cancels", "Tables:"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("schema picker missing %q:\n%s", want, out)
+		}
+	}
+}
+
 func TestHighContrastThemeRendersEverySurface(t *testing.T) {
 	previousProfile := lipgloss.ColorProfile()
 	lipgloss.SetColorProfile(termenv.ANSI256)

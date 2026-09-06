@@ -13,6 +13,29 @@ func renderHelpModal(m Model) string {
 	return renderModalOverMain(m, renderHelpDialog(m))
 }
 
+func renderSchemaPickerModal(m Model) string {
+	width := detailDialogWidth(m)
+	end := min(m.schemaScroll+tableListHeight, len(m.schemas))
+	lines := make([]string, 0, tableListHeight+2)
+	for index := m.schemaScroll; index < end; index++ {
+		prefix := "  "
+		if index == m.schemaCursor {
+			prefix = "> "
+		}
+		line := prefix + sanitizeText(m.schemas[index].Name)
+		if index == m.schemaCursor {
+			line = m.theme.Selected.Render(line)
+		}
+		lines = append(lines, line)
+	}
+	if len(lines) == 0 {
+		lines = append(lines, "(no schemas found)")
+	}
+	lines = append(lines, "", m.theme.Muted.Render("j/k choose · Enter loads · Esc cancels"))
+	panelLines := strings.Split(m.theme.Dialog.Width(width).Render(strings.Join(lines, "\n")), "\n")
+	return titledDialog(m, panelLines, ansi.StringWidth(panelLines[0]), "Schemas")
+}
+
 func renderRowDetailModal(m Model) string {
 	return renderModalOverMain(m, renderRowDetailDialog(m))
 }
