@@ -173,18 +173,20 @@ func TestDBProfileValidateForMySQL(t *testing.T) {
 
 func TestQueryStorePersistsPerProfileHistoryAndQueries(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "queries.toml")
+	seedQueryStore(t, path)
+	assertQueryStore(t, path)
+}
+
+func seedQueryStore(t *testing.T, path string) {
+	t.Helper()
 	store, err := LoadQueryStore(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.AddHistory("work", "select 1\nfrom accounts"); err != nil {
-		t.Fatal(err)
-	}
-	if err := store.AddHistory("work", "select 1\nfrom accounts"); err != nil {
-		t.Fatal(err)
-	}
-	if err := store.AddHistory("other", "select 2"); err != nil {
-		t.Fatal(err)
+	for _, entry := range []struct{ profile, sql string }{{"work", "select 1\nfrom accounts"}, {"work", "select 1\nfrom accounts"}, {"other", "select 2"}} {
+		if err := store.AddHistory(entry.profile, entry.sql); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if err := store.SaveQuery("work", "daily accounts", "select *\nfrom accounts"); err != nil {
 		t.Fatal(err)
@@ -192,7 +194,10 @@ func TestQueryStorePersistsPerProfileHistoryAndQueries(t *testing.T) {
 	if err := store.RenameQuery("work", "daily accounts", "accounts daily"); err != nil {
 		t.Fatal(err)
 	}
+}
 
+func assertQueryStore(t *testing.T, path string) {
+	t.Helper()
 	loaded, err := LoadQueryStore(path)
 	if err != nil {
 		t.Fatal(err)
