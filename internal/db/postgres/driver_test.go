@@ -128,6 +128,28 @@ func TestUpdateCellStatementUsesParametersAndPrimaryKey(t *testing.T) {
 	}
 }
 
+func TestInsertRowStatementUsesParametersAndTypedValues(t *testing.T) {
+	request := db.RowInsertRequest{Table: db.Table{Schema: "public", Name: "order items"}, Values: []db.RowInsertValue{
+		{Column: "note", Kind: db.RowInsertLiteral, Value: "created"},
+		{Column: "deleted_at", Kind: db.RowInsertNull},
+		{Column: "created_at", Kind: db.RowInsertCurrentTimestamp},
+	}}
+	query, args, err := postgresInsertRowStatement(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `insert into "public"."order items" ("note", "deleted_at", "created_at") values ($1, null, current_timestamp)`; query != want {
+		t.Fatalf("query = %q, want %q", query, want)
+	}
+	if len(args) != 1 || args[0] != "created" {
+		t.Fatalf("args = %#v", args)
+	}
+	query, args, err = postgresInsertRowStatement(db.RowInsertRequest{Table: request.Table})
+	if err != nil || query != `insert into "public"."order items" default values` || len(args) != 0 {
+		t.Fatalf("default insert = %q, %#v, %v", query, args, err)
+	}
+}
+
 func TestBrowseWhereUsesParameterizedOperators(t *testing.T) {
 	where, args, err := postgresBrowseWhere([]db.RowFilter{
 		{Column: "name", Operator: db.FilterEqual, Value: "Ada"},

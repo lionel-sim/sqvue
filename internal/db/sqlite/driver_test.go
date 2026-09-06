@@ -13,7 +13,7 @@ func TestDriverBrowsesAndQueriesSQLite(t *testing.T) {
 	t.Run("metadata", func(t *testing.T) { assertSQLiteMetadata(t, ctx, driver) })
 	t.Run("browse", func(t *testing.T) { assertSQLiteBrowse(t, ctx, driver, table) })
 	t.Run("streams", func(t *testing.T) { assertSQLiteStreams(t, ctx, driver, table) })
-	t.Run("query and update", func(t *testing.T) { assertSQLiteQueryAndUpdate(t, ctx, driver, table) })
+	t.Run("query, update, and insert", func(t *testing.T) { assertSQLiteQueryAndUpdate(t, ctx, driver, table) })
 }
 
 func setupSQLiteBrowseTest(t *testing.T) (context.Context, *Driver, db.Table) {
@@ -110,6 +110,16 @@ func assertSQLiteQueryAndUpdate(t *testing.T, ctx context.Context, d *Driver, ta
 	if err != nil || result.Rows[0][0] != "edited" {
 		t.Fatalf("update = %#v, %v", result, err)
 	}
+	if err := d.InsertRow(ctx, db.RowInsertRequest{Table: table, Values: []db.RowInsertValue{
+		{Column: "name", Kind: db.RowInsertLiteral, Value: "art"},
+		{Column: "parent_id", Kind: db.RowInsertNull},
+	}}); err != nil {
+		t.Fatalf("InsertRow() error = %v", err)
+	}
+	result, err = d.Query(ctx, db.Query{SQL: "select name, note, typeof(parent_id) from categories where name = 'art'"})
+	if err != nil || len(result.Rows) != 1 || result.Rows[0][0] != "art" || result.Rows[0][1] != "none" || result.Rows[0][2] != "null" {
+		t.Fatalf("insert = %#v, %v", result, err)
+	}
 }
 
 func TestSortedQueryQuotesSQLiteIdentifiers(t *testing.T) {
@@ -182,6 +192,28 @@ func TestUpdateCellStatementUsesParametersAndPrimaryKey(t *testing.T) {
 	}
 	if len(args) != 3 || args[0] != "updated" || args[1] != "north" || args[2] != "7" {
 		t.Fatalf("args = %#v", args)
+	}
+}
+
+func TestInsertRowStatementUsesParametersAndTypedValues(t *testing.T) {
+	request := db.RowInsertRequest{Table: db.Table{Schema: "main", Name: "order items"}, Values: []db.RowInsertValue{
+		{Column: "note", Kind: db.RowInsertLiteral, Value: "created"},
+		{Column: "deleted_at", Kind: db.RowInsertNull},
+		{Column: "created_at", Kind: db.RowInsertCurrentTimestamp},
+	}}
+	query, args, err := sqliteInsertRowStatement(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `insert into "main"."order items" ("note", "deleted_at", "created_at") values (?, null, current_timestamp)`; query != want {
+		t.Fatalf("query = %q, want %q", query, want)
+	}
+	if len(args) != 1 || args[0] != "created" {
+		t.Fatalf("args = %#v", args)
+	}
+	query, args, err = sqliteInsertRowStatement(db.RowInsertRequest{Table: request.Table})
+	if err != nil || query != `insert into "main"."order items" default values` || len(args) != 0 {
+		t.Fatalf("default insert = %q, %#v, %v", query, args, err)
 	}
 }
 

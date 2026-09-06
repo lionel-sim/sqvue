@@ -27,6 +27,7 @@ var _ db.TableRowStreamer = (*Driver)(nil)
 var _ db.QueryRowStreamer = (*Driver)(nil)
 var _ db.QuerySorter = (*Driver)(nil)
 var _ db.CellUpdater = (*Driver)(nil)
+var _ db.RowInserter = (*Driver)(nil)
 
 const (
 	maxQueryRows  = 1_000
@@ -449,6 +450,52 @@ func postgresUpdateCellStatement(request db.CellUpdateRequest) (string, []any, e
 		args = append(args, key.Value)
 	}
 	query := "update " + pgx.Identifier{request.Table.Schema, request.Table.Name}.Sanitize() + " set " + pgx.Identifier{request.Column}.Sanitize() + " = $1 where " + strings.Join(where, " and ")
+	return query, args, nil
+}
+
+// InsertRow inserts exactly one row using parameterized values.
+func (d *Driver) InsertRow(ctx context.Context, request db.RowInsertRequest) error {
+	if d.pool == nil {
+		return fmt.Errorf("not connected")
+	}
+	query, args, err := postgresInsertRowStatement(request)
+	if err != nil {
+		return err
+	}
+	commandTag, err := d.pool.Exec(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	if commandTag.RowsAffected() != 1 {
+		return fmt.Errorf("row insert affected %d rows, want 1", commandTag.RowsAffected())
+	}
+	return nil
+}
+
+func postgresInsertRowStatement(request db.RowInsertRequest) (string, []any, error) {
+	if err := request.Validate(); err != nil {
+		return "", nil, err
+	}
+	qualifiedTable := pgx.Identifier{request.Table.Schema, request.Table.Name}.Sanitize()
+	if len(request.Values) == 0 {
+		return "insert into " + qualifiedTable + " default values", nil, nil
+	}
+	columns := make([]string, 0, len(request.Values))
+	values := make([]string, 0, len(request.Values))
+	args := make([]any, 0, len(request.Values))
+	for _, value := range request.Values {
+		columns = append(columns, pgx.Identifier{value.Column}.Sanitize())
+		switch value.Kind {
+		case db.RowInsertLiteral:
+			args = append(args, value.Value)
+			values = append(values, fmt.Sprintf("$%d", len(args)))
+		case db.RowInsertNull:
+			values = append(values, "null")
+		case db.RowInsertCurrentTimestamp:
+			values = append(values, "current_timestamp")
+		}
+	}
+	query := "insert into " + qualifiedTable + " (" + strings.Join(columns, ", ") + ") values (" + strings.Join(values, ", ") + ")"
 	return query, args, nil
 }
 

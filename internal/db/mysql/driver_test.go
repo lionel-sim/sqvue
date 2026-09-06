@@ -45,6 +45,28 @@ func TestUpdateCellStatementUsesParametersAndPrimaryKey(t *testing.T) {
 	}
 }
 
+func TestInsertRowStatementUsesParametersAndTypedValues(t *testing.T) {
+	request := db.RowInsertRequest{Table: db.Table{Schema: "app", Name: "order items"}, Values: []db.RowInsertValue{
+		{Column: "note", Kind: db.RowInsertLiteral, Value: "created"},
+		{Column: "deleted_at", Kind: db.RowInsertNull},
+		{Column: "created_at", Kind: db.RowInsertCurrentTimestamp},
+	}}
+	query, args, err := mysqlInsertRowStatement(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "insert into `app`.`order items` (`note`, `deleted_at`, `created_at`) values (?, null, current_timestamp)"; query != want {
+		t.Fatalf("query = %q, want %q", query, want)
+	}
+	if len(args) != 1 || args[0] != "created" {
+		t.Fatalf("args = %#v", args)
+	}
+	query, args, err = mysqlInsertRowStatement(db.RowInsertRequest{Table: request.Table})
+	if err != nil || query != "insert into `app`.`order items` () values ()" || len(args) != 0 {
+		t.Fatalf("default insert = %q, %#v, %v", query, args, err)
+	}
+}
+
 func TestRowOrderUsesPrimaryKeyColumns(t *testing.T) {
 	columns := []db.Column{{Name: "tenant_id", IsPrimary: true}, {Name: "id", IsPrimary: true}, {Name: "name"}}
 	if got := rowOrder(columns); got != "`tenant_id`, `id`" {
