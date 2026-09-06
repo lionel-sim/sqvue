@@ -63,6 +63,10 @@ func run(cmd *cobra.Command, args []string) error {
 	if created {
 		fmt.Fprintf(cmd.ErrOrStderr(), "Created config file at %s\n", path)
 	}
+	queryStore, err := config.LoadQueryStore(config.QueryStorePath(path))
+	if err != nil {
+		return err
+	}
 	dbType := db.DbType(cfg.DBType)
 	if err := cfg.ValidateFor(string(dbType)); err != nil {
 		return err
@@ -91,6 +95,8 @@ func run(cmd *cobra.Command, args []string) error {
 		Timeout:         cfg.Timeout,
 		ExportDirectory: exportDirectory(file.Settings.ExportDirectory),
 		Theme:           styles,
+		QueryStore:      queryStore,
+		ProfileName:     selectedProfileName(file),
 	})
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
@@ -99,6 +105,16 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	return nil
+}
+
+func selectedProfileName(file config.File) string {
+	if profileFlag != "" {
+		return profileFlag
+	}
+	if file.Settings.DefaultProfile != "" {
+		return file.Settings.DefaultProfile
+	}
+	return "default"
 }
 
 func loadProfile(cmd *cobra.Command) (config.DBProfile, bool, string, error) {

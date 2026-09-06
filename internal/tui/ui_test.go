@@ -1,12 +1,14 @@
 package tui
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"sqvue/internal/config"
 	"sqvue/internal/db"
 	"sqvue/internal/theme"
 )
@@ -50,6 +52,88 @@ func TestNewAppliesThemeToInputsAndHelp(t *testing.T) {
 	}
 	if m.help.Styles.FullKey.GetForeground() != styles.Selected.GetForeground() {
 		t.Fatal("help keys did not receive the theme selected style")
+	}
+}
+
+func TestSQLHistoryNavigationRestoresDraftAndStaysPerProfile(t *testing.T) {
+	store, err := config.LoadQueryStore(filepath.Join(t.TempDir(), "queries.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.AddHistory("work", "select one"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.AddHistory("work", "select two"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.AddHistory("other", "select private"); err != nil {
+		t.Fatal(err)
+	}
+	m := New(Options{QueryStore: store, ProfileName: "work"})
+	m.sqlInput.SetValue("draft")
+
+	m, handled := m.handleSQLHistoryKey(keyMsg("k"))
+	if !handled || m.sqlInput.Value() != "select two" {
+		t.Fatalf("first previous history = %q, handled %t", m.sqlInput.Value(), handled)
+	}
+	m, _ = m.handleSQLHistoryKey(keyMsg("k"))
+	if m.sqlInput.Value() != "select one" {
+		t.Fatalf("second previous history = %q", m.sqlInput.Value())
+	}
+	m, _ = m.handleSQLHistoryKey(keyMsg("j"))
+	m, _ = m.handleSQLHistoryKey(keyMsg("j"))
+	if m.sqlInput.Value() != "draft" || m.historyIndex != -1 {
+		t.Fatalf("restored draft = %q, index %d", m.sqlInput.Value(), m.historyIndex)
+	}
+}
+
+func TestSavedQueryWorkflowPreservesMultilineSQL(t *testing.T) {
+	store, err := config.LoadQueryStore(filepath.Join(t.TempDir(), "queries.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := &fakeDriver{}
+	m := New(Options{Client: client, QueryStore: store, ProfileName: "work"})
+	m.sqlInput.SetValue("select * from accounts")
+	m, _ = m.beginSaveQuery()
+	m.queryNameInput.SetValue("accounts")
+	m, _ = m.handleSaveQueryNameKey(tea.KeyMsg{Type: tea.KeyEnter})
+	if m.activeOverlay != overlaySQL {
+		t.Fatalf("overlay after save = %v, want SQL", m.activeOverlay)
+	}
+	if err := store.SaveQuery("work", "accounts", "select *\nfrom accounts"); err != nil {
+		t.Fatal(err)
+	}
+
+	m, _ = m.openSavedQueries()
+	if len(m.savedQueryNames) != 1 || m.savedQueryNames[0] != "accounts" {
+		t.Fatalf("saved query names = %#v", m.savedQueryNames)
+	}
+	m, cmd := m.handleSavedQueriesKey(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd == nil || m.activeOverlay != overlayNone || !m.loading {
+		t.Fatalf("saved query did not begin execution: overlay %v, loading %t, command %t", m.activeOverlay, m.loading, cmd != nil)
+	}
+	if msg := runCmd(cmd); msg == nil {
+		t.Fatal("saved query command did not produce a result")
+	}
+	if client.lastQuery != "select *\nfrom accounts" {
+		t.Fatalf("saved query SQL = %q", client.lastQuery)
+	}
+
+	m, _ = m.openSavedQueries()
+	m, _ = m.handleSavedQueriesKey(keyMsg("r"))
+	m.queryNameInput.SetValue("all accounts")
+	m, _ = m.handleRenameQueryKey(tea.KeyMsg{Type: tea.KeyEnter})
+	if got := m.savedQueryNames; len(got) != 1 || got[0] != "all accounts" {
+		t.Fatalf("renamed query names = %#v", got)
+	}
+	m, _ = m.handleSavedQueriesKey(keyMsg("d"))
+	if m.activeOverlay != overlayDeleteQueryConfirm {
+		t.Fatalf("delete overlay = %v", m.activeOverlay)
+	}
+	m, _ = m.handleDeleteQueryConfirmKey(tea.KeyMsg{Type: tea.KeyEnter})
+	if got := store.QueryNames("work"); len(got) != 0 {
+		t.Fatalf("remaining saved queries = %#v", got)
 	}
 }
 

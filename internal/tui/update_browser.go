@@ -17,26 +17,46 @@ func (m Model) handleSQLKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.sqlInput.Blur()
 		return m, nil
 	}
+	if key.Matches(msg, m.keys.SaveQuery) {
+		return m.beginSaveQuery()
+	}
+	if key.Matches(msg, m.keys.SavedQueries) {
+		return m.openSavedQueries()
+	}
+	if next, handled := m.handleSQLHistoryKey(msg); handled {
+		return next, nil
+	}
 	if key.Matches(msg, m.keys.Confirm) {
-		sql := strings.TrimSpace(m.sqlInput.Value())
-		if sql == "" {
-			return m, nil
-		}
-		m.closeTableStream()
-		m.closeQueryStream()
-		m.activeOverlay, m.loading, m.status = overlayNone, true, "running query..."
-		m.sqlInput.Blur()
-		requestID := m.nextRequestID()
-		if streamer, ok := m.client.(db.QueryRowStreamer); ok && isStreamableQuery(sql) {
-			ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
-			m.queryStreamCancel = cancel
-			return m, openQueryRowStreamCmd(ctx, cancel, streamer, db.Query{SQL: sql}, m.pageSize, 0, requestID, true)
-		}
-		return m, runQueryCmd(m.client, sql, m.timeout, requestID)
+		return m.runSQL(m.sqlInput.Value())
 	}
 	var cmd tea.Cmd
 	m.sqlInput, cmd = m.sqlInput.Update(msg)
 	return m, cmd
+}
+
+func (m Model) runSQL(sql string) (Model, tea.Cmd) {
+	sql = strings.TrimSpace(sql)
+	if sql == "" {
+		return m, nil
+	}
+	m.closeTableStream()
+	m.closeQueryStream()
+	if m.queryStore != nil {
+		if err := m.queryStore.AddHistory(m.profileName, sql); err != nil {
+			m.status, m.lastErr = "save SQL history failed: "+err.Error(), err
+			return m, nil
+		}
+	}
+	m.historyIndex = -1
+	m.activeOverlay, m.loading, m.status = overlayNone, true, "running query..."
+	m.sqlInput.Blur()
+	requestID := m.nextRequestID()
+	if streamer, ok := m.client.(db.QueryRowStreamer); ok && isStreamableQuery(sql) {
+		ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
+		m.queryStreamCancel = cancel
+		return m, openQueryRowStreamCmd(ctx, cancel, streamer, db.Query{SQL: sql}, m.pageSize, 0, requestID, true)
+	}
+	return m, runQueryCmd(m.client, sql, m.timeout, requestID)
 }
 
 // isStreamableQuery permits only SELECT statements because streamed results

@@ -36,6 +36,14 @@ func Render(m Model) string {
 		return renderModalOverMain(m, renderCellEditModal(m))
 	case overlayCellEditConfirm:
 		return renderModalOverMain(m, renderCellEditConfirmModal(m))
+	case overlaySaveQueryName:
+		return renderModalOverMain(m, renderSaveQueryNameModal(m))
+	case overlaySavedQueries:
+		return renderModalOverMain(m, renderSavedQueriesModal(m))
+	case overlayRenameQuery:
+		return renderModalOverMain(m, renderRenameQueryModal(m))
+	case overlayDeleteQueryConfirm:
+		return renderModalOverMain(m, renderDeleteQueryConfirmModal(m))
 	}
 	return renderMain(m)
 }

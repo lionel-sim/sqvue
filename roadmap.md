@@ -119,10 +119,10 @@ safer query execution, and richer relational navigation.
   - [x] Add a driver-neutral single-cell update contract using primary-key values, with parameterized PostgreSQL, SQLite, and MySQL implementations
   - [x] Refresh the updated row and report asynchronous success or failure without losing grid focus, filters, visible columns, or pagination state
   - [x] Cover composite primary keys, null and typed values, cancellation, driver errors, and context-sensitive key bindings; document the workflow
-- [ ] Query history and saved queries
-  - [ ] Retain per-profile SQL history with previous/next navigation in the SQL prompt
-  - [ ] Save, list, run, rename, and delete named queries in the XDG config directory
-  - [ ] Preserve multi-line SQL and show saved-query failures inline without losing edits
+- [x] Query history and saved queries
+  - [x] Retain per-profile SQL history with previous/next navigation in the SQL prompt
+  - [x] Save, list, run, rename, and delete named queries in the XDG config directory
+  - [x] Preserve multi-line SQL and show saved-query failures inline without losing edits
 - [ ] Sort table and query results
   - [ ] Add a driver-neutral sort specification to browse requests and implement dialect-safe identifier handling per driver
   - [ ] Choose the active column and ascending/descending order from the data grid

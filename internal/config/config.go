@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -37,6 +38,20 @@ type Settings struct {
 	ExportDirectory string `toml:"export_directory"`
 	Theme           string `toml:"theme"`
 }
+
+// QueryStore keeps the SQL workflow data separate from connection credentials.
+// It lives beside config.toml in queries.toml and is keyed by connection profile.
+type QueryStore struct {
+	Profiles map[string]QueryProfile `toml:"profiles"`
+	path     string
+}
+
+type QueryProfile struct {
+	History []string          `toml:"history"`
+	Queries map[string]string `toml:"queries"`
+}
+
+const queryHistoryLimit = 100
 
 const defaultFile = `# sqvue configuration
 #
@@ -75,6 +90,170 @@ func DefaultPath() (string, error) {
 		return "", fmt.Errorf("find config directory: %w", err)
 	}
 	return filepath.Join(dir, "sqvue", "config.toml"), nil
+}
+
+// QueryStorePath returns the path used for SQL history and saved queries.
+func QueryStorePath(configPath string) string {
+	return filepath.Join(filepath.Dir(configPath), "queries.toml")
+}
+
+// LoadQueryStore loads SQL workflow data from path. A missing store is empty
+// and is written only after the user saves a query or runs SQL.
+func LoadQueryStore(path string) (*QueryStore, error) {
+	store := &QueryStore{Profiles: make(map[string]QueryProfile), path: path}
+	if _, err := toml.DecodeFile(path, store); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return store, nil
+		}
+		return nil, fmt.Errorf("load query store: %w", err)
+	}
+	if store.Profiles == nil {
+		store.Profiles = make(map[string]QueryProfile)
+	}
+	store.path = path
+	return store, nil
+}
+
+// History returns a copy of a profile's SQL history, oldest first.
+func (s *QueryStore) History(profile string) []string {
+	if s == nil {
+		return nil
+	}
+	return append([]string(nil), s.Profiles[profile].History...)
+}
+
+// QueryNames returns a profile's saved query names in stable order.
+func (s *QueryStore) QueryNames(profile string) []string {
+	if s == nil {
+		return nil
+	}
+	names := make([]string, 0, len(s.Profiles[profile].Queries))
+	for name := range s.Profiles[profile].Queries {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func (s *QueryStore) Query(profile, name string) (string, bool) {
+	if s == nil {
+		return "", false
+	}
+	query, ok := s.Profiles[profile].Queries[name]
+	return query, ok
+}
+
+// AddHistory records SQL once at the end of the profile's history.
+func (s *QueryStore) AddHistory(profile, sql string) error {
+	if strings.TrimSpace(sql) == "" {
+		return nil
+	}
+	p := s.profile(profile)
+	if n := len(p.History); n > 0 && p.History[n-1] == sql {
+		return nil
+	}
+	p.History = append(p.History, sql)
+	if len(p.History) > queryHistoryLimit {
+		p.History = append([]string(nil), p.History[len(p.History)-queryHistoryLimit:]...)
+	}
+	return s.replaceProfile(profile, p)
+}
+
+func (s *QueryStore) SaveQuery(profile, name, sql string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return errors.New("saved query name is required")
+	}
+	if strings.TrimSpace(sql) == "" {
+		return errors.New("saved query SQL is required")
+	}
+	p := s.profile(profile)
+	p.Queries[name] = sql
+	return s.replaceProfile(profile, p)
+}
+
+func (s *QueryStore) RenameQuery(profile, oldName, newName string) error {
+	newName = strings.TrimSpace(newName)
+	if newName == "" {
+		return errors.New("saved query name is required")
+	}
+	p := s.profile(profile)
+	sql, ok := p.Queries[oldName]
+	if !ok {
+		return fmt.Errorf("saved query %q was not found", oldName)
+	}
+	if oldName != newName {
+		if _, exists := p.Queries[newName]; exists {
+			return fmt.Errorf("saved query %q already exists", newName)
+		}
+		delete(p.Queries, oldName)
+		p.Queries[newName] = sql
+	}
+	return s.replaceProfile(profile, p)
+}
+
+func (s *QueryStore) DeleteQuery(profile, name string) error {
+	p := s.profile(profile)
+	if _, ok := p.Queries[name]; !ok {
+		return fmt.Errorf("saved query %q was not found", name)
+	}
+	delete(p.Queries, name)
+	return s.replaceProfile(profile, p)
+}
+
+func (s *QueryStore) profile(name string) QueryProfile {
+	p := s.Profiles[name]
+	p.History = append([]string(nil), p.History...)
+	queries := make(map[string]string, len(p.Queries))
+	for key, value := range p.Queries {
+		queries[key] = value
+	}
+	p.Queries = queries
+	return p
+}
+
+func (s *QueryStore) replaceProfile(name string, profile QueryProfile) error {
+	previous, existed := s.Profiles[name]
+	s.Profiles[name] = profile
+	if err := s.save(); err != nil {
+		if existed {
+			s.Profiles[name] = previous
+		} else {
+			delete(s.Profiles, name)
+		}
+		return err
+	}
+	return nil
+}
+
+func (s *QueryStore) save() error {
+	if s == nil || s.path == "" {
+		return errors.New("query store path is not configured")
+	}
+	if err := os.MkdirAll(filepath.Dir(s.path), 0o700); err != nil {
+		return fmt.Errorf("create query store directory: %w", err)
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(s.path), ".queries-*.toml")
+	if err != nil {
+		return fmt.Errorf("create query store: %w", err)
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+	if err := tmp.Chmod(0o600); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("set query store permissions: %w", err)
+	}
+	if err := toml.NewEncoder(tmp).Encode(s); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("encode query store: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("close query store: %w", err)
+	}
+	if err := os.Rename(tmpName, s.path); err != nil {
+		return fmt.Errorf("save query store: %w", err)
+	}
+	return nil
 }
 
 // LoadOrCreate loads path, creating a commented configuration template when it

@@ -10,7 +10,7 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 - Filter the table list and focused rows with parameterized comparisons; inspect column and foreign-key metadata; and choose visible columns
 - Page through row data with total-row counts, type-aware value rendering, and incremental loading for large results
 - Focus and navigate row data while preserving the selected row across pages and column visibility changes
-- Run ad-hoc SQL queries and page through their results
+- Run ad-hoc SQL queries, recall profile-specific history, save named queries, and page through results
 - Export visible result columns to CSV or JSON
 - Back up PostgreSQL, SQLite, and MySQL databases or the currently selected table
 - Use a discoverable keyboard-help modal and compact footer controls
@@ -19,7 +19,7 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 
 ## Status
 
-Work in progress. PostgreSQL, SQLite, and MySQL are supported: sqvue can connect with a DSN or individual connection flags; browse schemas, tables, and views; inspect column and foreign-key metadata and paginated row data; run ad-hoc SQL in the TUI; and create database backups.
+Work in progress. PostgreSQL, SQLite, and MySQL are supported: sqvue can connect with a DSN or individual connection flags; browse schemas, tables, and views; inspect column and foreign-key metadata and paginated row data; run and save ad-hoc SQL in the TUI; and create database backups.
 
 Large table and query results stream incrementally, including complete exports
 without retaining every row in TUI memory. See [roadmap.md](roadmap.md) for the
@@ -108,6 +108,15 @@ Explicitly supplied connection flags override matching profile fields. Avoid
 storing passwords in the config file—use a connection URL, environment variable,
 or Postgres password file instead.
 
+### Query history and saved queries
+
+sqvue stores SQL history and named queries in `queries.toml` beside `config.toml`.
+History and saved queries are isolated by connection profile (or the `default`
+profile when no name is selected). SQL is preserved verbatim, including multiple
+lines. In the SQL prompt, use Up/Down (or `k`/`j`) to browse history, `Ctrl+S` to
+save the current query, and `Ctrl+O` to open saved queries. The saved-query picker
+uses Enter to run, `r` to rename, and `d` followed by Enter to delete.
+
 `settings.export_directory` sets the directory prefilled when exporting CSV, JSON, or
 creating a backup.
 It defaults to sqvue's current working directory; relative paths are resolved
@@ -183,6 +192,9 @@ does not include other tables referenced by foreign keys.
 | `s`              | Switch schema         |
 | `/`              | Filter table list     |
 | `:`              | Run an SQL query      |
+| `Ctrl+S` (in SQL prompt) | Save the current named query |
+| `Ctrl+O` (in SQL prompt) | List saved queries (Enter runs; `r` renames; `d`, Enter deletes) |
+| `j` / `k` or `↓` / `↑` (in SQL prompt) | Next / previous query history entry |
 | `Enter`          | Focus displayed rows, or show selected-row details |
 | `?`              | Show keyboard help    |
 | `r`              | Refresh tables        |

@@ -170,3 +170,55 @@ func TestDBProfileValidateForMySQL(t *testing.T) {
 		t.Fatal("ValidateFor(mysql) accepted a missing connection string")
 	}
 }
+
+func TestQueryStorePersistsPerProfileHistoryAndQueries(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "queries.toml")
+	store, err := LoadQueryStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.AddHistory("work", "select 1\nfrom accounts"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.AddHistory("work", "select 1\nfrom accounts"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.AddHistory("other", "select 2"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveQuery("work", "daily accounts", "select *\nfrom accounts"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.RenameQuery("work", "daily accounts", "accounts daily"); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := LoadQueryStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := loaded.History("work"); len(got) != 1 || got[0] != "select 1\nfrom accounts" {
+		t.Fatalf("work history = %#v", got)
+	}
+	if got := loaded.History("other"); len(got) != 1 || got[0] != "select 2" {
+		t.Fatalf("other history = %#v", got)
+	}
+	if got := loaded.QueryNames("work"); len(got) != 1 || got[0] != "accounts daily" {
+		t.Fatalf("query names = %#v", got)
+	}
+	if got, ok := loaded.Query("work", "accounts daily"); !ok || got != "select *\nfrom accounts" {
+		t.Fatalf("saved query = %q, present %t", got, ok)
+	}
+	if err := loaded.DeleteQuery("work", "accounts daily"); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := loaded.Query("work", "accounts daily"); ok {
+		t.Fatal("deleted query remained available")
+	}
+}
+
+func TestQueryStorePathUsesConfigDirectory(t *testing.T) {
+	if got := QueryStorePath("/tmp/sqvue/config.toml"); got != "/tmp/sqvue/queries.toml" {
+		t.Fatalf("QueryStorePath() = %q", got)
+	}
+}

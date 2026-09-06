@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"sqvue/internal/config"
 	"sqvue/internal/db"
 	"sqvue/internal/theme"
 )
@@ -16,6 +17,8 @@ type Options struct {
 	Timeout         time.Duration
 	ExportDirectory string
 	Theme           theme.Theme
+	QueryStore      *config.QueryStore
+	ProfileName     string
 }
 type viewMode int
 
@@ -36,6 +39,8 @@ type Model struct {
 	keys            Map
 	exportDirectory string
 	theme           theme.Theme
+	queryStore      *config.QueryStore
+	profileName     string
 }
 
 type browserState struct {
@@ -80,6 +85,11 @@ type queryState struct {
 	queryStreamCancel            func()
 	queryStreamNextPage          int
 	queryStreamPending           [][]string
+	historyIndex                 int
+	historyDraft                 string
+	savedQueryNames              []string
+	savedQueryCursor             int
+	savedQueryRename             string
 }
 type overlayMode uint8
 
@@ -98,6 +108,10 @@ const (
 	overlayBackupPath
 	overlayCellEdit
 	overlayCellEditConfirm
+	overlaySaveQueryName
+	overlaySavedQueries
+	overlayRenameQuery
+	overlayDeleteQueryConfirm
 )
 
 type overlayState struct {
@@ -113,6 +127,7 @@ type overlayState struct {
 	exportFormat                             exportFormat
 	backupInput                              textinput.Model
 	cellEditInput                            textinput.Model
+	queryNameInput                           textinput.Model
 	cellEditColumn, cellEditOriginal         string
 	cellEditRefreshPending                   bool
 	help                                     help.Model
@@ -151,12 +166,16 @@ func New(opts Options) Model {
 	backup.CharLimit = 0
 	cellEdit := newThemedTextInput(styles)
 	cellEdit.CharLimit = 0
+	queryName := newThemedTextInput(styles)
+	queryName.Prompt = "Query name: "
+	queryName.Placeholder = "daily report"
 	helpModel := help.New()
 	applyHelpTheme(&helpModel, styles)
 	return Model{client: opts.Client, timeout: opts.Timeout,
-		resultState:  resultState{pageSize: maxPageSize, rowCounts: make(map[string]int64), browseRowCounts: make(map[string]int64)},
-		overlayState: overlayState{filterInput: filter, browseFilterInput: browseFilter, sqlInput: sql, exportInput: export, backupInput: backup, cellEditInput: cellEdit, help: helpModel},
+		resultState:  resultState{pageSize: maxPageSize, rowCounts: make(map[string]int64), browseRowCounts: make(map[string]int64), queryState: queryState{historyIndex: -1}},
+		overlayState: overlayState{filterInput: filter, browseFilterInput: browseFilter, sqlInput: sql, exportInput: export, backupInput: backup, cellEditInput: cellEdit, queryNameInput: queryName, help: helpModel},
 		loadState:    loadState{status: "loading tables...", loading: true}, keys: Default(), exportDirectory: opts.ExportDirectory, theme: styles,
+		queryStore: opts.QueryStore, profileName: opts.ProfileName,
 	}
 }
 

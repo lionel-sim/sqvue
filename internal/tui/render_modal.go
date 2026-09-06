@@ -34,6 +34,53 @@ func renderCellEditConfirmModal(m Model) string {
 	return titledDialog(m, panelLines, ansi.StringWidth(panelLines[0]), "Confirm cell update")
 }
 
+func renderSaveQueryNameModal(m Model) string {
+	return renderQueryNameModal(m, "Save query", "Enter saves. Esc returns to the SQL prompt.")
+}
+
+func renderRenameQueryModal(m Model) string {
+	return renderQueryNameModal(m, "Rename saved query", "Enter renames. Esc returns to saved queries.")
+}
+
+func renderQueryNameModal(m Model, title, hint string) string {
+	width := detailDialogWidth(m)
+	input := m.queryNameInput
+	input.Width = max(1, width-ansi.StringWidth(input.Prompt)-4)
+	content := input.View() + "\n\n" + m.theme.Muted.Render(hint)
+	panelLines := strings.Split(m.theme.Dialog.Width(width).Render(content), "\n")
+	return titledDialog(m, panelLines, ansi.StringWidth(panelLines[0]), title)
+}
+
+func renderSavedQueriesModal(m Model) string {
+	width := detailDialogWidth(m)
+	lines := make([]string, 0, len(m.savedQueryNames)+2)
+	if len(m.savedQueryNames) == 0 {
+		lines = append(lines, "(no saved queries for this profile)")
+	} else {
+		for i, name := range m.savedQueryNames {
+			marker := "  "
+			if i == m.savedQueryCursor {
+				marker = "> "
+			}
+			lines = append(lines, marker+sanitizeText(name))
+		}
+	}
+	lines = append(lines, "", m.theme.Muted.Render("Enter runs · r renames · d deletes · Esc returns"))
+	panelLines := strings.Split(m.theme.Dialog.Width(width).Render(strings.Join(lines, "\n")), "\n")
+	return titledDialog(m, panelLines, ansi.StringWidth(panelLines[0]), "Saved queries")
+}
+
+func renderDeleteQueryConfirmModal(m Model) string {
+	name := ""
+	if m.savedQueryCursor >= 0 && m.savedQueryCursor < len(m.savedQueryNames) {
+		name = sanitizeText(m.savedQueryNames[m.savedQueryCursor])
+	}
+	width := detailDialogWidth(m)
+	content := "Delete saved query " + name + "?\n\n" + m.theme.Muted.Render("Enter deletes it. Esc cancels.")
+	panelLines := strings.Split(m.theme.Dialog.Width(width).Render(content), "\n")
+	return titledDialog(m, panelLines, ansi.StringWidth(panelLines[0]), "Delete saved query")
+}
+
 func renderModalOverMain(m Model, dialog string) string {
 	background := m
 	background.activeOverlay = overlayNone
