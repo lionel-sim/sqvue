@@ -238,11 +238,12 @@ func renderTitledPanel(styles theme.Theme, lines []string, width int, title stri
 	width = max(1, width)
 	title = ansi.Truncate(title, max(0, width-4), "…")
 	titleEdge := "━ " + title + " "
-	top := styles.DialogBorder.Render("┏━ ") + styles.Title.Render(title) + styles.DialogBorder.Render(" "+strings.Repeat("━", max(0, width-ansi.StringWidth(titleEdge)))+"┓")
-	bottom := styles.DialogBorder.Render("┗" + strings.Repeat("━", width) + "┛")
-	contentStyle := styles.Dialog.Padding(0).Width(width)
+	border := styles.DialogBorder.Background(lipgloss.NoColor{})
+	top := border.Render("┏━ ") + styles.Title.Render(title) + border.Render(" "+strings.Repeat("━", max(0, width-ansi.StringWidth(titleEdge)))+"┓")
+	bottom := border.Render("┗" + strings.Repeat("━", width) + "┛")
+	contentStyle := lipgloss.NewStyle().Width(width)
 	for i, line := range lines {
-		lines[i] = styles.DialogBorder.Render("┃") + contentStyle.Render(line) + styles.DialogBorder.Render("┃")
+		lines[i] = border.Render("┃") + contentStyle.Render(line) + border.Render("┃")
 	}
 	return top + "\n" + strings.Join(lines, "\n") + "\n" + bottom
 }

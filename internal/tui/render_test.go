@@ -245,6 +245,22 @@ func TestHighContrastThemeRendersEverySurface(t *testing.T) {
 	}
 }
 
+func TestTableListPanelUsesTerminalBackground(t *testing.T) {
+	previousProfile := lipgloss.ColorProfile()
+	lipgloss.SetColorProfile(termenv.ANSI256)
+	t.Cleanup(func() { lipgloss.SetColorProfile(previousProfile) })
+
+	styles, err := theme.ByName("high-contrast")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var b strings.Builder
+	renderTableList(&b, styles, 50, "public", []db.Table{{Schema: "public", Name: "accounts"}}, 0, 0, "")
+	if strings.Contains(b.String(), "\x1b[48;5;16m") {
+		t.Fatalf("table list should not paint the dialog background:\n%s", b.String())
+	}
+}
+
 func TestSQLInputUsesAvailableTerminalWidth(t *testing.T) {
 	m := testModel()
 	m, _ = m.handleWindowSize(tea.WindowSizeMsg{Width: 80, Height: 20})
