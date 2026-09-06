@@ -124,7 +124,7 @@ and richer relational navigation.
   - [x] Refresh the updated row and report asynchronous success or failure without losing grid focus, filters, visible columns, or pagination state
   - [x] Cover composite primary keys, null and typed values, cancellation, driver errors, and context-sensitive key bindings; document the workflow
 - [x] Query history and saved queries
-  - [x] Retain per-profile SQL history with Ctrl+P/Ctrl+N navigation in the SQL editor
+  - [x] Provide opt-in, per-profile SQL history with Ctrl+P/Ctrl+N navigation in the SQL editor
   - [x] Save, list, run, rename, and delete named queries in the XDG config directory
   - [x] Preserve multi-line SQL and show saved-query failures inline without losing edits
 - [x] Sort table and query results

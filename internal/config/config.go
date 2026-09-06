@@ -16,15 +16,16 @@ import (
 )
 
 type DBProfile struct {
-	DBType     string        `toml:"db_type"`
-	ConnString string        `toml:"conn"`
-	Host       string        `toml:"host"`
-	Port       int           `toml:"port"`
-	User       string        `toml:"user"`
-	Password   string        `toml:"password"`
-	Database   string        `toml:"database"`
-	SSLMode    string        `toml:"sslmode"`
-	Timeout    time.Duration `toml:"-"`
+	DBType             string        `toml:"db_type"`
+	ConnString         string        `toml:"conn"`
+	Host               string        `toml:"host"`
+	Port               int           `toml:"port"`
+	User               string        `toml:"user"`
+	Password           string        `toml:"password"`
+	Database           string        `toml:"database"`
+	SSLMode            string        `toml:"sslmode"`
+	RetainQueryHistory bool          `toml:"retain_query_history"`
+	Timeout            time.Duration `toml:"-"`
 }
 
 // File is sqvue's on-disk configuration. Connections are keyed by profile name.
@@ -70,6 +71,7 @@ const defaultFile = `# sqvue configuration
 # user = "postgres"
 # database = "my_database"
 # sslmode = "disable"
+# retain_query_history = true # Off by default; stores executed SQL in queries.toml.
 
 # [connections.local_sqlite]
 # db_type = "sqlite"
@@ -367,6 +369,9 @@ func (p DBProfile) Merge(overrides DBProfile) DBProfile {
 	}
 	if overrides.SSLMode != "" {
 		p.SSLMode = overrides.SSLMode
+	}
+	if overrides.RetainQueryHistory {
+		p.RetainQueryHistory = true
 	}
 	if overrides.Timeout != 0 {
 		p.Timeout = overrides.Timeout

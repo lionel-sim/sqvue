@@ -9,6 +9,10 @@ import (
 )
 
 func (m Model) handleSQLHistoryKey(msg tea.KeyMsg) (Model, bool) {
+	if !m.retainQueryHistory && (key.Matches(msg, m.keys.HistoryPrev) || key.Matches(msg, m.keys.HistoryNext)) {
+		m.status = "SQL history is disabled for this profile"
+		return m, true
+	}
 	if m.queryStore == nil {
 		return m, false
 	}

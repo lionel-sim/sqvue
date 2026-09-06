@@ -14,21 +14,23 @@ import (
 )
 
 type Options struct {
-	Client          db.Driver
-	Timeout         time.Duration
-	ExportDirectory string
-	Theme           theme.Theme
-	QueryStore      *config.QueryStore
-	ProfileName     string
-	Profiles        []ConnectionProfile
+	Client             db.Driver
+	Timeout            time.Duration
+	ExportDirectory    string
+	Theme              theme.Theme
+	QueryStore         *config.QueryStore
+	ProfileName        string
+	RetainQueryHistory bool
+	Profiles           []ConnectionProfile
 }
 
 // ConnectionProfile contains the connection data needed for an in-app switch.
 // Only Name is ever rendered by the TUI.
 type ConnectionProfile struct {
-	Name    string
-	Config  db.ConnectConfig
-	Timeout time.Duration
+	Name               string
+	Config             db.ConnectConfig
+	Timeout            time.Duration
+	RetainQueryHistory bool
 }
 type viewMode int
 
@@ -46,13 +48,14 @@ type Model struct {
 	overlayState
 	viewportState
 	loadState
-	keys            Map
-	exportDirectory string
-	theme           theme.Theme
-	queryStore      *config.QueryStore
-	profileName     string
-	profiles        []ConnectionProfile
-	profileCursor   int
+	keys               Map
+	exportDirectory    string
+	theme              theme.Theme
+	queryStore         *config.QueryStore
+	profileName        string
+	retainQueryHistory bool
+	profiles           []ConnectionProfile
+	profileCursor      int
 }
 
 type browserState struct {
@@ -208,7 +211,7 @@ func New(opts Options) Model {
 		resultState:  resultState{pageSize: maxPageSize, rowCounts: make(map[string]int64), browseRowCounts: make(map[string]int64), visibleColumnsByTable: make(map[string][]bool), queryState: queryState{historyIndex: -1}},
 		overlayState: overlayState{filterInput: filter, browseFilterInput: browseFilter, sqlInput: sql, exportInput: export, backupInput: backup, cellEditInput: cellEdit, rowInsertInput: rowInsert, queryNameInput: queryName, help: helpModel},
 		loadState:    loadState{status: "loading tables...", loading: true}, keys: Default(), exportDirectory: opts.ExportDirectory, theme: styles,
-		queryStore: opts.QueryStore, profileName: opts.ProfileName, profiles: append([]ConnectionProfile(nil), opts.Profiles...),
+		queryStore: opts.QueryStore, profileName: opts.ProfileName, retainQueryHistory: opts.RetainQueryHistory, profiles: append([]ConnectionProfile(nil), opts.Profiles...),
 	}
 }
 

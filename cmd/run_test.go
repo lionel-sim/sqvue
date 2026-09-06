@@ -50,12 +50,12 @@ func TestExportDirectory(t *testing.T) {
 func TestTUIProfilesAreSortedAndUseConfiguredConnections(t *testing.T) {
 	profiles := tuiProfiles(config.File{Connections: map[string]config.DBProfile{
 		"zeta":  {DBType: "sqlite", ConnString: "zeta.db"},
-		"alpha": {DBType: "mysql", ConnString: "reader@tcp(localhost:3306)/app"},
+		"alpha": {DBType: "mysql", ConnString: "reader@tcp(localhost:3306)/app", RetainQueryHistory: true},
 	}})
 	if len(profiles) != 2 || profiles[0].Name != "alpha" || profiles[1].Name != "zeta" {
 		t.Fatalf("tuiProfiles() = %#v", profiles)
 	}
-	if profiles[0].Config.DbType != "mysql" || profiles[1].Config.DSN != "zeta.db" || profiles[0].Timeout <= 0 {
+	if profiles[0].Config.DbType != "mysql" || profiles[1].Config.DSN != "zeta.db" || profiles[0].Timeout <= 0 || !profiles[0].RetainQueryHistory || profiles[1].RetainQueryHistory {
 		t.Fatalf("tui profiles = %#v", profiles)
 	}
 }

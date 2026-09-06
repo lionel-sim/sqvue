@@ -282,7 +282,7 @@ func TestSQLInputUsesAvailableTerminalWidth(t *testing.T) {
 	m.activeOverlay = overlaySQL
 
 	out := ansi.Strip(m.View())
-	if !strings.Contains(out, "Ctrl+S save") || !strings.Contains(out, "Ctrl+O saved queries") || !strings.Contains(out, "Ctrl+P/N history") {
+	if !strings.Contains(out, "Ctrl+S save") || !strings.Contains(out, "Ctrl+O saved queries") || !strings.Contains(out, "SQL history disabled") || strings.Contains(out, "Ctrl+P/N history") {
 		t.Fatalf("SQL editor shortcuts missing: %q", out)
 	}
 	if !strings.Contains(out, "SQL>") || !strings.Contains(out, "SELECT * FROM ...") {

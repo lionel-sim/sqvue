@@ -112,14 +112,14 @@ func TestProfileReconnectResetsBrowserOnlyAfterSuccessfulConnection(t *testing.T
 	previous := &fakeDriver{}
 	replacement := &fakeDriver{}
 	m := testModel()
-	m.client, m.profileName, m.reconnectID = previous, "local", 2
+	m.client, m.profileName, m.retainQueryHistory, m.reconnectID = previous, "local", true, 2
 	m.schemas = []db.Schema{{Name: "public"}}
 	m.tables = []db.Table{{Schema: "public", Name: "accounts"}}
 	m.rows = [][]string{{"1"}}
 	m.queryActive, m.focused = true, true
-	profile := ConnectionProfile{Name: "reporting", Timeout: time.Second}
+	profile := ConnectionProfile{Name: "reporting", Timeout: time.Second, RetainQueryHistory: false}
 	m, cmd := m.handleProfileConnected(profileConnectedMsg{reconnectID: 2, profile: profile, client: replacement})
-	if cmd == nil || m.client != replacement || m.profileName != "reporting" || len(m.tables) != 0 || len(m.rows) != 0 || m.queryActive || m.focused {
+	if cmd == nil || m.client != replacement || m.profileName != "reporting" || m.retainQueryHistory || len(m.tables) != 0 || len(m.rows) != 0 || m.queryActive || m.focused {
 		t.Fatalf("successful reconnect did not reset browser state")
 	}
 
@@ -146,7 +146,7 @@ func TestSQLHistoryNavigationRestoresDraftAndStaysPerProfile(t *testing.T) {
 	if err := store.AddHistory("other", "select private"); err != nil {
 		t.Fatal(err)
 	}
-	m := New(Options{QueryStore: store, ProfileName: "work"})
+	m := New(Options{QueryStore: store, ProfileName: "work", RetainQueryHistory: true})
 	m.sqlInput.SetValue("draft")
 
 	m, handled := m.handleSQLHistoryKey(tea.KeyMsg{Type: tea.KeyCtrlP})
@@ -161,6 +161,22 @@ func TestSQLHistoryNavigationRestoresDraftAndStaysPerProfile(t *testing.T) {
 	m, _ = m.handleSQLHistoryKey(tea.KeyMsg{Type: tea.KeyCtrlN})
 	if m.sqlInput.Value() != "draft" || m.historyIndex != -1 {
 		t.Fatalf("restored draft = %q, index %d", m.sqlInput.Value(), m.historyIndex)
+	}
+}
+
+func TestSQLHistoryIsDisabledByDefault(t *testing.T) {
+	store, err := config.LoadQueryStore(filepath.Join(t.TempDir(), "queries.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(Options{Client: &fakeDriver{}, QueryStore: store, ProfileName: "work"})
+	m, _ = m.rerunSQL("select secret", true, false)
+	if got := store.History("work"); len(got) != 0 {
+		t.Fatalf("disabled history = %#v, want none", got)
+	}
+	m, handled := m.handleSQLHistoryKey(tea.KeyMsg{Type: tea.KeyCtrlP})
+	if !handled || m.status != "SQL history is disabled for this profile" {
+		t.Fatalf("disabled history key = handled %t, status %q", handled, m.status)
 	}
 }
 

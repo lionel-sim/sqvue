@@ -93,6 +93,7 @@ port = 5433
 user = "reader"
 database = "analytics"
 sslmode = "verify-full"
+retain_query_history = true
 `
 	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
@@ -118,7 +119,7 @@ sslmode = "verify-full"
 	if err != nil {
 		t.Fatalf("Profile() error = %v", err)
 	}
-	if profile.Host != "db.example.com" || profile.Port != 5433 || profile.SSLMode != "verify-full" {
+	if profile.Host != "db.example.com" || profile.Port != 5433 || profile.SSLMode != "verify-full" || !profile.RetainQueryHistory {
 		t.Fatalf("Profile() = %#v", profile)
 	}
 }
@@ -147,8 +148,8 @@ func TestLoadOrCreateRejectsInvalidTheme(t *testing.T) {
 
 func TestDBProfileMerge(t *testing.T) {
 	base := DefaultDBProfile()
-	got := base.Merge(DBProfile{DBType: "sqlite", Host: "db.example.com", Database: "analytics", SSLMode: "verify-full"})
-	if got.DBType != "sqlite" || got.Host != "db.example.com" || got.Port != 5432 || got.User != "postgres" || got.Database != "analytics" || got.SSLMode != "verify-full" {
+	got := base.Merge(DBProfile{DBType: "sqlite", Host: "db.example.com", Database: "analytics", SSLMode: "verify-full", RetainQueryHistory: true})
+	if got.DBType != "sqlite" || got.Host != "db.example.com" || got.Port != 5432 || got.User != "postgres" || got.Database != "analytics" || got.SSLMode != "verify-full" || !got.RetainQueryHistory {
 		t.Fatalf("Merge() = %#v", got)
 	}
 }

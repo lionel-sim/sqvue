@@ -92,13 +92,14 @@ func run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("connect: %w", err)
 	}
 	m := tui.New(tui.Options{
-		Client:          client,
-		Timeout:         cfg.Timeout,
-		ExportDirectory: exportDirectory(file.Settings.ExportDirectory),
-		Theme:           styles,
-		QueryStore:      queryStore,
-		ProfileName:     selectedProfileName(file),
-		Profiles:        tuiProfiles(file),
+		Client:             client,
+		Timeout:            cfg.Timeout,
+		ExportDirectory:    exportDirectory(file.Settings.ExportDirectory),
+		Theme:              styles,
+		QueryStore:         queryStore,
+		ProfileName:        selectedProfileName(file),
+		RetainQueryHistory: cfg.RetainQueryHistory,
+		Profiles:           tuiProfiles(file),
 	})
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
@@ -125,9 +126,10 @@ func tuiProfiles(file config.File) []tui.ConnectionProfile {
 	for _, name := range names {
 		profile := config.DefaultDBProfile().Merge(file.Connections[name])
 		profiles = append(profiles, tui.ConnectionProfile{
-			Name:    name,
-			Config:  db.ConnectConfig{DbType: db.DbType(profile.DBType), DSN: profile.ConnString, Host: profile.Host, Port: profile.Port, User: profile.User, Password: profile.Password, Database: profile.Database, SSLMode: profile.SSLMode},
-			Timeout: profile.Timeout,
+			Name:               name,
+			Config:             db.ConnectConfig{DbType: db.DbType(profile.DBType), DSN: profile.ConnString, Host: profile.Host, Port: profile.Port, User: profile.User, Password: profile.Password, Database: profile.Database, SSLMode: profile.SSLMode},
+			Timeout:            profile.Timeout,
+			RetainQueryHistory: profile.RetainQueryHistory,
 		})
 	}
 	return profiles

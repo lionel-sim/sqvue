@@ -53,7 +53,7 @@ func (m Model) rerunSQL(sql string, saveHistory, preserveEditor bool) (Model, te
 	}
 	m.closeTableStream()
 	m.closeQueryStream()
-	if saveHistory && m.queryStore != nil {
+	if saveHistory && m.retainQueryHistory && m.queryStore != nil {
 		if err := m.queryStore.AddHistory(m.profileName, sql); err != nil {
 			m.status, m.lastErr = "save SQL history failed: "+err.Error(), err
 			return m, nil

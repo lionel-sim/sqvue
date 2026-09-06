@@ -120,6 +120,7 @@ port = 5432
 user = "postgres"
 database = "my_database"
 sslmode = "disable"
+# retain_query_history = true # Optional: off by default.
 
 [connections.local_sqlite]
 db_type = "sqlite"
@@ -141,12 +142,15 @@ or Postgres password file instead.
 
 ### Query history and saved queries
 
-sqvue stores SQL history and named queries in `queries.toml` beside `config.toml`.
-History and saved queries are isolated by connection profile (or the `default`
-profile when no name is selected). SQL is preserved verbatim, including multiple
-lines. In the SQL editor, use `Ctrl+P`/`Ctrl+N` to browse history; use plain
-Up/Down to move between editor lines. Use `Ctrl+S` to save the current query and
-`Ctrl+O` to open saved queries. The saved-query picker
+sqvue stores named queries in `queries.toml` beside `config.toml`. Executed SQL
+is **not retained by default**. To enable per-profile history, set
+`retain_query_history = true` in that connection profile. History and saved
+queries are isolated by connection profile (or the `default` profile when no
+name is selected). SQL is preserved verbatim, including multiple lines, so do
+not enable history for profiles where queries may contain secrets. In the SQL
+editor, use `Ctrl+P`/`Ctrl+N` to browse enabled history; use plain Up/Down to
+move between editor lines. Use `Ctrl+S` to save the current query and `Ctrl+O`
+to open saved queries. The saved-query picker
 uses Enter to run, `r` to rename, and `d` to open a deletion confirmation
 (then Enter confirms it).
 

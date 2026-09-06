@@ -70,7 +70,11 @@ func renderMain(m Model) string {
 		renderColumnPicker(&b, m.theme, m.columns, m.visibleColumns, m.columnCursor, m.columnScroll, m.columnPickerHeight())
 	} else if m.activeOverlay == overlaySQL {
 		b.WriteString(m.theme.Muted.Render("Enter newline · Ctrl+R run · Ctrl+F format · Ctrl+E explain") + "\n")
-		b.WriteString(m.theme.Muted.Render("Ctrl+S save · Ctrl+O saved queries · Ctrl+P/N history") + "\n")
+		if m.retainQueryHistory {
+			b.WriteString(m.theme.Muted.Render("Ctrl+S save · Ctrl+O saved queries · Ctrl+P/N history") + "\n")
+		} else {
+			b.WriteString(m.theme.Muted.Render("Ctrl+S save · Ctrl+O saved queries · SQL history disabled") + "\n")
+		}
 		b.WriteString(m.sqlInput.View() + "\n")
 	} else if m.activeOverlay == overlayExport {
 		b.WriteString(m.exportInput.View() + "\n")

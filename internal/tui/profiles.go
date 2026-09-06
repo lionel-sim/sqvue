@@ -83,7 +83,7 @@ func (m Model) handleProfileConnected(msg profileConnectedMsg) (Model, tea.Cmd) 
 		return m, nil
 	}
 	previous := m.client
-	m.client, m.profileName, m.timeout = msg.client, msg.profile.Name, msg.profile.Timeout
+	m.client, m.profileName, m.timeout, m.retainQueryHistory = msg.client, msg.profile.Name, msg.profile.Timeout, msg.profile.RetainQueryHistory
 	if previous != nil {
 		_ = previous.Close()
 	}
