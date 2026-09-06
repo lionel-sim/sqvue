@@ -147,16 +147,16 @@ func TestSQLHistoryNavigationRestoresDraftAndStaysPerProfile(t *testing.T) {
 	m := New(Options{QueryStore: store, ProfileName: "work"})
 	m.sqlInput.SetValue("draft")
 
-	m, handled := m.handleSQLHistoryKey(keyMsg("k"))
+	m, handled := m.handleSQLHistoryKey(tea.KeyMsg{Type: tea.KeyCtrlUp})
 	if !handled || m.sqlInput.Value() != "select two" {
 		t.Fatalf("first previous history = %q, handled %t", m.sqlInput.Value(), handled)
 	}
-	m, _ = m.handleSQLHistoryKey(keyMsg("k"))
+	m, _ = m.handleSQLHistoryKey(tea.KeyMsg{Type: tea.KeyCtrlUp})
 	if m.sqlInput.Value() != "select one" {
 		t.Fatalf("second previous history = %q", m.sqlInput.Value())
 	}
-	m, _ = m.handleSQLHistoryKey(keyMsg("j"))
-	m, _ = m.handleSQLHistoryKey(keyMsg("j"))
+	m, _ = m.handleSQLHistoryKey(tea.KeyMsg{Type: tea.KeyCtrlDown})
+	m, _ = m.handleSQLHistoryKey(tea.KeyMsg{Type: tea.KeyCtrlDown})
 	if m.sqlInput.Value() != "draft" || m.historyIndex != -1 {
 		t.Fatalf("restored draft = %q, index %d", m.sqlInput.Value(), m.historyIndex)
 	}

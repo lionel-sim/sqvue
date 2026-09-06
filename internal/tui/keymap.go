@@ -40,6 +40,8 @@ type Map struct {
 	Sort              key.Binding
 	SaveQuery         key.Binding
 	SavedQueries      key.Binding
+	HistoryPrev       key.Binding
+	HistoryNext       key.Binding
 	Toggle            key.Binding
 }
 
@@ -189,6 +191,14 @@ func Default() Map {
 		SavedQueries: key.NewBinding(
 			key.WithKeys("ctrl+o"),
 			key.WithHelp("Ctrl+o", "saved queries (editor)"),
+		),
+		HistoryPrev: key.NewBinding(
+			key.WithKeys("ctrl+up"),
+			key.WithHelp("Ctrl+↑", "previous SQL history"),
+		),
+		HistoryNext: key.NewBinding(
+			key.WithKeys("ctrl+down"),
+			key.WithHelp("Ctrl+↓", "next SQL history"),
 		),
 		Toggle: key.NewBinding(
 			key.WithKeys(" "),

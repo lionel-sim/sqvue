@@ -17,14 +17,14 @@ func (m Model) handleSQLHistoryKey(msg tea.KeyMsg) (Model, bool) {
 		return m, false
 	}
 	switch {
-	case key.Matches(msg, m.keys.Up):
+	case key.Matches(msg, m.keys.HistoryPrev):
 		if m.historyIndex == -1 {
 			m.historyDraft, m.historyIndex = m.sqlInput.Value(), len(history)
 		}
 		m.historyIndex = max(0, m.historyIndex-1)
 		m.sqlInput.SetValue(history[m.historyIndex])
 		return m, true
-	case key.Matches(msg, m.keys.Down):
+	case key.Matches(msg, m.keys.HistoryNext):
 		if m.historyIndex == -1 {
 			return m, false
 		}

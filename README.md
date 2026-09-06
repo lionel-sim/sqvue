@@ -115,8 +115,9 @@ or Postgres password file instead.
 sqvue stores SQL history and named queries in `queries.toml` beside `config.toml`.
 History and saved queries are isolated by connection profile (or the `default`
 profile when no name is selected). SQL is preserved verbatim, including multiple
-lines. In the SQL prompt, use Up/Down (or `k`/`j`) to browse history, `Ctrl+S` to
-save the current query, and `Ctrl+O` to open saved queries. The saved-query picker
+lines. In the SQL editor, use `Ctrl+Up`/`Ctrl+Down` to browse history; use plain
+Up/Down to move between editor lines. Use `Ctrl+S` to save the current query and
+`Ctrl+O` to open saved queries. The saved-query picker
 uses Enter to run, `r` to rename, and `d` to open a deletion confirmation
 (then Enter confirms it).
 
@@ -209,7 +210,8 @@ does not include other tables referenced by foreign keys.
 | `Ctrl+E` (in SQL editor) | Show an `EXPLAIN` plan for one `SELECT` query |
 | `Ctrl+S` (in SQL prompt) | Save the current named query |
 | `Ctrl+O` (in SQL prompt) | List saved queries (Enter runs; `r` renames; `d` opens deletion confirmation) |
-| `j` / `k` or `↓` / `↑` (in SQL prompt) | Next / previous query history entry |
+| `Ctrl+↓` / `Ctrl+↑` (in SQL editor) | Next / previous query history entry |
+| `↓` / `↑` (in SQL editor) | Move cursor to the next / previous editor line |
 | `Enter`          | Focus displayed rows, or show selected-row details (focused grid) |
 | `?`              | Show keyboard help    |
 | `r`              | Refresh the current table view, or rerun active SQL results |

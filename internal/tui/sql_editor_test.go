@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"sqvue/internal/config"
 )
 
 func TestSQLTextAreaInsertsNewlineAndRunsWithCtrlR(t *testing.T) {
@@ -23,6 +25,28 @@ func TestSQLTextAreaInsertsNewlineAndRunsWithCtrlR(t *testing.T) {
 	m, cmd := m.handleSQLKey(tea.KeyMsg{Type: tea.KeyCtrlR})
 	if !m.loading || cmd == nil {
 		t.Fatalf("Ctrl+R did not start query: loading %t, command %t", m.loading, cmd != nil)
+	}
+}
+
+func TestSQLTextAreaArrowsNavigateMultilineEditor(t *testing.T) {
+	m := testModel()
+	m.queryStore = &config.QueryStore{Profiles: map[string]config.QueryProfile{
+		"default": {History: []string{"select from history"}},
+	}}
+	m.activeOverlay = overlaySQL
+	m.sqlInput.Focus()
+	m.sqlInput.SetValue("top\nbottom")
+
+	m, _ = m.handleSQLKey(tea.KeyMsg{Type: tea.KeyUp})
+	m, _ = m.handleSQLKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("X")})
+	if got := m.sqlInput.Value(); got != "topX\nbottom" {
+		t.Fatalf("SQL after Up = %q, want cursor on the previous line", got)
+	}
+
+	m, _ = m.handleSQLKey(tea.KeyMsg{Type: tea.KeyDown})
+	m, _ = m.handleSQLKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("Y")})
+	if got := m.sqlInput.Value(); got != "topX\nbottYom" {
+		t.Fatalf("SQL after Down = %q, want cursor on the next line", got)
 	}
 }
 

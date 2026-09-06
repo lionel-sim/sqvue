@@ -133,6 +133,8 @@ func (m Model) helpKeyMap() Map {
 	// Saving and listing queries becomes available after opening the SQL editor.
 	keys.SaveQuery.SetEnabled(!m.focused)
 	keys.SavedQueries.SetEnabled(!m.focused)
+	keys.HistoryPrev.SetEnabled(false)
+	keys.HistoryNext.SetEnabled(false)
 	keys.Schema.SetEnabled(!m.focused)
 	keys.Profiles.SetEnabled(!m.focused && len(m.profiles) > 0)
 	keys.Filter.SetEnabled(!m.focused)
