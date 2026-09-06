@@ -175,6 +175,21 @@ func TestCellEditRequestUsesCompositePrimaryKeyAndNull(t *testing.T) {
 	}
 }
 
+func TestCellEditRequestPreservesUnchangedControlCharacters(t *testing.T) {
+	m := testModel()
+	m.columns = []db.Column{{Name: "id", IsPrimary: true}, {Name: "note"}}
+	m.rows = [][]string{{"1", "line one\nline two"}}
+	m.cellCursor = 1
+	m, _ = m.beginCellEdit()
+	request, err := m.cellUpdateRequest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if request.Value != "line one\nline two" {
+		t.Fatalf("unchanged editor value = %#v", request.Value)
+	}
+}
+
 func TestEditCellOnlyAppearsForPrimaryKeyTables(t *testing.T) {
 	m := testModel()
 	m.focused = true

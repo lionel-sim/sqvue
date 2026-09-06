@@ -159,11 +159,19 @@ func (m Model) cellUpdateRequest() (db.CellUpdateRequest, error) {
 		}
 		primaryKey = append(primaryKey, db.PrimaryKeyValue{Column: candidate.Name, Value: row[index]})
 	}
-	request := db.CellUpdateRequest{Table: *table, Column: column.Name, Value: cellEditValue(m.cellEditInput.Value()), PrimaryKey: primaryKey}
+	request := db.CellUpdateRequest{Table: *table, Column: column.Name, Value: m.cellEditRequestValue(), PrimaryKey: primaryKey}
 	if err := request.Validate(); err != nil {
 		return db.CellUpdateRequest{}, err
 	}
 	return request, nil
+}
+
+func (m Model) cellEditRequestValue() any {
+	edited := m.cellEditInput.Value()
+	if edited == sanitizeText(m.cellEditOriginal) && m.cellEditOriginal != "NULL" {
+		return m.cellEditOriginal
+	}
+	return cellEditValue(edited)
 }
 
 // cellEditValue reserves NULL as an explicit request to clear a database value.
