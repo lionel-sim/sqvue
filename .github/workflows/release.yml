@@ -1,9 +1,12 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Semantic version tag (for example, v0.1.0-beta.1)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -11,21 +14,14 @@ permissions:
 jobs:
   release:
     name: Build and publish release
+    if: startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.ref }}
           fetch-depth: 0
-      - name: Verify release branch
-        run: |
-          git fetch origin 'refs/heads/release/*:refs/remotes/origin/release/*'
-          release_branches="$(git for-each-ref --format='%(refname:short)' --contains "$GITHUB_SHA" 'refs/remotes/origin/release/*')"
-          if [ -z "$release_branches" ]; then
-            echo "Release tags must point to a commit contained by a release/* branch."
-            exit 1
-          fi
-          echo "Releasing from: $release_branches"
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -33,6 +29,23 @@ jobs:
           cache: true
       - name: Test
         run: go test ./...
+      - name: Create version tag
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          tag="$RELEASE_VERSION"
+          if ! [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-([0-9A-Za-z-]+)(\.[0-9A-Za-z-]+)*)?(\+([0-9A-Za-z-]+)(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "Version must be a semantic version tag such as v0.1.0-beta.1."
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
+            echo "Tag $tag already exists."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "Release $tag"
+          git push origin "refs/tags/$tag"
       - name: Create GitHub release
         uses: goreleaser/goreleaser-action@v7
         with:
