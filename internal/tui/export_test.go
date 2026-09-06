@@ -1,8 +1,10 @@
 package tui
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -13,6 +15,15 @@ import (
 
 	"sqvue/internal/db"
 )
+
+type exportErrorDriver struct {
+	fakeDriver
+	err error
+}
+
+func (d *exportErrorDriver) Rows(context.Context, db.Table, int, int) ([]db.Column, [][]string, error) {
+	return nil, nil, d.err
+}
 
 func TestWriteCSVExportsVisibleQueryColumns(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "query.csv")
@@ -73,6 +84,35 @@ func TestWriteCSVExportsAllFilteredTableRows(t *testing.T) {
 	}
 	if got := client.lastBrowse; got.Table.Name != "people" || got.Limit != exportBatchSize || got.Offset != exportBatchSize || len(got.Filters) != 1 || got.Filters[0] != filter {
 		t.Fatalf("BrowseRows() request = %#v", got)
+	}
+}
+
+func TestFailedExportRemovesPartialFile(t *testing.T) {
+	wantErr := errors.New("read failed")
+	client := &exportErrorDriver{err: wantErr}
+	request := exportRequest{
+		columns: []db.Column{{Name: "id"}},
+		table:   &db.Table{Schema: "public", Name: "items"},
+	}
+	for _, test := range []struct {
+		name  string
+		write func(db.Driver, time.Duration, exportRequest) (int, error)
+		path  string
+	}{
+		{name: "CSV", write: func(client db.Driver, timeout time.Duration, request exportRequest) (int, error) {
+			return writeCSV(client, timeout, request)
+		}, path: filepath.Join(t.TempDir(), "results.csv")},
+		{name: "JSON", write: writeJSON, path: filepath.Join(t.TempDir(), "results.json")},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			request.path = test.path
+			if _, err := test.write(client, time.Second, request); !errors.Is(err, wantErr) {
+				t.Fatalf("export error = %v, want %v", err, wantErr)
+			}
+			if _, err := os.Stat(test.path); !os.IsNotExist(err) {
+				t.Fatalf("partial export still exists: %v", err)
+			}
+		})
 	}
 }
 

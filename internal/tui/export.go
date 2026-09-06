@@ -179,6 +179,11 @@ func writeCSV(client db.Driver, timeout time.Duration, request csvExportRequest)
 		return 0, err
 	}
 	defer func() {
+		if returnErr != nil {
+			_ = os.Remove(request.path)
+		}
+	}()
+	defer func() {
 		if err := file.Close(); returnErr == nil && err != nil {
 			returnErr = fmt.Errorf("close CSV file: %w", err)
 		}
@@ -212,6 +217,11 @@ func writeJSON(client db.Driver, timeout time.Duration, request exportRequest) (
 	if err != nil {
 		return 0, err
 	}
+	defer func() {
+		if returnErr != nil {
+			_ = os.Remove(request.path)
+		}
+	}()
 	defer func() {
 		if err := file.Close(); returnErr == nil && err != nil {
 			returnErr = fmt.Errorf("close JSON file: %w", err)
