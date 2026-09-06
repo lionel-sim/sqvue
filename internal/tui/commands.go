@@ -139,6 +139,15 @@ func runQueryCmd(c db.Driver, sql string, timeout time.Duration, requestID uint6
 	}
 }
 
+func updateCellCmd(updater db.CellUpdater, request db.CellUpdateRequest, timeout time.Duration, updateID uint64) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		err := updater.UpdateCell(ctx, request)
+		return cellUpdatedMsg{updateID: updateID, column: request.Column, err: err}
+	}
+}
+
 func openQueryRowStreamCmd(ctx context.Context, cancel func(), c db.QueryRowStreamer, query db.Query, pageSize, skip int, requestID uint64, initial bool) tea.Cmd {
 	return func() tea.Msg {
 		stream, err := c.OpenQueryRowStream(ctx, query)

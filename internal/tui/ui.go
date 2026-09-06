@@ -61,6 +61,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.fail("database backup failed", msg.err)
 		}
 		m.status, m.lastErr = fmt.Sprintf("database backed up to %s", msg.path), nil
+	case cellUpdatedMsg:
+		if msg.updateID != m.updateID {
+			return m, nil
+		}
+		m.loading = false
+		if msg.err != nil {
+			return m.fail("cell update failed", msg.err)
+		}
+		m.cellEditRefreshPending = true
+		return m.startLoadRows()
 	}
 	return m, nil
 }

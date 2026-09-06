@@ -114,16 +114,17 @@ type overlayState struct {
 	backupInput                              textinput.Model
 	cellEditInput                            textinput.Model
 	cellEditColumn, cellEditOriginal         string
+	cellEditRefreshPending                   bool
 	help                                     help.Model
 	columnCursor, columnScroll, detailScroll int
 	backupScopeCursor                        int
 }
 type viewportState struct{ width, height int }
 type loadState struct {
-	status, copyStatusKind                   string
-	loading                                  bool
-	lastErr                                  error
-	loadID, copyStatusID, exportID, backupID uint64
+	status, copyStatusKind                             string
+	loading                                            bool
+	lastErr                                            error
+	loadID, copyStatusID, exportID, backupID, updateID uint64
 }
 
 func New(opts Options) Model {

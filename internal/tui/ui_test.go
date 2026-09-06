@@ -3,6 +3,7 @@ package tui
 import (
 	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -185,6 +186,50 @@ func TestEditCellOpensPrefilledEditorAndConfirmation(t *testing.T) {
 	m, _ = update(m, tea.KeyMsg{Type: tea.KeyEsc})
 	if m.activeOverlay != overlayCellEdit {
 		t.Fatalf("editor overlay after cancel = %v", m.activeOverlay)
+	}
+}
+
+func TestConfirmedCellEditUpdatesAndRefreshesCurrentGrid(t *testing.T) {
+	client := &fakeDriver{
+		cols: []db.Column{{Name: "id", IsPrimary: true}, {Name: "name"}},
+		rows: [][]string{{"1", "first"}, {"2", "second"}, {"3", "before"}},
+	}
+	m := New(Options{Client: client, Timeout: time.Second})
+	m.tables = []db.Table{{Schema: "public", Name: "items"}}
+	m.focused, m.page, m.pageSize = true, 1, 2
+	m.rowCursor, m.cellCursor = 0, 1
+	m.columns = append([]db.Column(nil), client.cols...)
+	m.rows = [][]string{{"3", "before"}}
+	m.visibleColumns = []bool{true, true}
+	m.browseFilters = []db.RowFilter{{Column: "name", Operator: db.FilterContains, Value: "before"}}
+
+	m, _ = update(m, keyMsg("e"))
+	m.cellEditInput.SetValue("after")
+	m, _ = update(m, tea.KeyMsg{Type: tea.KeyEnter})
+	m, cmd := update(m, tea.KeyMsg{Type: tea.KeyEnter})
+	m, cmd = update(m, runCmd(cmd))
+	if got := client.lastCellUpdate; got.Column != "name" || got.Value != "after" || len(got.PrimaryKey) != 1 || got.PrimaryKey[0] != (db.PrimaryKeyValue{Column: "id", Value: "3"}) {
+		t.Fatalf("cell update request = %#v", got)
+	}
+	m, _ = update(m, runCmd(cmd))
+	if m.status != "updated name" || !m.focused || m.page != 1 || m.rowCursor != 0 || m.cellCursor != 1 || len(m.browseFilters) != 1 || len(m.visibleColumns) != 2 {
+		t.Fatalf("refreshed edit state = %#v", m)
+	}
+}
+
+func TestCellUpdateFailureIsReported(t *testing.T) {
+	client := &fakeDriver{cellUpdateErr: errBoom}
+	m := New(Options{Client: client, Timeout: time.Second})
+	m.tables = []db.Table{{Schema: "public", Name: "items"}}
+	m.focused = true
+	m.columns = []db.Column{{Name: "id", IsPrimary: true}}
+	m.rows = [][]string{{"1"}}
+	m, _ = update(m, keyMsg("e"))
+	m, _ = update(m, tea.KeyMsg{Type: tea.KeyEnter})
+	m, cmd := update(m, tea.KeyMsg{Type: tea.KeyEnter})
+	m, _ = update(m, runCmd(cmd))
+	if m.lastErr != errBoom || !strings.Contains(m.status, "cell update failed") {
+		t.Fatalf("update failure = status %q, error %v", m.status, m.lastErr)
 	}
 }
 

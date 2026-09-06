@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"unicode"
 
@@ -117,10 +118,52 @@ func (m Model) handleCellEditConfirmKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.cellEditInput.Focus()
 		m.status = "edit cell value"
 	case key.Matches(msg, m.keys.Confirm):
+		updater, ok := m.client.(db.CellUpdater)
+		if !ok {
+			m.activeOverlay = overlayNone
+			m.status = "cell editing is unavailable for this connection"
+			return m, nil
+		}
+		request, err := m.cellUpdateRequest()
+		if err != nil {
+			m.activeOverlay = overlayNone
+			return m.fail("cell update failed", err)
+		}
 		m.activeOverlay = overlayNone
-		m.status = "cell editing is not available yet"
+		m.closeTableStream()
+		m.updateID++
+		m.loading = true
+		m.status = "updating " + sanitizeText(request.Column) + "..."
+		return m, updateCellCmd(updater, request, m.timeout, m.updateID)
 	}
 	return m, nil
+}
+
+func (m Model) cellUpdateRequest() (db.CellUpdateRequest, error) {
+	table := m.currentTable()
+	if table == nil {
+		return db.CellUpdateRequest{}, fmt.Errorf("no table is selected")
+	}
+	column := m.activeColumn()
+	if column == nil || m.rowCursor < 0 || m.rowCursor >= len(m.rows) {
+		return db.CellUpdateRequest{}, fmt.Errorf("no cell is selected")
+	}
+	row := m.rows[m.rowCursor]
+	primaryKey := make([]db.PrimaryKeyValue, 0)
+	for index, candidate := range m.columns {
+		if !candidate.IsPrimary {
+			continue
+		}
+		if index >= len(row) {
+			return db.CellUpdateRequest{}, fmt.Errorf("primary-key value for %q is unavailable", candidate.Name)
+		}
+		primaryKey = append(primaryKey, db.PrimaryKeyValue{Column: candidate.Name, Value: row[index]})
+	}
+	request := db.CellUpdateRequest{Table: *table, Column: column.Name, Value: m.cellEditInput.Value(), PrimaryKey: primaryKey}
+	if err := request.Validate(); err != nil {
+		return db.CellUpdateRequest{}, err
+	}
+	return request, nil
 }
 
 func (m Model) copyToClipboard(value, kind string) (Model, tea.Cmd) {

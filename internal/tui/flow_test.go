@@ -13,24 +13,26 @@ import (
 )
 
 type fakeDriver struct {
-	dbType        db.DbType
-	schemas       []db.Schema
-	tables        []db.Table
-	cols          []db.Column
-	rows          [][]string
-	describeCols  []db.Column
-	lastLimit     int
-	lastOffset    int
-	lastBrowse    db.BrowseRequest
-	lastSchema    string
-	lastDescribe  string
-	describeCalls int
-	count         int64
-	queryResult   db.Result
-	lastQuery     string
-	backupCaps    db.BackupCapabilities
-	lastBackup    db.BackupRequest
-	backupErr     error
+	dbType         db.DbType
+	schemas        []db.Schema
+	tables         []db.Table
+	cols           []db.Column
+	rows           [][]string
+	describeCols   []db.Column
+	lastLimit      int
+	lastOffset     int
+	lastBrowse     db.BrowseRequest
+	lastSchema     string
+	lastDescribe   string
+	describeCalls  int
+	count          int64
+	queryResult    db.Result
+	lastQuery      string
+	backupCaps     db.BackupCapabilities
+	lastBackup     db.BackupRequest
+	backupErr      error
+	lastCellUpdate db.CellUpdateRequest
+	cellUpdateErr  error
 }
 
 type streamFakeDriver struct {
@@ -144,6 +146,10 @@ func (f *fakeDriver) BackupCapabilities() db.BackupCapabilities {
 func (f *fakeDriver) Backup(_ context.Context, request db.BackupRequest) error {
 	f.lastBackup = request
 	return f.backupErr
+}
+func (f *fakeDriver) UpdateCell(_ context.Context, request db.CellUpdateRequest) error {
+	f.lastCellUpdate = request
+	return f.cellUpdateErr
 }
 
 func makeRows(n int) [][]string {

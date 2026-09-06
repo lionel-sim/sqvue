@@ -81,4 +81,9 @@ type (
 		path     string
 		err      error
 	}
+	cellUpdatedMsg struct {
+		updateID uint64
+		column   string
+		err      error
+	}
 )

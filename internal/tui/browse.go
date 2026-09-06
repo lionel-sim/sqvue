@@ -16,6 +16,7 @@ func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 	}
 	m.loading = false
 	if msg.err != nil {
+		m.cellEditRefreshPending = false
 		return m.fail("rows error", msg.err)
 	}
 	if msg.columns != nil {
@@ -53,6 +54,11 @@ func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 	}
 	m.cellCursor = clamp(m.cellCursor, 0, max(0, m.displayedColumnCount()-1))
 	m.lastErr = nil
+	if m.cellEditRefreshPending {
+		m.cellEditRefreshPending = false
+		m.status = "updated " + sanitizeText(m.cellEditColumn)
+		return m, nil
+	}
 	if t := m.currentTable(); t != nil {
 		m.setRowsStatus(*t)
 		return m, m.loadCurrentRowCount(*t)
@@ -72,6 +78,7 @@ func (m Model) handleTableStreamRowsLoaded(msg tableStreamRowsLoadedMsg) (Model,
 	}
 	m.loading = false
 	if msg.err != nil {
+		m.cellEditRefreshPending = false
 		if msg.stream != nil {
 			_ = msg.stream.Close()
 		}
@@ -139,6 +146,11 @@ func (m Model) handleTableStreamRowsLoaded(msg tableStreamRowsLoadedMsg) (Model,
 	}
 	m.cellCursor = clamp(m.cellCursor, 0, max(0, m.displayedColumnCount()-1))
 	m.lastErr = nil
+	if m.cellEditRefreshPending {
+		m.cellEditRefreshPending = false
+		m.status = "updated " + sanitizeText(m.cellEditColumn)
+		return m, nil
+	}
 	if t := m.currentTable(); t != nil {
 		m.setRowsStatus(*t)
 		if m.tableStream.stream == nil {
