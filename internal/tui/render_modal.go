@@ -96,6 +96,9 @@ func renderRowInsertValueModal(m Model) string {
 func renderRowInsertConfirmModal(m Model) string {
 	width := detailDialogWidth(m)
 	lines := make([]string, 0, len(m.rowInsertFields)+2)
+	if table := m.currentTable(); table != nil {
+		lines = append(lines, "Table: "+sanitizeText(table.String()))
+	}
 	for _, field := range m.rowInsertFields {
 		lines = append(lines, sanitizeText(field.column.Name)+": "+rowInsertFieldDisplay(field))
 	}
