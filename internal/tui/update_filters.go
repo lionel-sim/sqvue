@@ -20,6 +20,7 @@ func (m Model) clearBrowseFilters() (Model, tea.Cmd) {
 }
 
 func (m *Model) resetBrowseContext() {
+	m.closeTableStream()
 	m.page = 0
 	m.rowCursor = 0
 	m.pendingRowMoves = 0

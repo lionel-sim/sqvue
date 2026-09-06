@@ -52,7 +52,14 @@ type resultState struct {
 	browseFilters              []db.RowFilter
 	visibleColumns             []bool
 	visibleColumnKey           string
+	tableStream                tableStreamState
 	queryState
+}
+type tableStreamState struct {
+	stream   db.RowStream
+	cancel   func()
+	key      string
+	nextPage int
 }
 type gridState struct {
 	focused                                             bool

@@ -21,6 +21,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleTablesLoaded(msg)
 	case rowsLoadedMsg:
 		return m.handleRowsLoaded(msg)
+	case tableStreamRowsLoadedMsg:
+		return m.handleTableStreamRowsLoaded(msg)
 	case descriptionsLoadedMsg:
 		return m.handleDescriptionsLoaded(msg)
 	case countLoadedMsg:
@@ -77,6 +79,7 @@ func (m Model) handleWindowSize(msg tea.WindowSizeMsg) (Model, tea.Cmd) {
 		return m, nil
 	}
 	if m.pageSize != oldSize && len(m.tables) > 0 {
+		m.closeTableStream()
 		return m.startLoad()
 	}
 	return m, nil

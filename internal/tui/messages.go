@@ -19,6 +19,15 @@ type (
 		rows      [][]string
 		err       error
 	}
+	tableStreamRowsLoadedMsg struct {
+		requestID uint64
+		columns   []db.Column
+		rows      [][]string
+		exhausted bool
+		stream    db.RowStream
+		cancel    func()
+		err       error
+	}
 	descriptionsLoadedMsg struct {
 		requestID uint64
 		info      db.TableInfo

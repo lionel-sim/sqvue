@@ -47,6 +47,38 @@ func loadBrowseRowsCmd(c db.Driver, req db.BrowseRequest, timeout time.Duration,
 	}
 }
 
+func openTableRowStreamCmd(c db.TableRowStreamer, request db.TableRowStreamRequest, pageSize, skip int, requestID uint64) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithCancel(context.Background())
+		columns, stream, err := c.OpenTableRowStream(ctx, request)
+		if err != nil {
+			cancel()
+			return tableStreamRowsLoadedMsg{requestID: requestID, err: err}
+		}
+		if skip > 0 {
+			if _, _, err := db.ReadRowStream(stream, skip); err != nil {
+				_ = stream.Close()
+				cancel()
+				return tableStreamRowsLoadedMsg{requestID: requestID, err: err}
+			}
+		}
+		rows, exhausted, err := db.ReadRowStream(stream, pageSize)
+		if err != nil {
+			_ = stream.Close()
+			cancel()
+			return tableStreamRowsLoadedMsg{requestID: requestID, err: err}
+		}
+		return tableStreamRowsLoadedMsg{requestID: requestID, columns: columns, rows: rows, exhausted: exhausted, stream: stream, cancel: cancel}
+	}
+}
+
+func readTableRowStreamCmd(stream db.RowStream, pageSize int, requestID uint64) tea.Cmd {
+	return func() tea.Msg {
+		rows, exhausted, err := db.ReadRowStream(stream, pageSize)
+		return tableStreamRowsLoadedMsg{requestID: requestID, rows: rows, exhausted: exhausted, err: err}
+	}
+}
+
 func loadDescriptionsCmd(c db.Driver, tbl db.Table, timeout time.Duration, requestID uint64) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -108,6 +140,7 @@ func clearCopyStatusCmd(kind string, copyStatusID uint64) tea.Cmd {
 // startLoad dispatches to the loader for the current view mode.
 func (m Model) startLoad() (Model, tea.Cmd) {
 	if m.mode == modeDescriptions {
+		m.closeTableStream()
 		return m.startLoadDescriptions()
 	}
 	return m.startLoadRows()
@@ -118,8 +151,16 @@ func (m Model) startLoadRows() (Model, tea.Cmd) {
 		m.queryActive = false
 		m.loading = true
 		m.status = fmt.Sprintf("loading %s page %d...", t.String(), m.page+1)
-		offset := m.page * m.pageSize
 		requestID := m.nextRequestID()
+		if streamer, ok := m.client.(db.TableRowStreamer); ok {
+			key := m.browseStreamKey(*t)
+			if m.tableStream.stream != nil && m.tableStream.key == key && m.page == m.tableStream.nextPage {
+				return m, readTableRowStreamCmd(m.tableStream.stream, m.pageSize, requestID)
+			}
+			m.closeTableStream()
+			return m, openTableRowStreamCmd(streamer, db.TableRowStreamRequest{Table: *t, Filters: append([]db.RowFilter(nil), m.browseFilters...)}, m.pageSize, m.page*m.pageSize, requestID)
+		}
+		offset := m.page * m.pageSize
 		if len(m.browseFilters) > 0 {
 			req := m.browseRequest(*t)
 			req.Limit = m.pageSize + 1

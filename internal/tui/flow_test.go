@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -30,6 +31,39 @@ type fakeDriver struct {
 	backupCaps    db.BackupCapabilities
 	lastBackup    db.BackupRequest
 	backupErr     error
+}
+
+type streamFakeDriver struct {
+	fakeDriver
+	streamRequests []db.TableRowStreamRequest
+	streams        []*fakeRowStream
+}
+
+type fakeRowStream struct {
+	rows   [][]string
+	index  int
+	closed bool
+}
+
+func (s *fakeRowStream) Next() ([]string, error) {
+	if s.index >= len(s.rows) {
+		return nil, io.EOF
+	}
+	row := s.rows[s.index]
+	s.index++
+	return row, nil
+}
+
+func (s *fakeRowStream) Close() error {
+	s.closed = true
+	return nil
+}
+
+func (f *streamFakeDriver) OpenTableRowStream(_ context.Context, request db.TableRowStreamRequest) ([]db.Column, db.RowStream, error) {
+	stream := &fakeRowStream{rows: f.rows}
+	f.streamRequests = append(f.streamRequests, request)
+	f.streams = append(f.streams, stream)
+	return f.cols, stream, nil
 }
 
 func (f *fakeDriver) DbType() db.DbType {
@@ -102,6 +136,81 @@ func runCmd(cmd tea.Cmd) tea.Msg {
 		return nil
 	}
 	return cmd()
+}
+
+func TestTableBrowsingStreamsForwardAndReopensForPreviousPage(t *testing.T) {
+	client := &streamFakeDriver{fakeDriver: fakeDriver{
+		cols: []db.Column{{Name: "id"}},
+		rows: [][]string{{"1"}, {"2"}, {"3"}, {"4"}, {"5"}},
+	}}
+	m := New(Options{Client: client, Timeout: time.Second})
+	m.tables = []db.Table{{Schema: "public", Name: "items"}}
+	m.pageSize = 2
+
+	m, cmd := m.startLoadRows()
+	m, _ = update(m, runCmd(cmd))
+	if len(client.streamRequests) != 1 || client.lastLimit != 0 || client.lastBrowse.Limit != 0 {
+		t.Fatalf("first page did not use a stream: requests %#v, limit %d, browse %#v", client.streamRequests, client.lastLimit, client.lastBrowse)
+	}
+	if got := m.rows; len(got) != 2 || got[0][0] != "1" || got[1][0] != "2" || !m.hasNextPage {
+		t.Fatalf("first streamed page = %#v, hasNext %t", got, m.hasNextPage)
+	}
+
+	m, cmd = m.changePage(+1)
+	m, _ = update(m, runCmd(cmd))
+	if len(client.streamRequests) != 1 {
+		t.Fatalf("forward page reopened stream %d times", len(client.streamRequests))
+	}
+	if got := m.rows; m.page != 1 || len(got) != 2 || got[0][0] != "3" || got[1][0] != "4" {
+		t.Fatalf("second streamed page = page %d, rows %#v", m.page, got)
+	}
+
+	m, cmd = m.changePage(-1)
+	m, _ = update(m, runCmd(cmd))
+	if len(client.streamRequests) != 2 || !client.streams[0].closed {
+		t.Fatalf("previous page did not reset its stream: requests %d, closed %t", len(client.streamRequests), client.streams[0].closed)
+	}
+	if got := m.rows; m.page != 0 || len(got) != 2 || got[0][0] != "1" || got[1][0] != "2" {
+		t.Fatalf("reopened first page = page %d, rows %#v", m.page, got)
+	}
+}
+
+func TestTableStreamResetsForBrowseContextAndResize(t *testing.T) {
+	client := &streamFakeDriver{fakeDriver: fakeDriver{
+		cols: []db.Column{{Name: "id"}},
+		rows: [][]string{{"1"}, {"2"}, {"3"}},
+	}}
+	m := New(Options{Client: client, Timeout: time.Second})
+	m.tables = []db.Table{{Schema: "public", Name: "items"}}
+	m.pageSize = 2
+	m, cmd := m.startLoadRows()
+	m, _ = update(m, runCmd(cmd))
+	first := client.streams[0]
+
+	m.browseFilters = []db.RowFilter{{Column: "id", Operator: db.FilterEqual, Value: "2"}}
+	m.resetBrowseContext()
+	if !first.closed {
+		t.Fatal("changing filters did not close the active stream")
+	}
+	m, cmd = m.startLoadRows()
+	m, _ = update(m, runCmd(cmd))
+	if len(client.streamRequests) != 2 || len(client.streamRequests[1].Filters) != 1 {
+		t.Fatalf("filtered stream request = %#v", client.streamRequests)
+	}
+
+	second := client.streams[1]
+	m, _ = m.showDescriptions()
+	if !second.closed {
+		t.Fatal("switching to descriptions did not close the active stream")
+	}
+	m.mode = modeValues
+	m, cmd = m.startLoadRows()
+	m, _ = update(m, runCmd(cmd))
+	third := client.streams[2]
+	m, cmd = update(m, tea.WindowSizeMsg{Width: 100, Height: 20})
+	if cmd == nil || !third.closed {
+		t.Fatalf("resizing did not reset the active stream: command %v, closed %t", cmd != nil, third.closed)
+	}
 }
 
 func update(m Model, msg tea.Msg) (Model, tea.Cmd) {

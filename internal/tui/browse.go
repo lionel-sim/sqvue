@@ -17,7 +17,9 @@ func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 	if msg.err != nil {
 		return m.fail("rows error", msg.err)
 	}
-	m.columns = msg.columns
+	if msg.columns != nil {
+		m.columns = msg.columns
+	}
 	if t := m.currentTable(); t != nil {
 		m.ensureVisibleColumns(t.String())
 	}
@@ -52,12 +54,87 @@ func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 	m.lastErr = nil
 	if t := m.currentTable(); t != nil {
 		m.setRowsStatus(*t)
-		if len(m.browseFilters) > 0 {
-			if _, ok := m.browseRowCounts[m.browseCountKey(*t)]; !ok {
-				return m, loadBrowseCountCmd(m.client, m.browseRequest(*t), m.timeout, m.loadID)
-			}
-		} else if _, ok := m.rowCounts[t.String()]; !ok {
-			return m, loadCountCmd(m.client, *t, m.timeout, m.loadID)
+		return m, m.loadCurrentRowCount(*t)
+	}
+	return m, nil
+}
+
+func (m Model) handleTableStreamRowsLoaded(msg tableStreamRowsLoadedMsg) (Model, tea.Cmd) {
+	if !m.isCurrent(msg.requestID) {
+		if msg.stream != nil {
+			_ = msg.stream.Close()
+		}
+		if msg.cancel != nil {
+			msg.cancel()
+		}
+		return m, nil
+	}
+	m.loading = false
+	if msg.err != nil {
+		if msg.stream != nil {
+			_ = msg.stream.Close()
+		}
+		if msg.cancel != nil {
+			msg.cancel()
+		}
+		m.closeTableStream()
+		return m.fail("rows error", msg.err)
+	}
+	if msg.stream != nil {
+		m.tableStream = tableStreamState{stream: msg.stream, cancel: msg.cancel, key: m.browseStreamKeyForCurrentTable(), nextPage: m.page + 1}
+	}
+	if len(msg.rows) == 0 && msg.exhausted && m.page > 0 {
+		m.page--
+		m.hasNextPage = false
+		m.closeTableStream()
+		if t := m.currentTable(); t != nil {
+			m.setRowsStatus(*t)
+			return m, m.loadCurrentRowCount(*t)
+		}
+		return m, nil
+	}
+	if msg.columns != nil {
+		m.columns = msg.columns
+	}
+	if t := m.currentTable(); t != nil {
+		m.ensureVisibleColumns(t.String())
+	}
+	m.rows, m.hasNextPage = msg.rows, !msg.exhausted
+	if m.rowCursor >= len(m.rows) {
+		m.rowCursor = max(0, len(m.rows)-1)
+	}
+	if m.tableStream.stream != nil {
+		m.tableStream.nextPage = m.page + 1
+	}
+	if m.pendingRowMoves != 0 {
+		pending := m.pendingRowMoves
+		m.pendingRowMoves = 0
+		switch {
+		case pending >= 0 && pending < len(m.rows):
+			m.rowCursor = pending
+		case pending >= len(m.rows) && m.hasNextPage:
+			m.page++
+			m.pendingRowMoves = pending - len(m.rows)
+			return m.startLoadRows()
+		case pending < 0 && m.page > 0:
+			m.page--
+			m.pendingRowMoves = pending + len(m.rows)
+			return m.startLoadRows()
+		case pending < 0:
+			m.rowCursor = 0
+		default:
+			m.rowCursor = max(0, len(m.rows)-1)
+		}
+	}
+	if msg.exhausted {
+		m.closeTableStream()
+	}
+	m.cellCursor = clamp(m.cellCursor, 0, max(0, m.displayedColumnCount()-1))
+	m.lastErr = nil
+	if t := m.currentTable(); t != nil {
+		m.setRowsStatus(*t)
+		if m.tableStream.stream == nil {
+			return m, m.loadCurrentRowCount(*t)
 		}
 	}
 	return m, nil
@@ -160,6 +237,36 @@ func formatBrowseFilters(filters []db.RowFilter) string {
 }
 func (m Model) browseRequest(t db.Table) db.BrowseRequest {
 	return db.BrowseRequest{Table: t, Filters: append([]db.RowFilter(nil), m.browseFilters...)}
+}
+func (m Model) browseStreamKey(t db.Table) string { return m.browseCountKey(t) }
+func (m Model) browseStreamKeyForCurrentTable() string {
+	if t := m.currentTable(); t != nil {
+		return m.browseStreamKey(*t)
+	}
+	return ""
+}
+
+func (m *Model) closeTableStream() {
+	if m.tableStream.stream != nil {
+		_ = m.tableStream.stream.Close()
+	}
+	if m.tableStream.cancel != nil {
+		m.tableStream.cancel()
+	}
+	m.tableStream = tableStreamState{}
+}
+
+func (m Model) loadCurrentRowCount(t db.Table) tea.Cmd {
+	if len(m.browseFilters) > 0 {
+		if _, ok := m.browseRowCounts[m.browseCountKey(t)]; !ok {
+			return loadBrowseCountCmd(m.client, m.browseRequest(t), m.timeout, m.loadID)
+		}
+		return nil
+	}
+	if _, ok := m.rowCounts[t.String()]; !ok {
+		return loadCountCmd(m.client, t, m.timeout, m.loadID)
+	}
+	return nil
 }
 func (m Model) browseCountKey(t db.Table) string {
 	var b strings.Builder

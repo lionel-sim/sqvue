@@ -19,6 +19,7 @@ func (m Model) handleSQLKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		if sql == "" {
 			return m, nil
 		}
+		m.closeTableStream()
 		m.activeOverlay, m.loading, m.status = overlayNone, true, "running query..."
 		m.sqlInput.Blur()
 		return m, runQueryCmd(m.client, sql, m.timeout, m.nextRequestID())
@@ -56,6 +57,7 @@ func (m Model) handleSchemaKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.schemaCursor = max(0, m.schemaCursor-1)
 		m.schemaScroll = keepInView(m.schemaCursor, m.schemaScroll, tableListHeight, len(m.schemas))
 	case key.Matches(msg, m.keys.Confirm):
+		m.closeTableStream()
 		m.schema, m.activeOverlay = m.schemaCursor, overlayNone
 		m.selected, m.scroll, m.page = 0, 0, 0
 		m.filterInput.SetValue("")
@@ -67,6 +69,7 @@ func (m Model) handleSchemaKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 }
 func (m Model) showDescriptions() (Model, tea.Cmd) {
 	if m.mode != modeDescriptions {
+		m.closeTableStream()
 		m.queryActive, m.mode = false, modeDescriptions
 		return m.startLoadDescriptions()
 	}
