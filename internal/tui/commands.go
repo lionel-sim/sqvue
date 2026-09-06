@@ -160,6 +160,15 @@ func updateCellCmd(updater db.CellUpdater, request db.CellUpdateRequest, timeout
 	}
 }
 
+func insertRowCmd(inserter db.RowInserter, request db.RowInsertRequest, timeout time.Duration, insertID uint64) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		err := inserter.InsertRow(ctx, request)
+		return rowInsertedMsg{insertID: insertID, err: err}
+	}
+}
+
 type queryStreamLoadRequest struct {
 	ctx       context.Context
 	cancel    func()

@@ -39,6 +39,12 @@ func Render(m Model) string {
 		return renderModalOverMain(m, renderCellEditModal(m))
 	case overlayCellEditConfirm:
 		return renderModalOverMain(m, renderCellEditConfirmModal(m))
+	case overlayRowInsert:
+		return renderModalOverMain(m, renderRowInsertModal(m))
+	case overlayRowInsertValue:
+		return renderModalOverMain(m, renderRowInsertValueModal(m))
+	case overlayRowInsertConfirm:
+		return renderModalOverMain(m, renderRowInsertConfirmModal(m))
 	case overlayProfilePicker:
 		return renderModalOverMain(m, renderProfilePickerModal(m))
 	case overlaySaveQueryName:

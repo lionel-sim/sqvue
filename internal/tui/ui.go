@@ -85,6 +85,18 @@ func (m Model) handleCompletionMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.cellEditRefreshPending = true
 		return m.startLoadRows()
+	case rowInsertedMsg:
+		if msg.insertID != m.insertID {
+			return m, nil
+		}
+		m.loading = false
+		if msg.err != nil {
+			m.activeOverlay = overlayRowInsert
+			return m.fail("row insert failed", msg.err)
+		}
+		m.rowInsertRefreshPending = true
+		m.clearCurrentRowCounts()
+		return m.startLoadRows()
 	case profileConnectedMsg:
 		return m.handleProfileConnected(msg)
 	}
@@ -101,6 +113,7 @@ func (m Model) handleWindowSize(msg tea.WindowSizeMsg) (Model, tea.Cmd) {
 	m.exportInput.Width = inputWidth(msg.Width, m.exportInput.Prompt)
 	m.backupInput.Width = inputWidth(msg.Width, m.backupInput.Prompt)
 	m.cellEditInput.Width = inputWidth(msg.Width, m.cellEditInput.Prompt)
+	m.rowInsertInput.Width = inputWidth(msg.Width, m.rowInsertInput.Prompt)
 	m.queryNameInput.Width = inputWidth(msg.Width, m.queryNameInput.Prompt)
 	if msg.Height > 0 {
 		m.pageSize = m.computedPageSize()
@@ -162,6 +175,15 @@ func (m Model) handleOverlayKey(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
 		return m, cmd, true
 	case overlayCellEditConfirm:
 		m, cmd := m.handleCellEditConfirmKey(msg)
+		return m, cmd, true
+	case overlayRowInsert:
+		m, cmd := m.handleRowInsertKey(msg)
+		return m, cmd, true
+	case overlayRowInsertValue:
+		m, cmd := m.handleRowInsertValueKey(msg)
+		return m, cmd, true
+	case overlayRowInsertConfirm:
+		m, cmd := m.handleRowInsertConfirmKey(msg)
 		return m, cmd, true
 	case overlayColumnPicker:
 		m, cmd := m.handleColumnsKey(msg)

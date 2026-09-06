@@ -87,6 +87,10 @@ type (
 		column   string
 		err      error
 	}
+	rowInsertedMsg struct {
+		insertID uint64
+		err      error
+	}
 	profileConnectedMsg struct {
 		reconnectID uint64
 		profile     ConnectionProfile

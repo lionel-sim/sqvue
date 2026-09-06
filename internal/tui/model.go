@@ -126,6 +126,9 @@ const (
 	overlayBackupPath
 	overlayCellEdit
 	overlayCellEditConfirm
+	overlayRowInsert
+	overlayRowInsertValue
+	overlayRowInsertConfirm
 	overlaySaveQueryName
 	overlaySavedQueries
 	overlayRenameQuery
@@ -146,19 +149,24 @@ type overlayState struct {
 	exportFormat                             exportFormat
 	backupInput                              textinput.Model
 	cellEditInput                            textinput.Model
+	rowInsertInput                           textinput.Model
 	queryNameInput                           textinput.Model
 	cellEditColumn, cellEditOriginal         string
 	cellEditRefreshPending                   bool
+	rowInsertFields                          []rowInsertField
+	rowInsertCursor, rowInsertScroll         int
+	rowInsertEditPrevious                    rowInsertField
+	rowInsertRefreshPending                  bool
 	help                                     help.Model
 	columnCursor, columnScroll, detailScroll int
 	backupScopeCursor                        int
 }
 type viewportState struct{ width, height int }
 type loadState struct {
-	status, copyStatusKind                                          string
-	loading                                                         bool
-	lastErr                                                         error
-	loadID, copyStatusID, exportID, backupID, updateID, reconnectID uint64
+	status, copyStatusKind                                                    string
+	loading                                                                   bool
+	lastErr                                                                   error
+	loadID, copyStatusID, exportID, backupID, updateID, insertID, reconnectID uint64
 }
 
 func New(opts Options) Model {
@@ -186,6 +194,8 @@ func New(opts Options) Model {
 	backup.CharLimit = 0
 	cellEdit := newThemedTextInput(styles)
 	cellEdit.CharLimit = 0
+	rowInsert := newThemedTextInput(styles)
+	rowInsert.CharLimit = 0
 	queryName := newThemedTextInput(styles)
 	queryName.Prompt = "Query name: "
 	queryName.Placeholder = "daily report"
@@ -193,7 +203,7 @@ func New(opts Options) Model {
 	applyHelpTheme(&helpModel, styles)
 	return Model{client: opts.Client, timeout: opts.Timeout,
 		resultState:  resultState{pageSize: maxPageSize, rowCounts: make(map[string]int64), browseRowCounts: make(map[string]int64), visibleColumnsByTable: make(map[string][]bool), queryState: queryState{historyIndex: -1}},
-		overlayState: overlayState{filterInput: filter, browseFilterInput: browseFilter, sqlInput: sql, exportInput: export, backupInput: backup, cellEditInput: cellEdit, queryNameInput: queryName, help: helpModel},
+		overlayState: overlayState{filterInput: filter, browseFilterInput: browseFilter, sqlInput: sql, exportInput: export, backupInput: backup, cellEditInput: cellEdit, rowInsertInput: rowInsert, queryNameInput: queryName, help: helpModel},
 		loadState:    loadState{status: "loading tables...", loading: true}, keys: Default(), exportDirectory: opts.ExportDirectory, theme: styles,
 		queryStore: opts.QueryStore, profileName: opts.ProfileName, profiles: append([]ConnectionProfile(nil), opts.Profiles...),
 	}
