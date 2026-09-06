@@ -23,7 +23,8 @@ asset_directory="$temporary_directory/releases/download/$version"
 mkdir -p "$asset_directory"
 printf '#!/bin/sh\nprintf "sqvue version %s\\n"\n' "$version" > "$temporary_directory/sqvue"
 chmod 0755 "$temporary_directory/sqvue"
-archive="sqvue_${version}_${os}_${arch}.tar.gz"
+archive_version=${version#v}
+archive="sqvue_${archive_version}_${os}_${arch}.tar.gz"
 tar -czf "$asset_directory/$archive" -C "$temporary_directory" sqvue
 
 if command -v sha256sum >/dev/null 2>&1; then

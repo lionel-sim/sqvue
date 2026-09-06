@@ -85,7 +85,9 @@ case "$(uname -m)" in
 	*) fail "unsupported CPU architecture; download a release archive manually" ;;
 esac
 
-archive="sqvue_${version}_${os}_${arch}.tar.gz"
+# GoReleaser's .Version omits the leading v from a release tag.
+archive_version=${version#v}
+archive="sqvue_${archive_version}_${os}_${arch}.tar.gz"
 temporary_directory=$(mktemp -d)
 trap 'rm -rf "$temporary_directory"' 0 HUP INT TERM
 
