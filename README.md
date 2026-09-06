@@ -12,6 +12,7 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 - Focus and navigate row data while preserving the selected row across pages and column visibility changes
 - Sort table and query results by the active column, with the selected order retained for filtering, paging, streams, and exports
 - Insert one row at a time through a guided table form, using database defaults, explicit `NULL`, literal values, or a database-side current timestamp
+- Delete one selected primary-key table row through an explicit confirmation
 - Run ad-hoc SQL queries, recall profile-specific history, save named queries, and page through results
 - Switch among configured connection profiles without exposing credentials
 - Export visible result columns to CSV or JSON
@@ -215,6 +216,7 @@ does not include other tables referenced by foreign keys.
 | `↓` / `↑` (in SQL editor) | Move cursor to the next / previous editor line |
 | `Enter`          | Focus displayed rows, or show selected-row details (focused grid) |
 | `a` (focused table grid) | Add a row |
+| `d` (focused table grid) | Delete the active row |
 | `?`              | Show keyboard help    |
 | `r`              | Refresh the current table view, or rerun active SQL results |
 | `Esc`            | Return from rows to table picker, or close an overlay |
@@ -230,6 +232,14 @@ only for tables with declared primary keys (including composite keys), and SQL
 result grids stay read-only. Review the old and new values before confirming;
 enter `NULL` to set a database `NULL` value. sqvue refreshes the current page
 after a successful update.
+
+Press `d` in a focused base-table grid to delete the active row. Deletion is
+available only for tables with declared primary keys (including composite keys)
+and never for views or SQL results. Review the table and primary-key values in
+the confirmation screen; Enter permanently deletes the row, while Esc cancels.
+Errors return to that confirmation without discarding the selected row. sqvue
+refreshes the current view and row count after success, moving to the previous
+page if the deletion leaves the current page empty.
 
 Press `a` in a focused base-table grid to add one row. The form starts each
 editable field at **use database default**; generated columns are not written.
