@@ -272,56 +272,60 @@ func createExportFile(path, format string) (*os.File, error) {
 
 func writeExportRows(client db.Driver, timeout time.Duration, request exportRequest, writeRows func([][]string) error) error {
 	if request.query != nil {
-		streamer, ok := client.(db.QueryRowStreamer)
-		if !ok {
-			return fmt.Errorf("query streaming is unavailable")
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		defer cancel()
-		stream, err := streamer.OpenQueryRowStream(ctx, *request.query)
-		if err != nil {
-			return fmt.Errorf("open query stream: %w", err)
-		}
-		defer func() { _ = stream.Close() }()
-		for {
-			values, exhausted, err := db.ReadRowStream(stream, exportBatchSize)
-			if err != nil {
-				return fmt.Errorf("load query rows: %w", err)
-			}
-			if err := writeRows(values); err != nil {
-				return err
-			}
-			if exhausted {
-				return nil
-			}
-		}
+		return writeQueryExportRows(client, timeout, *request.query, writeRows)
 	}
 	if request.table != nil {
 		if streamer, ok := client.(db.TableRowStreamer); ok {
-			ctx, cancel := context.WithTimeout(context.Background(), timeout)
-			defer cancel()
-			_, stream, err := streamer.OpenTableRowStream(ctx, db.TableRowStreamRequest{Table: *request.table, Filters: request.filters, Sort: request.sort})
-			if err != nil {
-				return fmt.Errorf("open table stream: %w", err)
-			}
-			defer func() { _ = stream.Close() }()
-			for {
-				values, exhausted, err := db.ReadRowStream(stream, exportBatchSize)
-				if err != nil {
-					return fmt.Errorf("load table rows: %w", err)
-				}
-				if err := writeRows(values); err != nil {
-					return err
-				}
-				if exhausted {
-					return nil
-				}
-			}
+			return writeTableStreamExportRows(client, streamer, timeout, request, writeRows)
 		}
 	}
 	if request.table == nil {
 		return writeRows(request.queryRows)
 	}
+	return writePagedTableExportRows(client, timeout, request, writeRows)
+}
+
+func writeQueryExportRows(client db.Driver, timeout time.Duration, query db.Query, writeRows func([][]string) error) error {
+	streamer, ok := client.(db.QueryRowStreamer)
+	if !ok {
+		return fmt.Errorf("query streaming is unavailable")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	stream, err := streamer.OpenQueryRowStream(ctx, query)
+	if err != nil {
+		return fmt.Errorf("open query stream: %w", err)
+	}
+	return writeStreamExportRows(stream, "query", writeRows)
+}
+
+func writeTableStreamExportRows(client db.Driver, streamer db.TableRowStreamer, timeout time.Duration, request exportRequest, writeRows func([][]string) error) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	_, stream, err := streamer.OpenTableRowStream(ctx, db.TableRowStreamRequest{Table: *request.table, Filters: request.filters, Sort: request.sort})
+	if err != nil {
+		return fmt.Errorf("open table stream: %w", err)
+	}
+	return writeStreamExportRows(stream, "table", writeRows)
+}
+
+func writeStreamExportRows(stream db.RowStream, source string, writeRows func([][]string) error) error {
+	defer func() { _ = stream.Close() }()
+	for {
+		values, exhausted, err := db.ReadRowStream(stream, exportBatchSize)
+		if err != nil {
+			return fmt.Errorf("load %s rows: %w", source, err)
+		}
+		if err := writeRows(values); err != nil {
+			return err
+		}
+		if exhausted {
+			return nil
+		}
+	}
+}
+
+func writePagedTableExportRows(client db.Driver, timeout time.Duration, request exportRequest, writeRows func([][]string) error) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	for offset := 0; ; offset += exportBatchSize {

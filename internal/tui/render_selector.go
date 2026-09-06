@@ -10,14 +10,23 @@ import (
 	"sqvue/internal/theme"
 )
 
-func renderTableList(b *strings.Builder, styles theme.Theme, terminalWidth int, schema string, tables []db.Table, selected, offset int, filter string) {
-	title := fmt.Sprintf("Tables: %s", sanitizeText(schema))
-	if filter != "" {
-		title += fmt.Sprintf(" [filter: %s]", sanitizeText(filter))
+type tableListRenderOptions struct {
+	terminalWidth int
+	schema        string
+	tables        []db.Table
+	selected      int
+	offset        int
+	filter        string
+}
+
+func renderTableList(b *strings.Builder, styles theme.Theme, options tableListRenderOptions) {
+	title := fmt.Sprintf("Tables: %s", sanitizeText(options.schema))
+	if options.filter != "" {
+		title += fmt.Sprintf(" [filter: %s]", sanitizeText(options.filter))
 	}
-	width := tableListWidth(terminalWidth, title)
+	width := tableListWidth(options.terminalWidth, title)
 	lines := make([]string, 0, tableListHeight)
-	if len(tables) == 0 {
+	if len(options.tables) == 0 {
 		lines = append(lines, "  (no tables found)")
 		for i := 1; i < tableListHeight; i++ {
 			lines = append(lines, "")
@@ -25,26 +34,26 @@ func renderTableList(b *strings.Builder, styles theme.Theme, terminalWidth int, 
 		b.WriteString(renderTitledPanel(styles, lines, width, title))
 		return
 	}
-	end := offset + tableListHeight
-	if end > len(tables) {
-		end = len(tables)
+	end := options.offset + tableListHeight
+	if end > len(options.tables) {
+		end = len(options.tables)
 	}
-	for i := offset; i < end; i++ {
+	for i := options.offset; i < end; i++ {
 		prefix := "  "
-		if i == selected {
+		if i == options.selected {
 			prefix = "> "
 		}
-		name := sanitizeText(tables[i].Name)
-		if tables[i].Type != "" && tables[i].Type != "table" {
-			name += " [" + tables[i].Type + "]"
+		name := sanitizeText(options.tables[i].Name)
+		if options.tables[i].Type != "" && options.tables[i].Type != "table" {
+			name += " [" + options.tables[i].Type + "]"
 		}
 		line := ansi.Truncate(prefix+name, width, "…")
-		if i == selected {
+		if i == options.selected {
 			line = styles.Selected.Render(line)
 		}
 		lines = append(lines, line)
 	}
-	for i := end - offset; i < tableListHeight; i++ {
+	for i := end - options.offset; i < tableListHeight; i++ {
 		lines = append(lines, "")
 	}
 	b.WriteString(renderTitledPanel(styles, lines, width, title))

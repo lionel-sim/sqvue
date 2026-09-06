@@ -189,30 +189,42 @@ func sqliteIdentifierEnd(value string) (int, error) {
 	}
 	switch value[0] {
 	case '"', '`':
-		for i := 1; i < len(value); i++ {
-			if value[i] != value[0] {
-				continue
-			}
-			if i+1 < len(value) && value[i+1] == value[0] {
-				i++
-				continue
-			}
-			return i + 1, nil
-		}
-		return 0, fmt.Errorf("unterminated quoted object name")
+		return sqliteQuotedIdentifierEnd(value)
 	case '[':
-		if end := strings.IndexByte(value, ']'); end >= 0 {
-			return end + 1, nil
-		}
-		return 0, fmt.Errorf("unterminated bracketed object name")
+		return sqliteBracketedIdentifierEnd(value)
 	default:
-		end := strings.IndexFunc(value, func(r rune) bool { return r == '(' || r == ' ' || r == '\t' || r == '\n' || r == '\r' })
-		if end < 0 {
-			return len(value), nil
-		}
-		if end == 0 {
-			return 0, fmt.Errorf("missing object name")
-		}
-		return end, nil
+		return sqliteBareIdentifierEnd(value)
 	}
+}
+
+func sqliteQuotedIdentifierEnd(value string) (int, error) {
+	for i := 1; i < len(value); i++ {
+		if value[i] != value[0] {
+			continue
+		}
+		if i+1 < len(value) && value[i+1] == value[0] {
+			i++
+			continue
+		}
+		return i + 1, nil
+	}
+	return 0, fmt.Errorf("unterminated quoted object name")
+}
+
+func sqliteBracketedIdentifierEnd(value string) (int, error) {
+	if end := strings.IndexByte(value, ']'); end >= 0 {
+		return end + 1, nil
+	}
+	return 0, fmt.Errorf("unterminated bracketed object name")
+}
+
+func sqliteBareIdentifierEnd(value string) (int, error) {
+	end := strings.IndexFunc(value, func(r rune) bool { return r == '(' || r == ' ' || r == '\t' || r == '\n' || r == '\r' })
+	if end < 0 {
+		return len(value), nil
+	}
+	if end == 0 {
+		return 0, fmt.Errorf("missing object name")
+	}
+	return end, nil
 }

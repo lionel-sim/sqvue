@@ -47,42 +47,54 @@ func loadBrowseRowsCmd(c db.Driver, req db.BrowseRequest, timeout time.Duration,
 	}
 }
 
-func openTableRowStreamCmd(ctx context.Context, cancel func(), client db.Driver, c db.TableRowStreamer, request db.TableRowStreamRequest, loadCount bool, pageSize, skip int, requestID uint64) tea.Cmd {
+type tableStreamLoadRequest struct {
+	ctx       context.Context
+	cancel    func()
+	client    db.Driver
+	streamer  db.TableRowStreamer
+	request   db.TableRowStreamRequest
+	loadCount bool
+	pageSize  int
+	skip      int
+	requestID uint64
+}
+
+func openTableRowStreamCmd(load tableStreamLoadRequest) tea.Cmd {
 	return func() tea.Msg {
 		var rowCount *int64
 		browseKey := ""
-		if loadCount {
+		if load.loadCount {
 			var (
 				count int64
 				err   error
 			)
-			if len(request.Filters) > 0 {
-				browse := db.BrowseRequest{Table: request.Table, Filters: request.Filters, Sort: request.Sort}
-				count, err = client.CountBrowseRows(ctx, browse)
+			if len(load.request.Filters) > 0 {
+				browse := db.BrowseRequest{Table: load.request.Table, Filters: load.request.Filters, Sort: load.request.Sort}
+				count, err = load.client.CountBrowseRows(load.ctx, browse)
 				browseKey = browseCountKey(browse)
 			} else {
-				count, err = client.CountRows(ctx, request.Table)
+				count, err = load.client.CountRows(load.ctx, load.request.Table)
 			}
 			if err == nil {
 				rowCount = &count
 			}
 		}
-		columns, stream, err := c.OpenTableRowStream(ctx, request)
+		columns, stream, err := load.streamer.OpenTableRowStream(load.ctx, load.request)
 		if err != nil {
-			return tableStreamRowsLoadedMsg{requestID: requestID, rowCount: rowCount, browseKey: browseKey, cancel: cancel, err: err}
+			return tableStreamRowsLoadedMsg{requestID: load.requestID, rowCount: rowCount, browseKey: browseKey, cancel: load.cancel, err: err}
 		}
-		if skip > 0 {
-			if _, _, err := db.ReadRowStream(stream, skip); err != nil {
+		if load.skip > 0 {
+			if _, _, err := db.ReadRowStream(stream, load.skip); err != nil {
 				_ = stream.Close()
-				return tableStreamRowsLoadedMsg{requestID: requestID, rowCount: rowCount, browseKey: browseKey, cancel: cancel, err: err}
+				return tableStreamRowsLoadedMsg{requestID: load.requestID, rowCount: rowCount, browseKey: browseKey, cancel: load.cancel, err: err}
 			}
 		}
-		rows, exhausted, err := db.ReadRowStream(stream, pageSize+1)
+		rows, exhausted, err := db.ReadRowStream(stream, load.pageSize+1)
 		if err != nil {
 			_ = stream.Close()
-			return tableStreamRowsLoadedMsg{requestID: requestID, rowCount: rowCount, browseKey: browseKey, cancel: cancel, err: err}
+			return tableStreamRowsLoadedMsg{requestID: load.requestID, rowCount: rowCount, browseKey: browseKey, cancel: load.cancel, err: err}
 		}
-		return tableStreamRowsLoadedMsg{requestID: requestID, columns: columns, rows: rows, exhausted: exhausted, rowCount: rowCount, browseKey: browseKey, stream: stream, cancel: cancel}
+		return tableStreamRowsLoadedMsg{requestID: load.requestID, columns: columns, rows: rows, exhausted: exhausted, rowCount: rowCount, browseKey: browseKey, stream: stream, cancel: load.cancel}
 	}
 }
 
@@ -148,24 +160,35 @@ func updateCellCmd(updater db.CellUpdater, request db.CellUpdateRequest, timeout
 	}
 }
 
-func openQueryRowStreamCmd(ctx context.Context, cancel func(), c db.QueryRowStreamer, query db.Query, pageSize, skip int, requestID uint64, initial bool) tea.Cmd {
+type queryStreamLoadRequest struct {
+	ctx       context.Context
+	cancel    func()
+	streamer  db.QueryRowStreamer
+	query     db.Query
+	pageSize  int
+	skip      int
+	requestID uint64
+	initial   bool
+}
+
+func openQueryRowStreamCmd(load queryStreamLoadRequest) tea.Cmd {
 	return func() tea.Msg {
-		stream, err := c.OpenQueryRowStream(ctx, query)
+		stream, err := load.streamer.OpenQueryRowStream(load.ctx, load.query)
 		if err != nil {
-			return queryStreamRowsLoadedMsg{requestID: requestID, sql: query.SQL, initial: initial, cancel: cancel, err: err}
+			return queryStreamRowsLoadedMsg{requestID: load.requestID, sql: load.query.SQL, initial: load.initial, cancel: load.cancel, err: err}
 		}
-		if skip > 0 {
-			if _, _, err := db.ReadRowStream(stream, skip); err != nil {
+		if load.skip > 0 {
+			if _, _, err := db.ReadRowStream(stream, load.skip); err != nil {
 				_ = stream.Close()
-				return queryStreamRowsLoadedMsg{requestID: requestID, sql: query.SQL, initial: initial, cancel: cancel, err: err}
+				return queryStreamRowsLoadedMsg{requestID: load.requestID, sql: load.query.SQL, initial: load.initial, cancel: load.cancel, err: err}
 			}
 		}
-		rows, exhausted, err := db.ReadRowStream(stream, pageSize+1)
+		rows, exhausted, err := db.ReadRowStream(stream, load.pageSize+1)
 		if err != nil {
 			_ = stream.Close()
-			return queryStreamRowsLoadedMsg{requestID: requestID, sql: query.SQL, initial: initial, cancel: cancel, err: err}
+			return queryStreamRowsLoadedMsg{requestID: load.requestID, sql: load.query.SQL, initial: load.initial, cancel: load.cancel, err: err}
 		}
-		return queryStreamRowsLoadedMsg{requestID: requestID, sql: query.SQL, initial: initial, columns: stream.Columns(), rows: rows, exhausted: exhausted, stream: stream, cancel: cancel, duration: stream.DurationMs(), affected: stream.RowsAffected()}
+		return queryStreamRowsLoadedMsg{requestID: load.requestID, sql: load.query.SQL, initial: load.initial, columns: stream.Columns(), rows: rows, exhausted: exhausted, stream: stream, cancel: load.cancel, duration: stream.DurationMs(), affected: stream.RowsAffected()}
 	}
 }
 
@@ -224,7 +247,7 @@ func (m Model) startLoadRows() (Model, tea.Cmd) {
 				_, loadCount = m.rowCounts[t.String()]
 				loadCount = !loadCount
 			}
-			return m, openTableRowStreamCmd(ctx, cancel, m.client, streamer, db.TableRowStreamRequest{Table: *t, Filters: append([]db.RowFilter(nil), m.browseFilters...), Sort: m.browseSort}, loadCount, m.pageSize, m.page*m.pageSize, requestID)
+			return m, openTableRowStreamCmd(tableStreamLoadRequest{ctx: ctx, cancel: cancel, client: m.client, streamer: streamer, request: db.TableRowStreamRequest{Table: *t, Filters: append([]db.RowFilter(nil), m.browseFilters...), Sort: m.browseSort}, loadCount: loadCount, pageSize: m.pageSize, skip: m.page * m.pageSize, requestID: requestID})
 		}
 		offset := m.page * m.pageSize
 		if len(m.browseFilters) > 0 || m.browseSort.Column != "" {

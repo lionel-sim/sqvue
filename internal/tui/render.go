@@ -56,7 +56,7 @@ func Render(m Model) string {
 func renderMain(m Model) string {
 	var b strings.Builder
 
-	renderTableList(&b, m.theme, m.width, m.currentSchema(), m.tables, m.selected, m.scroll, m.filterInput.Value())
+	renderTableList(&b, m.theme, tableListRenderOptions{terminalWidth: m.width, schema: m.currentSchema(), tables: m.tables, selected: m.selected, offset: m.scroll, filter: m.filterInput.Value()})
 	b.WriteString("\n")
 	if m.activeOverlay == overlayColumnPicker {
 		renderColumnPicker(&b, m.theme, m.columns, m.visibleColumns, m.columnCursor, m.columnScroll, m.columnPickerHeight())

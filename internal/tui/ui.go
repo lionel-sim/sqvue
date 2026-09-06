@@ -15,6 +15,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleWindowSize(msg)
 	case tea.KeyMsg:
 		return m.handleKey(msg)
+	default:
+		return m.handleLoadMessage(msg)
+	}
+}
+
+func (m Model) handleLoadMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
 	case schemasLoadedMsg:
 		return m.handleSchemasLoaded(msg)
 	case tablesLoadedMsg:
@@ -31,6 +38,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleQueryLoaded(msg)
 	case queryStreamRowsLoadedMsg:
 		return m.handleQueryStreamRowsLoaded(msg)
+	default:
+		return m.handleCompletionMessage(msg)
+	}
+}
+
+func (m Model) handleCompletionMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
 	case clipboardWrittenMsg:
 		if msg.copyStatusID != m.copyStatusID {
 			return m, nil

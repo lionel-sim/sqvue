@@ -174,18 +174,26 @@ func profileFromFile(file config.File, cmd *cobra.Command) (config.DBProfile, er
 		}
 		cfg = cfg.Merge(profile)
 	}
-	if cmd.Flags().Changed("db-type") {
-		cfg.DBType = dbTypeFlag
-	}
+	applyConnectionFlags(&cfg, cmd)
+	applyDefaultPostgresDSN(&cfg)
+	return cfg, nil
+}
 
+func applyDefaultPostgresDSN(cfg *config.DBProfile) {
+	if connFlag == "" && profileFlag == "" && cfg.DBType == string(db.DbTypePostgres) {
+		cfg.ConnString = firstNonEmpty(os.Getenv("DATABASE_URL"), cfg.ConnString)
+		return
+	}
 	if connFlag != "" {
 		cfg.ConnString = connFlag
-	} else if profileFlag == "" && cfg.DBType == string(db.DbTypePostgres) {
-		if dsn := os.Getenv("DATABASE_URL"); dsn != "" {
-			cfg.ConnString = dsn
-		}
 	}
+}
+
+func applyConnectionFlags(cfg *config.DBProfile, cmd *cobra.Command) {
 	flags := cmd.Flags()
+	if flags.Changed("db-type") {
+		cfg.DBType = dbTypeFlag
+	}
 	if flags.Changed("host") {
 		cfg.Host = hostFlag
 	}
@@ -207,7 +215,6 @@ func profileFromFile(file config.File, cmd *cobra.Command) (config.DBProfile, er
 	if flags.Changed("timeout") {
 		cfg.Timeout = timeoutFlag
 	}
-	return cfg, nil
 }
 
 func exportDirectory(configured string) string {

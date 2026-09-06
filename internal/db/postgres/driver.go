@@ -28,7 +28,10 @@ var _ db.QueryRowStreamer = (*Driver)(nil)
 var _ db.QuerySorter = (*Driver)(nil)
 var _ db.CellUpdater = (*Driver)(nil)
 
-const maxQueryRows = 1_000
+const (
+	maxQueryRows  = 1_000
+	orderByClause = " order by "
+)
 
 func New() *Driver                  { return &Driver{} }
 func (d *Driver) DbType() db.DbType { return db.DbTypePostgres }
@@ -307,7 +310,7 @@ func (d *Driver) Rows(ctx context.Context, tbl db.Table, limit, offset int) ([]d
 	ident := pgx.Identifier{tbl.Schema, tbl.Name}.Sanitize()
 	query := fmt.Sprintf("select * from %s as sqvue_row", ident)
 	if orderBy := rowOrder(tbl, cols); orderBy != "" {
-		query += " order by " + orderBy
+		query += orderByClause + orderBy
 	}
 	query += " limit $1 offset $2"
 	rows, err := d.pool.Query(ctx, query, limit, offset)
@@ -387,7 +390,7 @@ func (d *Driver) BrowseRows(ctx context.Context, req db.BrowseRequest) ([]db.Col
 	ident := pgx.Identifier{req.Table.Schema, req.Table.Name}.Sanitize()
 	query := fmt.Sprintf("select * from %s as sqvue_row", ident) + where
 	if orderBy := sortOrder(req.Table, columns, req.Sort); orderBy != "" {
-		query += " order by " + orderBy
+		query += orderByClause + orderBy
 	}
 	query += fmt.Sprintf(" limit $%d offset $%d", len(args)+1, len(args)+2)
 	args = append(args, req.Limit, req.Offset)
@@ -464,7 +467,7 @@ func (d *Driver) OpenTableRowStream(ctx context.Context, req db.TableRowStreamRe
 	ident := pgx.Identifier{req.Table.Schema, req.Table.Name}.Sanitize()
 	query := fmt.Sprintf("select * from %s as sqvue_row", ident) + where
 	if orderBy := sortOrder(req.Table, columns, req.Sort); orderBy != "" {
-		query += " order by " + orderBy
+		query += orderByClause + orderBy
 	}
 	rows, err := d.pool.Query(ctx, query, args...)
 	if err != nil {

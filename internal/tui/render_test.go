@@ -193,10 +193,10 @@ func TestHelpShowsBindingsForCurrentFocus(t *testing.T) {
 
 func TestRenderTableListUsesSchemaHeaderAndMarksViews(t *testing.T) {
 	var b strings.Builder
-	renderTableList(&b, theme.Default(), 50, "public", []db.Table{
+	renderTableList(&b, theme.Default(), tableListRenderOptions{terminalWidth: 50, schema: "public", tables: []db.Table{
 		{Schema: "public", Name: "categories", Type: "table"},
 		{Schema: "public", Name: "sales_summary", Type: "view"},
-	}, 0, 0, "")
+	}, selected: 0, offset: 0})
 
 	out := ansi.Strip(b.String())
 	if !strings.Contains(out, "┏━ Tables: public") || !strings.Contains(out, "┗") {
@@ -270,7 +270,7 @@ func TestTableListPanelUsesTerminalBackground(t *testing.T) {
 		t.Fatal(err)
 	}
 	var b strings.Builder
-	renderTableList(&b, styles, 50, "public", []db.Table{{Schema: "public", Name: "accounts"}}, 0, 0, "")
+	renderTableList(&b, styles, tableListRenderOptions{terminalWidth: 50, schema: "public", tables: []db.Table{{Schema: "public", Name: "accounts"}}})
 	if strings.Contains(b.String(), "\x1b[48;5;16m") {
 		t.Fatalf("table list should not paint the dialog background:\n%s", b.String())
 	}

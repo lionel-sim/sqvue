@@ -63,7 +63,7 @@ func (m Model) runSQL(sql string) (Model, tea.Cmd) {
 	if streamer, ok := m.client.(db.QueryRowStreamer); ok && isStreamableQuery(sql) {
 		ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
 		m.queryStreamCancel = cancel
-		return m, openQueryRowStreamCmd(ctx, cancel, streamer, db.Query{SQL: sql}, m.pageSize, 0, requestID, true)
+		return m, openQueryRowStreamCmd(queryStreamLoadRequest{ctx: ctx, cancel: cancel, streamer: streamer, query: db.Query{SQL: sql}, pageSize: m.pageSize, requestID: requestID, initial: true})
 	}
 	return m, runQueryCmd(m.client, sql, m.timeout, requestID)
 }

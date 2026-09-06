@@ -10,6 +10,8 @@ import (
 	"sqvue/internal/db"
 )
 
+const sortStatusSuffix = " sort: "
+
 func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 	if !m.isCurrent(msg.requestID) {
 		return m, nil
@@ -311,7 +313,7 @@ func (m *Model) setQueryPage() {
 	if m.queryStreaming {
 		m.status = fmt.Sprintf("query page %d (%d rows, %d ms, %d affected)", m.page+1, len(m.rows), m.queryDuration, m.queryAffected)
 		if sort := formatSort(m.querySort); sort != "" {
-			m.status += " sort: " + sort
+			m.status += sortStatusSuffix + sort
 		}
 		return
 	}
@@ -323,7 +325,7 @@ func (m *Model) setQueryPage() {
 		m.status += " [limited to 1000 rows]"
 	}
 	if sort := formatSort(m.querySort); sort != "" {
-		m.status += " sort: " + sort
+		m.status += sortStatusSuffix + sort
 	}
 }
 func (m *Model) setRowsStatus(t db.Table) {
@@ -340,7 +342,7 @@ func (m *Model) setRowsStatus(t db.Table) {
 		status += " filters: " + formatBrowseFilters(m.browseFilters) + " (x clear)"
 	}
 	if sort := formatSort(m.browseSort); sort != "" {
-		status += " sort: " + sort
+		status += sortStatusSuffix + sort
 	}
 	m.status = status
 }
@@ -411,7 +413,7 @@ func (m Model) startLoadQueryRows() (Model, tea.Cmd) {
 	m.closeQueryStream()
 	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
 	m.queryStreamCancel = cancel
-	return m, openQueryRowStreamCmd(ctx, cancel, streamer, db.Query{SQL: m.querySQL}, m.pageSize, m.page*m.pageSize, requestID, false)
+	return m, openQueryRowStreamCmd(queryStreamLoadRequest{ctx: ctx, cancel: cancel, streamer: streamer, query: db.Query{SQL: m.querySQL}, pageSize: m.pageSize, skip: m.page * m.pageSize, requestID: requestID})
 }
 
 func splitStreamPage(rows [][]string, pageSize int, exhausted bool) ([][]string, [][]string, bool) {

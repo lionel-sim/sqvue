@@ -14,7 +14,10 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const maxQueryRows = 1_000
+const (
+	maxQueryRows  = 1_000
+	orderByClause = " order by "
+)
 
 type Driver struct {
 	db *sql.DB
@@ -128,7 +131,7 @@ func (d *Driver) Rows(ctx context.Context, table db.Table, limit, offset int) ([
 
 	query := fmt.Sprintf("select * from %s", qualifiedName(table.Schema, table.Name))
 	if orderBy := rowOrder(table, columns); orderBy != "" {
-		query += " order by " + orderBy
+		query += orderByClause + orderBy
 	}
 	query += " limit ? offset ?"
 	rows, err := d.db.QueryContext(ctx, query, limit, offset)
@@ -197,7 +200,7 @@ func (d *Driver) BrowseRows(ctx context.Context, req db.BrowseRequest) ([]db.Col
 	}
 	query := fmt.Sprintf("select * from %s", qualifiedName(req.Table.Schema, req.Table.Name)) + where
 	if orderBy := sortOrder(req.Table, columns, req.Sort); orderBy != "" {
-		query += " order by " + orderBy
+		query += orderByClause + orderBy
 	}
 	query += " limit ? offset ?"
 	args = append(args, req.Limit, req.Offset)
@@ -277,7 +280,7 @@ func (d *Driver) OpenTableRowStream(ctx context.Context, req db.TableRowStreamRe
 	}
 	query := fmt.Sprintf("select * from %s", qualifiedName(req.Table.Schema, req.Table.Name)) + where
 	if orderBy := sortOrder(req.Table, columns, req.Sort); orderBy != "" {
-		query += " order by " + orderBy
+		query += orderByClause + orderBy
 	}
 	rows, err := d.db.QueryContext(ctx, query, args...)
 	if err != nil {

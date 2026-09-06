@@ -12,32 +12,20 @@ import (
 )
 
 func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
-	if msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && unicode.IsDigit(msg.Runes[0]) {
-		digit := int(msg.Runes[0] - '0')
-		if m.countPrefix > 0 || digit > 0 {
-			m.countPrefix = min(maxPageSize*1000, m.countPrefix*10+digit)
-		}
+	if m.recordGridCount(msg) {
 		return m, nil
 	}
 	count := m.consumeGridCount()
-	if m.loading && (key.Matches(msg, m.keys.Down) || key.Matches(msg, m.keys.Up) || key.Matches(msg, m.keys.PageDown) || key.Matches(msg, m.keys.PageUp)) {
+	if m.gridNavigationBlocked(msg) {
 		return m, nil
 	}
 	switch {
 	case key.Matches(msg, m.keys.Sort):
 		return m.sortActiveColumn()
 	case key.Matches(msg, m.keys.BrowseFilter):
-		if m.queryActive {
-			m.status = "row filters are unavailable for SQL results"
-			return m, nil
-		}
-		return m.openBrowseFilter()
+		return m.handleGridBrowseFilter(false)
 	case key.Matches(msg, m.keys.ClearBrowseFilter):
-		if m.queryActive {
-			m.status = "row filters are unavailable for SQL results"
-			return m, nil
-		}
-		return m.clearBrowseFilters()
+		return m.handleGridBrowseFilter(true)
 	case key.Matches(msg, m.keys.Down):
 		return m.moveGridRows(count)
 	case key.Matches(msg, m.keys.Up):
@@ -51,15 +39,7 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.CopyRow):
 		return m.copyToClipboard(m.activeRowValue(), "row")
 	case key.Matches(msg, m.keys.EditCell):
-		if m.queryActive {
-			m.status = "editing is unavailable for SQL results"
-			return m, nil
-		}
-		if !m.hasPrimaryKey() {
-			m.status = "editing requires a table with a primary key"
-			return m, nil
-		}
-		return m.beginCellEdit()
+		return m.handleEditCellKey()
 	case key.Matches(msg, m.keys.OpenReference):
 		return m.followActiveForeignKey()
 	case key.Matches(msg, m.keys.HalfPageDown):
@@ -76,6 +56,44 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.changeGridPage(-1)
 	}
 	return m, nil
+}
+
+func (m *Model) recordGridCount(msg tea.KeyMsg) bool {
+	if msg.Type != tea.KeyRunes || len(msg.Runes) != 1 || !unicode.IsDigit(msg.Runes[0]) {
+		return false
+	}
+	digit := int(msg.Runes[0] - '0')
+	if m.countPrefix > 0 || digit > 0 {
+		m.countPrefix = min(maxPageSize*1000, m.countPrefix*10+digit)
+	}
+	return true
+}
+
+func (m Model) gridNavigationBlocked(msg tea.KeyMsg) bool {
+	return m.loading && (key.Matches(msg, m.keys.Down) || key.Matches(msg, m.keys.Up) || key.Matches(msg, m.keys.PageDown) || key.Matches(msg, m.keys.PageUp))
+}
+
+func (m Model) handleGridBrowseFilter(clear bool) (Model, tea.Cmd) {
+	if m.queryActive {
+		m.status = "row filters are unavailable for SQL results"
+		return m, nil
+	}
+	if clear {
+		return m.clearBrowseFilters()
+	}
+	return m.openBrowseFilter()
+}
+
+func (m Model) handleEditCellKey() (Model, tea.Cmd) {
+	if m.queryActive {
+		m.status = "editing is unavailable for SQL results"
+		return m, nil
+	}
+	if !m.hasPrimaryKey() {
+		m.status = "editing requires a table with a primary key"
+		return m, nil
+	}
+	return m.beginCellEdit()
 }
 
 func (m Model) beginCellEdit() (Model, tea.Cmd) {
@@ -201,32 +219,22 @@ func (m Model) moveGridRows(delta int) (Model, tea.Cmd) {
 		return m, nil
 	}
 	if m.queryActive {
-		if m.queryStreaming {
-			target := m.rowCursor + delta
-			if target >= 0 && target < len(m.rows) {
-				m.rowCursor = target
-				return m, nil
-			}
-			if target < 0 {
-				if m.page == 0 {
-					m.rowCursor = 0
-					return m, nil
-				}
-				m.page, m.pendingRowMoves = m.page-1, target
-				return m.startLoadQueryRows()
-			}
-			if !m.hasNextPage {
-				m.rowCursor = len(m.rows) - 1
-				return m, nil
-			}
-			m.page, m.pendingRowMoves = m.page+1, target-len(m.rows)
-			return m.startLoadQueryRows()
-		}
-		absolute := clamp(m.page*m.pageSize+m.rowCursor+delta, 0, max(0, len(m.queryRows)-1))
-		m.page, m.rowCursor = absolute/m.pageSize, absolute%m.pageSize
-		m.setQueryPage()
-		return m, nil
+		return m.moveQueryGridRows(delta)
 	}
+	return m.movePagedGridRows(delta, Model.startLoadRows)
+}
+
+func (m Model) moveQueryGridRows(delta int) (Model, tea.Cmd) {
+	if m.queryStreaming {
+		return m.movePagedGridRows(delta, Model.startLoadQueryRows)
+	}
+	absolute := clamp(m.page*m.pageSize+m.rowCursor+delta, 0, max(0, len(m.queryRows)-1))
+	m.page, m.rowCursor = absolute/m.pageSize, absolute%m.pageSize
+	m.setQueryPage()
+	return m, nil
+}
+
+func (m Model) movePagedGridRows(delta int, load func(Model) (Model, tea.Cmd)) (Model, tea.Cmd) {
 	target := m.rowCursor + delta
 	if target >= 0 && target < len(m.rows) {
 		m.rowCursor = target
@@ -238,14 +246,14 @@ func (m Model) moveGridRows(delta int) (Model, tea.Cmd) {
 			return m, nil
 		}
 		m.page, m.pendingRowMoves = m.page-1, target
-		return m.startLoadRows()
+		return load(m)
 	}
 	if !m.hasNextPage {
 		m.rowCursor = len(m.rows) - 1
 		return m, nil
 	}
 	m.page, m.pendingRowMoves = m.page+1, target-len(m.rows)
-	return m.startLoadRows()
+	return load(m)
 }
 
 func (m Model) changeGridPage(delta int) (Model, tea.Cmd) {
