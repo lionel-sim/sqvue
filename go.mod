@@ -6,7 +6,7 @@ require github.com/charmbracelet/bubbletea v1.3.10
 
 require github.com/charmbracelet/bubbles v0.21.0
 
-require github.com/jackc/pgx/v5 v5.7.6
+require github.com/jackc/pgx/v5 v5.9.2
 
 require (
 	github.com/BurntSushi/toml v1.5.0
@@ -46,7 +46,7 @@ require (
 	golang.org/x/crypto v0.37.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.24.0 // indirect
+	golang.org/x/text v0.39.0 // indirect
 	modernc.org/libc v1.75.6 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
