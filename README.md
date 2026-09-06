@@ -21,7 +21,9 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 
 Work in progress. PostgreSQL, SQLite, and MySQL are supported: sqvue can connect with a DSN or individual connection flags; browse schemas, tables, and views; inspect column and foreign-key metadata and paginated row data; run ad-hoc SQL in the TUI; and create database backups.
 
-Streaming large results remains planned. See [roadmap.md](roadmap.md) for the current plan.
+Large table and query results stream incrementally, including complete exports
+without retaining every row in TUI memory. See [roadmap.md](roadmap.md) for the
+current plan.
 
 ## Requirements
 
