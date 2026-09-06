@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	"sqvue/internal/db"
@@ -251,6 +252,7 @@ func (d *Driver) OpenTableRowStream(ctx context.Context, req db.TableRowStreamRe
 }
 
 type rowStream struct {
+	mu          sync.Mutex
 	rows        *sql.Rows
 	values      []any
 	scanTargets []any
@@ -258,19 +260,21 @@ type rowStream struct {
 }
 
 func (s *rowStream) Next() ([]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.closed {
 		return nil, io.EOF
 	}
 	if !s.rows.Next() {
 		err := s.rows.Err()
-		_ = s.Close()
+		_ = s.close()
 		if err != nil {
 			return nil, err
 		}
 		return nil, io.EOF
 	}
 	if err := s.rows.Scan(s.scanTargets...); err != nil {
-		_ = s.Close()
+		_ = s.close()
 		return nil, err
 	}
 	row := make([]string, len(s.values))
@@ -281,6 +285,12 @@ func (s *rowStream) Next() ([]string, error) {
 }
 
 func (s *rowStream) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.close()
+}
+
+func (s *rowStream) close() error {
 	if !s.closed {
 		s.closed = true
 		return s.rows.Close()
@@ -459,6 +469,7 @@ func (s completedQueryRowStream) RowsAffected() int64   { return s.rowsAffected 
 func (s completedQueryRowStream) DurationMs() int64     { return s.durationMs }
 
 type queryRowStream struct {
+	mu          sync.Mutex
 	rows        *sql.Rows
 	columns     []string
 	values      []any
@@ -468,19 +479,21 @@ type queryRowStream struct {
 }
 
 func (s *queryRowStream) Next() ([]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.closed {
 		return nil, io.EOF
 	}
 	if !s.rows.Next() {
 		err := s.rows.Err()
-		_ = s.Close()
+		_ = s.close()
 		if err != nil {
 			return nil, err
 		}
 		return nil, io.EOF
 	}
 	if err := s.rows.Scan(s.scanTargets...); err != nil {
-		_ = s.Close()
+		_ = s.close()
 		return nil, err
 	}
 	row := make([]string, len(s.values))
@@ -491,6 +504,12 @@ func (s *queryRowStream) Next() ([]string, error) {
 }
 
 func (s *queryRowStream) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.close()
+}
+
+func (s *queryRowStream) close() error {
 	if !s.closed {
 		s.closed = true
 		return s.rows.Close()
@@ -498,7 +517,11 @@ func (s *queryRowStream) Close() error {
 	return nil
 }
 
-func (s *queryRowStream) Columns() []string { return append([]string(nil), s.columns...) }
+func (s *queryRowStream) Columns() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.columns...)
+}
 func (*queryRowStream) RowsAffected() int64 { return 0 }
 func (s *queryRowStream) DurationMs() int64 { return time.Since(s.started).Milliseconds() }
 

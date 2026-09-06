@@ -10,6 +10,7 @@ import (
 	"sqvue/internal/db"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -229,6 +230,7 @@ func (d *Driver) OpenQueryRowStream(ctx context.Context, q db.Query) (db.QueryRo
 }
 
 type queryRowStream struct {
+	mu           sync.Mutex
 	rows         pgx.Rows
 	columns      []string
 	values       []any
@@ -239,19 +241,21 @@ type queryRowStream struct {
 }
 
 func (s *queryRowStream) Next() ([]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.closed {
 		return nil, io.EOF
 	}
 	if !s.rows.Next() {
 		err := s.rows.Err()
-		_ = s.Close()
+		_ = s.close()
 		if err != nil {
 			return nil, err
 		}
 		return nil, io.EOF
 	}
 	if err := s.rows.Scan(s.scanTargets...); err != nil {
-		_ = s.Close()
+		_ = s.close()
 		return nil, err
 	}
 	row := make([]string, len(s.values))
@@ -262,6 +266,12 @@ func (s *queryRowStream) Next() ([]string, error) {
 }
 
 func (s *queryRowStream) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.close()
+}
+
+func (s *queryRowStream) close() error {
 	if !s.closed {
 		s.closed = true
 		s.rows.Close()
@@ -270,9 +280,17 @@ func (s *queryRowStream) Close() error {
 	return nil
 }
 
-func (s *queryRowStream) Columns() []string   { return append([]string(nil), s.columns...) }
-func (s *queryRowStream) RowsAffected() int64 { return s.rowsAffected }
-func (s *queryRowStream) DurationMs() int64   { return time.Since(s.started).Milliseconds() }
+func (s *queryRowStream) Columns() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.columns...)
+}
+func (s *queryRowStream) RowsAffected() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.rowsAffected
+}
+func (s *queryRowStream) DurationMs() int64 { return time.Since(s.started).Milliseconds() }
 
 func (d *Driver) Rows(ctx context.Context, tbl db.Table, limit, offset int) ([]db.Column, [][]string, error) {
 	if d.pool == nil {
@@ -425,6 +443,7 @@ func (d *Driver) OpenTableRowStream(ctx context.Context, req db.TableRowStreamRe
 }
 
 type rowStream struct {
+	mu          sync.Mutex
 	rows        pgx.Rows
 	values      []any
 	scanTargets []any
@@ -432,19 +451,21 @@ type rowStream struct {
 }
 
 func (s *rowStream) Next() ([]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.closed {
 		return nil, io.EOF
 	}
 	if !s.rows.Next() {
 		err := s.rows.Err()
-		_ = s.Close()
+		_ = s.close()
 		if err != nil {
 			return nil, err
 		}
 		return nil, io.EOF
 	}
 	if err := s.rows.Scan(s.scanTargets...); err != nil {
-		_ = s.Close()
+		_ = s.close()
 		return nil, err
 	}
 	row := make([]string, len(s.values))
@@ -455,6 +476,12 @@ func (s *rowStream) Next() ([]string, error) {
 }
 
 func (s *rowStream) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.close()
+}
+
+func (s *rowStream) close() error {
 	if !s.closed {
 		s.closed = true
 		s.rows.Close()

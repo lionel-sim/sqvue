@@ -334,21 +334,21 @@ func (m Model) browseStreamKeyForCurrentTable() string {
 }
 
 func (m *Model) closeTableStream() {
-	if m.tableStream.stream != nil {
-		_ = m.tableStream.stream.Close()
-	}
 	if m.tableStream.cancel != nil {
 		m.tableStream.cancel()
+	}
+	if m.tableStream.stream != nil {
+		_ = m.tableStream.stream.Close()
 	}
 	m.tableStream = tableStreamState{}
 }
 
 func (m *Model) closeQueryStream() {
-	if m.queryStream != nil {
-		_ = m.queryStream.Close()
-	}
 	if m.queryStreamCancel != nil {
 		m.queryStreamCancel()
+	}
+	if m.queryStream != nil {
+		_ = m.queryStream.Close()
 	}
 	m.queryStream, m.queryStreamCancel, m.queryStreamNextPage = nil, nil, 0
 }
