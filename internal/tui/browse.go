@@ -70,78 +70,22 @@ func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 
 func (m Model) handleTableStreamRowsLoaded(msg tableStreamRowsLoadedMsg) (Model, tea.Cmd) {
 	if !m.isCurrent(msg.requestID) {
-		if msg.stream != nil {
-			_ = msg.stream.Close()
-		}
-		if msg.cancel != nil {
-			msg.cancel()
-		}
-		return m, nil
+		return m.discardTableStreamMessage(msg)
 	}
 	m.loading = false
 	if msg.err != nil {
-		m.cellEditRefreshPending = false
-		if msg.stream != nil {
-			_ = msg.stream.Close()
-		}
-		if msg.cancel != nil {
-			msg.cancel()
-		}
-		m.closeTableStream()
-		return m.fail("rows error", msg.err)
+		return m.failTableStreamMessage(msg)
 	}
-	if msg.stream != nil {
-		m.tableStream = tableStreamState{stream: msg.stream, cancel: msg.cancel, key: m.browseStreamKeyForCurrentTable(), nextPage: m.page + 1}
+	m.applyTableStreamMetadata(msg)
+	if handled, model, cmd := m.handleEmptyTableStreamPage(msg); handled {
+		return model, cmd
 	}
-	if msg.rowCount != nil {
-		if msg.browseKey != "" {
-			m.browseRowCounts[msg.browseKey] = *msg.rowCount
-		} else if t := m.currentTable(); t != nil {
-			m.rowCounts[t.String()] = *msg.rowCount
-		}
-	}
-	if len(msg.rows) == 0 && msg.exhausted && m.page > 0 {
-		m.page--
-		m.hasNextPage = false
-		m.closeTableStream()
-		if t := m.currentTable(); t != nil {
-			m.setRowsStatus(*t)
-			return m, m.loadCurrentRowCount(*t)
-		}
-		return m, nil
-	}
-	if msg.columns != nil {
-		m.columns = msg.columns
-	}
-	if t := m.currentTable(); t != nil {
-		m.ensureVisibleColumns(t.String())
-	}
-	m.rows, m.tableStream.pending, m.hasNextPage = splitStreamPage(msg.rows, m.pageSize, msg.exhausted)
-	if m.rowCursor >= len(m.rows) {
-		m.rowCursor = max(0, len(m.rows)-1)
-	}
-	if m.tableStream.stream != nil {
-		m.tableStream.nextPage = m.page + 1
-	}
-	if m.pendingRowMoves != 0 {
-		pending := m.pendingRowMoves
-		m.pendingRowMoves = 0
-		switch {
-		case pending >= 0 && pending < len(m.rows):
-			m.rowCursor = pending
-		case pending >= len(m.rows) && m.hasNextPage:
-			m.page++
-			m.pendingRowMoves = pending - len(m.rows)
-			return m.startLoadRows()
-		case pending < 0 && m.page > 0:
-			m.page--
-			m.pendingRowMoves = pending + len(m.rows)
-			return m.startLoadRows()
-		case pending < 0:
-			m.rowCursor = 0
-		default:
-			m.rowCursor = max(0, len(m.rows)-1)
-		}
+	m.applyTableStreamRows(msg)
+	var cmd tea.Cmd
+	var loading bool
+	m, cmd, loading = m.applyPendingRowMove(Model.startLoadRows)
+	if loading {
+		return m, cmd
 	}
 	if msg.exhausted {
 		m.closeTableStream()
@@ -160,6 +104,93 @@ func (m Model) handleTableStreamRowsLoaded(msg tableStreamRowsLoadedMsg) (Model,
 		}
 	}
 	return m, nil
+}
+
+func (m Model) discardTableStreamMessage(msg tableStreamRowsLoadedMsg) (Model, tea.Cmd) {
+	if msg.stream != nil {
+		_ = msg.stream.Close()
+	}
+	if msg.cancel != nil {
+		msg.cancel()
+	}
+	return m, nil
+}
+func (m Model) failTableStreamMessage(msg tableStreamRowsLoadedMsg) (Model, tea.Cmd) {
+	m.cellEditRefreshPending = false
+	if msg.stream != nil {
+		_ = msg.stream.Close()
+	}
+	if msg.cancel != nil {
+		msg.cancel()
+	}
+	m.closeTableStream()
+	return m.fail("rows error", msg.err)
+}
+func (m *Model) applyTableStreamMetadata(msg tableStreamRowsLoadedMsg) {
+	if msg.stream != nil {
+		m.tableStream = tableStreamState{stream: msg.stream, cancel: msg.cancel, key: m.browseStreamKeyForCurrentTable(), nextPage: m.page + 1}
+	}
+	if msg.rowCount != nil {
+		if msg.browseKey != "" {
+			m.browseRowCounts[msg.browseKey] = *msg.rowCount
+		} else if t := m.currentTable(); t != nil {
+			m.rowCounts[t.String()] = *msg.rowCount
+		}
+	}
+}
+func (m Model) handleEmptyTableStreamPage(msg tableStreamRowsLoadedMsg) (bool, Model, tea.Cmd) {
+	if len(msg.rows) != 0 || !msg.exhausted || m.page == 0 {
+		return false, m, nil
+	}
+	m.page--
+	m.hasNextPage = false
+	m.closeTableStream()
+	if t := m.currentTable(); t != nil {
+		m.setRowsStatus(*t)
+		return true, m, m.loadCurrentRowCount(*t)
+	}
+	return true, m, nil
+}
+func (m *Model) applyTableStreamRows(msg tableStreamRowsLoadedMsg) {
+	if msg.columns != nil {
+		m.columns = msg.columns
+	}
+	if t := m.currentTable(); t != nil {
+		m.ensureVisibleColumns(t.String())
+	}
+	m.rows, m.tableStream.pending, m.hasNextPage = splitStreamPage(msg.rows, m.pageSize, msg.exhausted)
+	if m.rowCursor >= len(m.rows) {
+		m.rowCursor = max(0, len(m.rows)-1)
+	}
+	if m.tableStream.stream != nil {
+		m.tableStream.nextPage = m.page + 1
+	}
+}
+func (m Model) applyPendingRowMove(load func(Model) (Model, tea.Cmd)) (Model, tea.Cmd, bool) {
+	if m.pendingRowMoves == 0 {
+		return m, nil, false
+	}
+	pending := m.pendingRowMoves
+	m.pendingRowMoves = 0
+	switch {
+	case pending >= 0 && pending < len(m.rows):
+		m.rowCursor = pending
+	case pending >= len(m.rows) && m.hasNextPage:
+		m.page++
+		m.pendingRowMoves = pending - len(m.rows)
+		next, cmd := load(m)
+		return next, cmd, true
+	case pending < 0 && m.page > 0:
+		m.page--
+		m.pendingRowMoves = pending + len(m.rows)
+		next, cmd := load(m)
+		return next, cmd, true
+	case pending < 0:
+		m.rowCursor = 0
+	default:
+		m.rowCursor = max(0, len(m.rows)-1)
+	}
+	return m, nil, false
 }
 func (m Model) handleCountLoaded(msg countLoadedMsg) (Model, tea.Cmd) {
 	if !m.isCurrent(msg.requestID) || msg.err != nil {
@@ -216,27 +247,11 @@ func (m Model) handleQueryLoaded(msg queryLoadedMsg) (Model, tea.Cmd) {
 
 func (m Model) handleQueryStreamRowsLoaded(msg queryStreamRowsLoadedMsg) (Model, tea.Cmd) {
 	if !m.isCurrent(msg.requestID) {
-		if msg.stream != nil {
-			_ = msg.stream.Close()
-		}
-		if msg.cancel != nil {
-			msg.cancel()
-		}
-		return m, nil
+		return m.discardQueryStreamMessage(msg)
 	}
 	m.loading = false
 	if msg.err != nil {
-		if msg.stream != nil {
-			_ = msg.stream.Close()
-		}
-		if msg.cancel != nil {
-			msg.cancel()
-		}
-		m.closeQueryStream()
-		m.activeOverlay = overlaySQL
-		m.sqlInput.Focus()
-		m.status, m.lastErr = sqlErrorStatus(m.querySourceSQL, msg.err), msg.err
-		return m, nil
+		return m.failQueryStreamMessage(msg)
 	}
 	if msg.initial {
 		m.queryActive, m.queryStreaming, m.lastErr, m.mode, m.page, m.rowCursor, m.cellCursor = true, true, nil, modeValues, 0, 0, 0
@@ -268,25 +283,11 @@ func (m Model) handleQueryStreamRowsLoaded(msg queryStreamRowsLoadedMsg) (Model,
 	if m.queryStream != nil {
 		m.queryStreamNextPage = m.page + 1
 	}
-	if m.pendingRowMoves != 0 {
-		pending := m.pendingRowMoves
-		m.pendingRowMoves = 0
-		switch {
-		case pending >= 0 && pending < len(m.rows):
-			m.rowCursor = pending
-		case pending >= len(m.rows) && m.hasNextPage:
-			m.page++
-			m.pendingRowMoves = pending - len(m.rows)
-			return m.startLoadQueryRows()
-		case pending < 0 && m.page > 0:
-			m.page--
-			m.pendingRowMoves = pending + len(m.rows)
-			return m.startLoadQueryRows()
-		case pending < 0:
-			m.rowCursor = 0
-		default:
-			m.rowCursor = max(0, len(m.rows)-1)
-		}
+	var cmd tea.Cmd
+	var loading bool
+	m, cmd, loading = m.applyPendingRowMove(Model.startLoadQueryRows)
+	if loading {
+		return m, cmd
 	}
 	if msg.exhausted {
 		m.closeQueryStream()
@@ -298,6 +299,28 @@ func (m Model) handleQueryStreamRowsLoaded(msg queryStreamRowsLoadedMsg) (Model,
 		m.sqlInput.SetValue("")
 	}
 	m.queryPreserveEditor = false
+	return m, nil
+}
+func (m Model) discardQueryStreamMessage(msg queryStreamRowsLoadedMsg) (Model, tea.Cmd) {
+	if msg.stream != nil {
+		_ = msg.stream.Close()
+	}
+	if msg.cancel != nil {
+		msg.cancel()
+	}
+	return m, nil
+}
+func (m Model) failQueryStreamMessage(msg queryStreamRowsLoadedMsg) (Model, tea.Cmd) {
+	if msg.stream != nil {
+		_ = msg.stream.Close()
+	}
+	if msg.cancel != nil {
+		msg.cancel()
+	}
+	m.closeQueryStream()
+	m.activeOverlay = overlaySQL
+	m.sqlInput.Focus()
+	m.status, m.lastErr = sqlErrorStatus(m.querySourceSQL, msg.err), msg.err
 	return m, nil
 }
 func formatQueryValue(value any) string {
