@@ -180,7 +180,7 @@ func TestHelpShowsBindingsForCurrentFocus(t *testing.T) {
 	m := testModel()
 	m.width = 100
 	tableHelp := ansi.Strip(renderHelpDialog(m))
-	if !strings.Contains(tableHelp, "show rows") || strings.Contains(tableHelp, "copy cell") {
+	if !strings.Contains(tableHelp, "show rows") || strings.Contains(tableHelp, "copy cell") || !strings.Contains(tableHelp, "run SQL editor") || !strings.Contains(tableHelp, "format SQL editor") || !strings.Contains(tableHelp, "explain SQL editor") {
 		t.Fatalf("table help has wrong bindings:\n%s", tableHelp)
 	}
 
@@ -251,11 +251,11 @@ func TestSQLInputUsesAvailableTerminalWidth(t *testing.T) {
 	m.activeOverlay = overlaySQL
 
 	out := ansi.Strip(m.View())
-	if !strings.Contains(out, "SQL> SELECT * FROM ...") {
+	if !strings.Contains(out, "SQL>") || !strings.Contains(out, "SELECT * FROM ...") {
 		t.Fatalf("SQL input placeholder was truncated: %q", out)
 	}
-	if m.sqlInput.Width != 75 {
-		t.Fatalf("SQL input width = %d, want 75", m.sqlInput.Width)
+	if m.sqlInput.Width() != 69 {
+		t.Fatalf("SQL input width = %d, want 69", m.sqlInput.Width())
 	}
 }
 

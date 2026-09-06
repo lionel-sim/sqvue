@@ -82,7 +82,8 @@ func (m Model) handleWindowSize(msg tea.WindowSizeMsg) (Model, tea.Cmd) {
 	m.width, m.height = msg.Width, msg.Height
 	m.filterInput.Width = inputWidth(msg.Width, m.filterInput.Prompt)
 	m.browseFilterInput.Width = inputWidth(msg.Width, m.browseFilterInput.Prompt)
-	m.sqlInput.Width = inputWidth(msg.Width, m.sqlInput.Prompt)
+	m.sqlInput.SetWidth(max(1, msg.Width-2))
+	m.sqlInput.SetHeight(min(8, max(3, msg.Height/3)))
 	m.exportInput.Width = inputWidth(msg.Width, m.exportInput.Prompt)
 	m.backupInput.Width = inputWidth(msg.Width, m.backupInput.Prompt)
 	m.cellEditInput.Width = inputWidth(msg.Width, m.cellEditInput.Prompt)

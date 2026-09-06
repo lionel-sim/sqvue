@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -93,6 +94,7 @@ type queryState struct {
 	queryTruncated               bool
 	querySQL                     string
 	querySourceSQL               string
+	queryPreserveEditor          bool
 	queryBaseRows                [][]string
 	querySort                    db.SortSpec
 	queryStreaming               bool
@@ -138,7 +140,7 @@ type overlayState struct {
 	browseFilterOperator                     db.FilterOperator
 	browseFilterColumn                       string
 	browseFilterCursor                       int
-	sqlInput                                 textinput.Model
+	sqlInput                                 textarea.Model
 	exportInput                              textinput.Model
 	exportFormat                             exportFormat
 	backupInput                              textinput.Model
@@ -168,10 +170,11 @@ func New(opts Options) Model {
 	filter.Placeholder = "type to search"
 	browseFilter := newThemedTextInput(styles)
 	browseFilter.Placeholder = "value"
-	sql := newThemedTextInput(styles)
+	sql := newThemedTextarea(styles)
 	sql.Prompt = "SQL> "
 	sql.Placeholder = "SELECT * FROM ..."
 	sql.CharLimit = 0
+	sql.SetHeight(5)
 	export := newThemedTextInput(styles)
 	export.Prompt = "Export CSV to: "
 	export.Placeholder = "path/to/results.csv"
@@ -202,6 +205,20 @@ func newThemedTextInput(styles theme.Theme) textinput.Model {
 	input.PlaceholderStyle = styles.Muted
 	input.Cursor.Style = styles.ActiveCell
 	input.Cursor.TextStyle = styles.Selected
+	return input
+}
+
+func newThemedTextarea(styles theme.Theme) textarea.Model {
+	input := textarea.New()
+	input.FocusedStyle.Prompt = styles.Title
+	input.FocusedStyle.Text = styles.Selected
+	input.FocusedStyle.Placeholder = styles.Muted
+	input.FocusedStyle.CursorLine = styles.ActiveCell
+	input.BlurredStyle.Prompt = styles.Title
+	input.BlurredStyle.Text = styles.Selected
+	input.BlurredStyle.Placeholder = styles.Muted
+	input.CharLimit = 0
+	input.ShowLineNumbers = true
 	return input
 }
 

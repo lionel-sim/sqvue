@@ -285,7 +285,7 @@ func TestQueryResultsStreamForwardAndReopenForPreviousPage(t *testing.T) {
 	m.pageSize = 2
 	m.sqlInput.SetValue("select id from items")
 
-	m, cmd := m.handleSQLKey(keyMsg("enter"))
+	m, cmd := m.handleSQLKey(tea.KeyMsg{Type: tea.KeyCtrlR})
 	m, _ = update(m, runCmd(cmd))
 	if !m.queryActive || !m.queryStreaming || len(client.queryRequests) != 1 {
 		t.Fatalf("initial query stream state = active %t, streaming %t, requests %#v", m.queryActive, m.queryStreaming, client.queryRequests)
@@ -321,7 +321,7 @@ func TestMutatingQueryDoesNotUseReplayableStream(t *testing.T) {
 	m := New(Options{Client: client, Timeout: time.Second})
 	m.sqlInput.SetValue("insert into items default values returning id")
 
-	m, cmd := m.handleSQLKey(keyMsg("enter"))
+	m, cmd := m.handleSQLKey(tea.KeyMsg{Type: tea.KeyCtrlR})
 	m, _ = update(m, runCmd(cmd))
 	if len(client.queryRequests) != 0 || !m.queryActive || m.queryStreaming {
 		t.Fatalf("mutating query state = requests %#v, active %t, streaming %t", client.queryRequests, m.queryActive, m.queryStreaming)
@@ -557,7 +557,7 @@ func TestSQLQueryPagesResults(t *testing.T) {
 	m.pageSize = 2
 	m.activeOverlay = overlaySQL
 	m.sqlInput.SetValue("select * from things")
-	m, cmd := m.handleSQLKey(tea.KeyMsg{Type: tea.KeyEnter})
+	m, cmd := m.handleSQLKey(tea.KeyMsg{Type: tea.KeyCtrlR})
 	if msg := runCmd(cmd); msg != nil {
 		m, _ = update(m, msg)
 	}

@@ -119,6 +119,12 @@ lines. In the SQL prompt, use Up/Down (or `k`/`j`) to browse history, `Ctrl+S` t
 save the current query, and `Ctrl+O` to open saved queries. The saved-query picker
 uses Enter to run, `r` to rename, and `d` followed by Enter to delete.
 
+The SQL editor accepts multiple lines: Enter adds a line, while `Ctrl+R` runs the
+query. `Ctrl+F` reformats the editor contents without running them, and `Ctrl+E`
+opens an `EXPLAIN` result for one `SELECT` statement only; it refuses statements
+that could mutate data. Database errors that report a character position are shown
+with their line and column, and the editor stays open with the query intact.
+
 `settings.export_directory` sets the directory prefilled when exporting CSV, JSON, or
 creating a backup.
 It defaults to sqvue's current working directory; relative paths are resolved
@@ -196,6 +202,10 @@ does not include other tables referenced by foreign keys.
 | `P`              | Switch configured connection profile |
 | `/`              | Filter table list     |
 | `:`              | Run an SQL query      |
+| `Enter` (in SQL editor) | Insert a new line |
+| `Ctrl+R` (in SQL editor) | Run the editor contents |
+| `Ctrl+F` (in SQL editor) | Format the editor contents without running it |
+| `Ctrl+E` (in SQL editor) | Show an `EXPLAIN` plan for one `SELECT` query |
 | `Ctrl+S` (in SQL prompt) | Save the current named query |
 | `Ctrl+O` (in SQL prompt) | List saved queries (Enter runs; `r` renames; `d`, Enter deletes) |
 | `j` / `k` or `↓` / `↑` (in SQL prompt) | Next / previous query history entry |

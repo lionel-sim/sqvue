@@ -62,6 +62,7 @@ func renderMain(m Model) string {
 	if m.activeOverlay == overlayColumnPicker {
 		renderColumnPicker(&b, m.theme, m.columns, m.visibleColumns, m.columnCursor, m.columnScroll, m.columnPickerHeight())
 	} else if m.activeOverlay == overlaySQL {
+		b.WriteString(m.theme.Muted.Render("Enter newline · Ctrl+R run · Ctrl+F format · Ctrl+E explain · ↑/↓ history") + "\n")
 		b.WriteString(m.sqlInput.View() + "\n")
 	} else if m.activeOverlay == overlayExport {
 		b.WriteString(m.exportInput.View() + "\n")

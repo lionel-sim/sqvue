@@ -179,7 +179,10 @@ func (m Model) handleQueryLoaded(msg queryLoadedMsg) (Model, tea.Cmd) {
 	}
 	m.loading = false
 	if msg.err != nil {
-		return m.fail("query failed", msg.err)
+		m.activeOverlay = overlaySQL
+		m.sqlInput.Focus()
+		m.status, m.lastErr = sqlErrorStatus(m.querySourceSQL, msg.err), msg.err
+		return m, nil
 	}
 	m.closeQueryStream()
 	m.queryActive, m.queryStreaming, m.lastErr, m.mode, m.page, m.rowCursor, m.cellCursor = true, false, nil, modeValues, 0, 0, 0
@@ -202,7 +205,10 @@ func (m Model) handleQueryLoaded(msg queryLoadedMsg) (Model, tea.Cmd) {
 	}
 	m.queryBaseRows = append([][]string(nil), m.queryRows...)
 	m.setQueryPage()
-	m.sqlInput.SetValue("")
+	if !m.queryPreserveEditor {
+		m.sqlInput.SetValue("")
+	}
+	m.queryPreserveEditor = false
 	return m, nil
 }
 
@@ -225,7 +231,10 @@ func (m Model) handleQueryStreamRowsLoaded(msg queryStreamRowsLoadedMsg) (Model,
 			msg.cancel()
 		}
 		m.closeQueryStream()
-		return m.fail("query failed", msg.err)
+		m.activeOverlay = overlaySQL
+		m.sqlInput.Focus()
+		m.status, m.lastErr = sqlErrorStatus(m.querySourceSQL, msg.err), msg.err
+		return m, nil
 	}
 	if msg.initial {
 		m.queryActive, m.queryStreaming, m.lastErr, m.mode, m.page, m.rowCursor, m.cellCursor = true, true, nil, modeValues, 0, 0, 0
@@ -283,7 +292,10 @@ func (m Model) handleQueryStreamRowsLoaded(msg queryStreamRowsLoadedMsg) (Model,
 	m.cellCursor = clamp(m.cellCursor, 0, max(0, m.displayedColumnCount()-1))
 	m.lastErr = nil
 	m.setQueryPage()
-	m.sqlInput.SetValue("")
+	if !m.queryPreserveEditor {
+		m.sqlInput.SetValue("")
+	}
+	m.queryPreserveEditor = false
 	return m, nil
 }
 func formatQueryValue(value any) string {

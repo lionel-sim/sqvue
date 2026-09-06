@@ -30,6 +30,9 @@ type Map struct {
 	Confirm           key.Binding
 	Help              key.Binding
 	SQL               key.Binding
+	RunSQL            key.Binding
+	FormatSQL         key.Binding
+	ExplainSQL        key.Binding
 	Columns           key.Binding
 	ExportCSV         key.Binding
 	ExportJSON        key.Binding
@@ -147,6 +150,18 @@ func Default() Map {
 			key.WithKeys(":"),
 			key.WithHelp(":", "run SQL"),
 		),
+		RunSQL: key.NewBinding(
+			key.WithKeys("ctrl+r"),
+			key.WithHelp("Ctrl+r", "run SQL editor"),
+		),
+		FormatSQL: key.NewBinding(
+			key.WithKeys("ctrl+f"),
+			key.WithHelp("Ctrl+f", "format SQL editor"),
+		),
+		ExplainSQL: key.NewBinding(
+			key.WithKeys("ctrl+e"),
+			key.WithHelp("Ctrl+e", "explain SQL editor"),
+		),
 		Columns: key.NewBinding(
 			key.WithKeys("c"),
 			key.WithHelp("c", "choose columns"),
@@ -187,5 +202,5 @@ func (m Map) ShortHelp() []key.Binding {
 }
 
 func (m Map) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{m.Up, m.Down, m.Left, m.Right, m.PageUp, m.PageDown, m.HalfPageUp, m.HalfPageDown, m.FirstRow, m.LastRow}, {m.CopyCell, m.CopyRow, m.EditCell, m.OpenReference, m.BrowseFilter, m.ClearBrowseFilter, m.Sort, m.SQL, m.Columns, m.ExportCSV, m.ExportJSON, m.Backup, m.SaveQuery, m.SavedQueries, m.Profiles, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
+	return [][]key.Binding{{m.Up, m.Down, m.Left, m.Right, m.PageUp, m.PageDown, m.HalfPageUp, m.HalfPageDown, m.FirstRow, m.LastRow}, {m.CopyCell, m.CopyRow, m.EditCell, m.OpenReference, m.BrowseFilter, m.ClearBrowseFilter, m.Sort, m.SQL, m.RunSQL, m.FormatSQL, m.ExplainSQL, m.Columns, m.ExportCSV, m.ExportJSON, m.Backup, m.SaveQuery, m.SavedQueries, m.Profiles, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
 }

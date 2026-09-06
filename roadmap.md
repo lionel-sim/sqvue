@@ -139,10 +139,10 @@ safer query execution, and richer relational navigation.
   - [x] Present configured profiles in a picker without exposing credentials
   - [x] Reconnect safely, cancel stale loads and streams, and retain a clear connection status
   - [x] Document reconnection behavior and error recovery
-- [ ] SQL editor quality of life
-  - [ ] Support multi-line editing, query history navigation, and readable SQL error locations
-  - [ ] Add optional formatting and `EXPLAIN`/query-plan views without silently executing mutations
-  - [ ] Keep editor key bindings discoverable in the help modal and README
+- [x] SQL editor quality of life
+  - [x] Support multi-line editing, query history navigation, and readable SQL error locations
+  - [x] Add optional formatting and `EXPLAIN`/query-plan views without silently executing mutations
+  - [x] Keep editor key bindings discoverable in the help modal and README
 
 ## Phase 5 — Multi-DB / future
 

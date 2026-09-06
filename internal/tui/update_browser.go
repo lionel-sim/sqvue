@@ -26,8 +26,16 @@ func (m Model) handleSQLKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	if next, handled := m.handleSQLHistoryKey(msg); handled {
 		return next, nil
 	}
-	if key.Matches(msg, m.keys.Confirm) {
+	if key.Matches(msg, m.keys.RunSQL) {
 		return m.runSQL(m.sqlInput.Value())
+	}
+	if key.Matches(msg, m.keys.FormatSQL) {
+		m.sqlInput.SetValue(formatSQL(m.sqlInput.Value()))
+		m.status = "formatted SQL"
+		return m, nil
+	}
+	if key.Matches(msg, m.keys.ExplainSQL) {
+		return m.explainSQL()
 	}
 	var cmd tea.Cmd
 	m.sqlInput, cmd = m.sqlInput.Update(msg)
@@ -48,7 +56,7 @@ func (m Model) runSQL(sql string) (Model, tea.Cmd) {
 		}
 	}
 	m.historyIndex = -1
-	m.querySort, m.querySourceSQL = db.SortSpec{}, sql
+	m.querySort, m.querySourceSQL, m.queryPreserveEditor = db.SortSpec{}, sql, false
 	m.activeOverlay, m.loading, m.status = overlayNone, true, "running query..."
 	m.sqlInput.Blur()
 	requestID := m.nextRequestID()

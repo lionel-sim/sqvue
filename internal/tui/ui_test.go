@@ -45,7 +45,7 @@ func TestNewAppliesThemeToInputsAndHelp(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := New(Options{Theme: styles})
-	if m.sqlInput.PromptStyle.GetForeground() != styles.Title.GetForeground() {
+	if m.sqlInput.FocusedStyle.Prompt.GetForeground() != styles.Title.GetForeground() {
 		t.Fatal("SQL prompt did not receive the theme title style")
 	}
 	if m.browseFilterInput.PlaceholderStyle.GetForeground() != styles.Muted.GetForeground() {
