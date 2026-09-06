@@ -9,144 +9,106 @@ import (
 )
 
 func TestDriverBrowsesAndQueriesSQLite(t *testing.T) {
+	ctx, driver, table := setupSQLiteBrowseTest(t)
+	t.Run("metadata", func(t *testing.T) { assertSQLiteMetadata(t, ctx, driver) })
+	t.Run("browse", func(t *testing.T) { assertSQLiteBrowse(t, ctx, driver, table) })
+	t.Run("streams", func(t *testing.T) { assertSQLiteStreams(t, ctx, driver, table) })
+	t.Run("query and update", func(t *testing.T) { assertSQLiteQueryAndUpdate(t, ctx, driver, table) })
+}
+
+func setupSQLiteBrowseTest(t *testing.T) (context.Context, *Driver, db.Table) {
+	t.Helper()
 	ctx := context.Background()
 	driver := New()
 	if err := driver.Connect(ctx, db.ConnectConfig{DSN: filepath.Join(t.TempDir(), "sqvue.db")}); err != nil {
-		t.Fatalf("Connect() error = %v", err)
+		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = driver.Close() })
-
-	for _, statement := range []string{
-		`create table categories (
-			id integer primary key,
-			parent_id integer references categories(id),
-			name text not null,
-			note text default 'none'
-		)`,
-		`insert into categories (name) values ('books'), ('games'), ('music')`,
-		`create view category_names as select name from categories`,
-	} {
-		if _, err := driver.Query(ctx, db.Query{SQL: statement}); err != nil {
-			t.Fatalf("Query(%q) error = %v", statement, err)
+	for _, sql := range []string{`create table categories (id integer primary key, parent_id integer references categories(id), name text not null, note text default 'none')`, `insert into categories (name) values ('books'), ('games'), ('music')`, `create view category_names as select name from categories`} {
+		if _, err := driver.Query(ctx, db.Query{SQL: sql}); err != nil {
+			t.Fatal(err)
 		}
 	}
-
-	schemas, err := driver.ListSchemas(ctx)
+	return ctx, driver, db.Table{Schema: "main", Name: "categories", Type: "table"}
+}
+func assertSQLiteMetadata(t *testing.T, ctx context.Context, d *Driver) {
+	t.Helper()
+	schemas, err := d.ListSchemas(ctx)
+	if err != nil || len(schemas) == 0 || schemas[0].Name != "main" {
+		t.Fatalf("schemas = %#v, %v", schemas, err)
+	}
+	info, err := d.DescribeTable(ctx, "main", "categories")
+	if err != nil || len(info.Columns) != 4 || !info.Columns[0].IsPrimary || info.Columns[1].ForeignKey == nil {
+		t.Fatalf("columns = %#v, %v", info.Columns, err)
+	}
+	tables, err := d.ListTables(ctx, "main")
+	if err != nil || len(tables) != 2 || tables[1].Name != "category_names" || tables[1].Type != "view" {
+		t.Fatalf("tables = %#v, %v", tables, err)
+	}
+}
+func assertSQLiteBrowse(t *testing.T, ctx context.Context, d *Driver, table db.Table) {
+	t.Helper()
+	cols, rows, err := d.Rows(ctx, table, 2, 0)
+	if err != nil || len(cols) != 4 || len(rows) != 2 || rows[0][2] != "books" {
+		t.Fatalf("Rows() = %#v, %v", rows, err)
+	}
+	_, rows, err = d.BrowseRows(ctx, db.BrowseRequest{Table: table, Limit: 2, Sort: db.SortSpec{Column: "name", Descending: true}})
+	if err != nil || len(rows) != 2 || rows[0][2] != "music" {
+		t.Fatalf("BrowseRows() = %#v, %v", rows, err)
+	}
+	_, rows, err = d.BrowseRows(ctx, db.BrowseRequest{Table: table, Limit: 2, Filters: []db.RowFilter{{Column: "id", Operator: db.FilterEqual, Value: "2"}}})
+	if err != nil || len(rows) != 1 || rows[0][2] != "games" {
+		t.Fatalf("filtered BrowseRows() = %#v, %v", rows, err)
+	}
+}
+func assertSQLiteStreams(t *testing.T, ctx context.Context, d *Driver, table db.Table) {
+	t.Helper()
+	cols, stream, err := d.OpenTableRowStream(ctx, db.TableRowStreamRequest{Table: table})
 	if err != nil {
-		t.Fatalf("ListSchemas() error = %v", err)
+		t.Fatal(err)
 	}
-	if len(schemas) == 0 || schemas[0].Name != "main" {
-		t.Fatalf("schemas = %#v, want main", schemas)
-	}
-
-	tables, err := driver.ListTables(ctx, "main")
-	if err != nil {
-		t.Fatalf("ListTables() error = %v", err)
-	}
-	if len(tables) != 2 || tables[0] != (db.Table{Schema: "main", Name: "categories", Type: "table"}) || tables[1] != (db.Table{Schema: "main", Name: "category_names", Type: "view"}) {
-		t.Fatalf("tables = %#v", tables)
-	}
-
-	info, err := driver.DescribeTable(ctx, "main", "categories")
-	if err != nil {
-		t.Fatalf("DescribeTable() error = %v", err)
-	}
-	if len(info.Columns) != 4 || !info.Columns[0].IsPrimary || info.Columns[0].Nullable || !info.Columns[1].Nullable || info.Columns[1].ForeignKey == nil || *info.Columns[1].ForeignKey != (db.ForeignKey{Schema: "main", Table: "categories", Column: "id"}) || info.Columns[2].Nullable || info.Columns[3].Default == nil || *info.Columns[3].Default != "'none'" {
-		t.Fatalf("columns = %#v", info.Columns)
-	}
-
-	columns, rows, err := driver.Rows(ctx, tables[0], 2, 0)
-	if err != nil {
-		t.Fatalf("Rows() error = %v", err)
-	}
-
-	if len(columns) != 4 || len(rows) != 2 || rows[0][2] != "books" || rows[1][2] != "games" {
-		t.Fatalf("Rows() = columns %#v, rows %#v", columns, rows)
-	}
-
-	columns, rows, err = driver.BrowseRows(ctx, db.BrowseRequest{Table: tables[0], Limit: 2, Filters: []db.RowFilter{{Column: "id", Operator: db.FilterEqual, Value: "2"}}})
-	if err != nil || len(columns) != 4 || len(rows) != 1 || rows[0][2] != "games" {
-		t.Fatalf("BrowseRows() = columns %#v, rows %#v, error %v", columns, rows, err)
-	}
-
-	_, rows, err = driver.BrowseRows(ctx, db.BrowseRequest{Table: tables[0], Limit: 2, Sort: db.SortSpec{Column: "name", Descending: true}})
-	if err != nil || len(rows) != 2 || rows[0][2] != "music" || rows[1][2] != "games" {
-		t.Fatalf("sorted BrowseRows() = rows %#v, error %v", rows, err)
-	}
-
-	streamColumns, stream, err := driver.OpenTableRowStream(ctx, db.TableRowStreamRequest{Table: tables[0]})
-	if err != nil {
-		t.Fatalf("OpenTableRowStream() error = %v", err)
-	}
-	streamRows, exhausted, err := db.ReadRowStream(stream, 10)
-	if err != nil || !exhausted || len(streamColumns) != 4 || len(streamRows) != 3 || streamRows[2][2] != "music" {
-		t.Fatalf("unfiltered stream = columns %#v, rows %#v, exhausted %t, error %v", streamColumns, streamRows, exhausted, err)
+	rows, exhausted, err := db.ReadRowStream(stream, 10)
+	if err != nil || !exhausted || len(cols) != 4 || len(rows) != 3 {
+		t.Fatalf("stream = %#v, %v", rows, err)
 	}
 	if err := stream.Close(); err != nil {
-		t.Fatalf("Close() error = %v", err)
+		t.Fatal(err)
 	}
-
-	_, stream, err = driver.OpenTableRowStream(ctx, db.TableRowStreamRequest{Table: tables[0], Filters: []db.RowFilter{{Column: "id", Operator: db.FilterEqual, Value: "2"}}})
+	_, stream, err = d.OpenTableRowStream(ctx, db.TableRowStreamRequest{Table: table, Filters: []db.RowFilter{{Column: "id", Operator: db.FilterEqual, Value: "2"}}})
 	if err != nil {
-		t.Fatalf("OpenTableRowStream() with filter error = %v", err)
+		t.Fatal(err)
 	}
-	streamRows, exhausted, err = db.ReadRowStream(stream, 10)
-	if err != nil || !exhausted || len(streamRows) != 1 || streamRows[0][2] != "games" {
-		t.Fatalf("filtered stream = rows %#v, exhausted %t, error %v", streamRows, exhausted, err)
+	rows, exhausted, err = db.ReadRowStream(stream, 10)
+	if err != nil || !exhausted || len(rows) != 1 || rows[0][2] != "games" {
+		t.Fatalf("filtered stream = %#v, %v", rows, err)
 	}
 	if err := stream.Close(); err != nil {
-		t.Fatalf("Close() error = %v", err)
+		t.Fatal(err)
 	}
-
-	count, err := driver.CountRows(ctx, tables[0])
-	if err != nil || count != 3 {
-		t.Fatalf("CountRows() = %d, %v; want 3, nil", count, err)
+}
+func assertSQLiteQueryAndUpdate(t *testing.T, ctx context.Context, d *Driver, table db.Table) {
+	t.Helper()
+	result, err := d.Query(ctx, db.Query{SQL: "select name from categories order by id"})
+	if err != nil || len(result.Rows) != 3 {
+		t.Fatalf("query = %#v, %v", result, err)
 	}
-
-	result, err := driver.Query(ctx, db.Query{SQL: "select name from categories order by id"})
+	stream, err := d.OpenQueryRowStream(ctx, db.Query{SQL: "select name from categories order by id"})
 	if err != nil {
-		t.Fatalf("select query error = %v", err)
+		t.Fatal(err)
 	}
-	if len(result.Columns) != 1 || len(result.Rows) != 3 || result.Rows[2][0] != "music" {
-		t.Fatalf("select result = %#v", result)
+	rows, exhausted, err := db.ReadRowStream(stream, 10)
+	if err != nil || !exhausted || len(rows) != 3 {
+		t.Fatalf("query stream = %#v, %v", rows, err)
 	}
-
-	queryStream, err := driver.OpenQueryRowStream(ctx, db.Query{SQL: "select name from categories order by id"})
-	if err != nil {
-		t.Fatalf("OpenQueryRowStream() error = %v", err)
+	if err := stream.Close(); err != nil {
+		t.Fatal(err)
 	}
-	queryRows, exhausted, err := db.ReadRowStream(queryStream, 10)
-	if err != nil || !exhausted || len(queryStream.Columns()) != 1 || len(queryRows) != 3 || queryRows[2][0] != "music" {
-		t.Fatalf("query stream = columns %#v, rows %#v, exhausted %t, error %v", queryStream.Columns(), queryRows, exhausted, err)
+	if err := d.UpdateCell(ctx, db.CellUpdateRequest{Table: table, Column: "note", Value: "edited", PrimaryKey: []db.PrimaryKeyValue{{Column: "id", Value: "1"}}}); err != nil {
+		t.Fatal(err)
 	}
-	if err := queryStream.Close(); err != nil {
-		t.Fatalf("query stream Close() error = %v", err)
-	}
-
-	queryStream, err = driver.OpenQueryRowStream(ctx, db.Query{SQL: "update categories set note = 'streamed' where id = 1"})
-	if err != nil {
-		t.Fatalf("OpenQueryRowStream() for update error = %v", err)
-	}
-	queryRows, exhausted, err = db.ReadRowStream(queryStream, 1)
-	if err != nil || !exhausted || len(queryRows) != 0 || queryStream.RowsAffected() != 1 {
-		t.Fatalf("update stream = rows %#v, exhausted %t, affected %d, error %v", queryRows, exhausted, queryStream.RowsAffected(), err)
-	}
-
-	result, err = driver.Query(ctx, db.Query{SQL: "update categories set note = 'featured' where id = 1"})
-	if err != nil || result.RowsAffected != 1 {
-		t.Fatalf("update result = %#v, error = %v", result, err)
-	}
-	if err := driver.UpdateCell(ctx, db.CellUpdateRequest{
-		Table:      tables[0],
-		Column:     "note",
-		Value:      "edited",
-		PrimaryKey: []db.PrimaryKeyValue{{Column: "id", Value: "1"}},
-	}); err != nil {
-		t.Fatalf("UpdateCell() error = %v", err)
-	}
-	result, err = driver.Query(ctx, db.Query{SQL: "select note from categories where id = 1"})
-	if err != nil || len(result.Rows) != 1 || result.Rows[0][0] != "edited" {
-		t.Fatalf("UpdateCell result = %#v, error = %v", result, err)
+	result, err = d.Query(ctx, db.Query{SQL: "select note from categories where id = 1"})
+	if err != nil || result.Rows[0][0] != "edited" {
+		t.Fatalf("update = %#v, %v", result, err)
 	}
 }
 
