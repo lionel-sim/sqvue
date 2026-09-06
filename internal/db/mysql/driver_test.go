@@ -16,6 +16,24 @@ func TestQuoteIdent(t *testing.T) {
 	}
 }
 
+func TestUpdateCellStatementUsesParametersAndPrimaryKey(t *testing.T) {
+	query, args, err := mysqlUpdateCellStatement(db.CellUpdateRequest{
+		Table:      db.Table{Schema: "app", Name: "order items"},
+		Column:     "note",
+		Value:      "updated",
+		PrimaryKey: []db.PrimaryKeyValue{{Column: "tenant_id", Value: "north"}, {Column: "id", Value: "7"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "update `app`.`order items` set `note` = ? where `tenant_id` = ? and `id` = ?"; query != want {
+		t.Fatalf("query = %q, want %q", query, want)
+	}
+	if len(args) != 3 || args[0] != "updated" || args[1] != "north" || args[2] != "7" {
+		t.Fatalf("args = %#v", args)
+	}
+}
+
 func TestRowOrderUsesPrimaryKeyColumns(t *testing.T) {
 	columns := []db.Column{{Name: "tenant_id", IsPrimary: true}, {Name: "id", IsPrimary: true}, {Name: "name"}}
 	if got := rowOrder(columns); got != "`tenant_id`, `id`" {

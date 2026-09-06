@@ -25,6 +25,7 @@ type Driver struct {
 
 var _ db.TableRowStreamer = (*Driver)(nil)
 var _ db.QueryRowStreamer = (*Driver)(nil)
+var _ db.CellUpdater = (*Driver)(nil)
 
 const maxQueryRows = 1_000
 
@@ -411,6 +412,40 @@ func (d *Driver) BrowseRows(ctx context.Context, req db.BrowseRequest) ([]db.Col
 		result = append(result, row)
 	}
 	return columns, result, rows.Err()
+}
+
+// UpdateCell updates exactly one row identified by its declared primary key.
+func (d *Driver) UpdateCell(ctx context.Context, request db.CellUpdateRequest) error {
+	if d.pool == nil {
+		return fmt.Errorf("not connected")
+	}
+	query, args, err := postgresUpdateCellStatement(request)
+	if err != nil {
+		return err
+	}
+	commandTag, err := d.pool.Exec(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	if commandTag.RowsAffected() != 1 {
+		return fmt.Errorf("cell update affected %d rows, want 1", commandTag.RowsAffected())
+	}
+	return nil
+}
+
+func postgresUpdateCellStatement(request db.CellUpdateRequest) (string, []any, error) {
+	if err := request.Validate(); err != nil {
+		return "", nil, err
+	}
+	args := make([]any, 0, len(request.PrimaryKey)+1)
+	args = append(args, request.Value)
+	where := make([]string, 0, len(request.PrimaryKey))
+	for i, key := range request.PrimaryKey {
+		where = append(where, pgx.Identifier{key.Column}.Sanitize()+fmt.Sprintf(" = $%d", i+2))
+		args = append(args, key.Value)
+	}
+	query := "update " + pgx.Identifier{request.Table.Schema, request.Table.Name}.Sanitize() + " set " + pgx.Identifier{request.Column}.Sanitize() + " = $1 where " + strings.Join(where, " and ")
+	return query, args, nil
 }
 
 func (d *Driver) OpenTableRowStream(ctx context.Context, req db.TableRowStreamRequest) ([]db.Column, db.RowStream, error) {

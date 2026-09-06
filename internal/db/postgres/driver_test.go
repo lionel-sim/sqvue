@@ -100,6 +100,24 @@ func TestRowOrder(t *testing.T) {
 	}
 }
 
+func TestUpdateCellStatementUsesParametersAndPrimaryKey(t *testing.T) {
+	query, args, err := postgresUpdateCellStatement(db.CellUpdateRequest{
+		Table:      db.Table{Schema: "public", Name: "order items"},
+		Column:     "note",
+		Value:      "updated",
+		PrimaryKey: []db.PrimaryKeyValue{{Column: "tenant_id", Value: "north"}, {Column: "id", Value: "7"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `update "public"."order items" set "note" = $1 where "tenant_id" = $2 and "id" = $3`; query != want {
+		t.Fatalf("query = %q, want %q", query, want)
+	}
+	if len(args) != 3 || args[0] != "updated" || args[1] != "north" || args[2] != "7" {
+		t.Fatalf("args = %#v", args)
+	}
+}
+
 func TestBrowseWhereUsesParameterizedOperators(t *testing.T) {
 	where, args, err := postgresBrowseWhere([]db.RowFilter{
 		{Column: "name", Operator: db.FilterEqual, Value: "Ada"},

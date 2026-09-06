@@ -131,11 +131,41 @@ func TestDriverBrowsesAndQueriesSQLite(t *testing.T) {
 	if err != nil || result.RowsAffected != 1 {
 		t.Fatalf("update result = %#v, error = %v", result, err)
 	}
+	if err := driver.UpdateCell(ctx, db.CellUpdateRequest{
+		Table:      tables[0],
+		Column:     "note",
+		Value:      "edited",
+		PrimaryKey: []db.PrimaryKeyValue{{Column: "id", Value: "1"}},
+	}); err != nil {
+		t.Fatalf("UpdateCell() error = %v", err)
+	}
+	result, err = driver.Query(ctx, db.Query{SQL: "select note from categories where id = 1"})
+	if err != nil || len(result.Rows) != 1 || result.Rows[0][0] != "edited" {
+		t.Fatalf("UpdateCell result = %#v, error = %v", result, err)
+	}
 }
 
 func TestQuoteIdent(t *testing.T) {
 	if got := quoteIdent(`a"b`); got != `"a""b"` {
 		t.Fatalf("quoteIdent() = %q", got)
+	}
+}
+
+func TestUpdateCellStatementUsesParametersAndPrimaryKey(t *testing.T) {
+	query, args, err := sqliteUpdateCellStatement(db.CellUpdateRequest{
+		Table:      db.Table{Schema: "main", Name: "order items"},
+		Column:     "note",
+		Value:      "updated",
+		PrimaryKey: []db.PrimaryKeyValue{{Column: "tenant_id", Value: "north"}, {Column: "id", Value: "7"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `update "main"."order items" set "note" = ? where "tenant_id" = ? and "id" = ?`; query != want {
+		t.Fatalf("query = %q, want %q", query, want)
+	}
+	if len(args) != 3 || args[0] != "updated" || args[1] != "north" || args[2] != "7" {
+		t.Fatalf("args = %#v", args)
 	}
 }
 

@@ -23,6 +23,7 @@ type Driver struct {
 
 var _ db.TableRowStreamer = (*Driver)(nil)
 var _ db.QueryRowStreamer = (*Driver)(nil)
+var _ db.CellUpdater = (*Driver)(nil)
 
 func New() *Driver                  { return &Driver{} }
 func (d *Driver) DbType() db.DbType { return db.DbTypeMySQL }
@@ -226,6 +227,44 @@ func (d *Driver) BrowseRows(ctx context.Context, req db.BrowseRequest) ([]db.Col
 		result = append(result, row)
 	}
 	return columns, result, rows.Err()
+}
+
+// UpdateCell updates exactly one row identified by its declared primary key.
+func (d *Driver) UpdateCell(ctx context.Context, request db.CellUpdateRequest) error {
+	if d.db == nil {
+		return fmt.Errorf("not connected")
+	}
+	query, args, err := mysqlUpdateCellStatement(request)
+	if err != nil {
+		return err
+	}
+	result, err := d.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected != 1 {
+		return fmt.Errorf("cell update affected %d rows, want 1", affected)
+	}
+	return nil
+}
+
+func mysqlUpdateCellStatement(request db.CellUpdateRequest) (string, []any, error) {
+	if err := request.Validate(); err != nil {
+		return "", nil, err
+	}
+	args := make([]any, 0, len(request.PrimaryKey)+1)
+	args = append(args, request.Value)
+	where := make([]string, 0, len(request.PrimaryKey))
+	for _, key := range request.PrimaryKey {
+		where = append(where, quoteIdent(key.Column)+" = ?")
+		args = append(args, key.Value)
+	}
+	query := "update " + qualifiedName(request.Table.Schema, request.Table.Name) + " set " + quoteIdent(request.Column) + " = ? where " + strings.Join(where, " and ")
+	return query, args, nil
 }
 
 func (d *Driver) OpenTableRowStream(ctx context.Context, req db.TableRowStreamRequest) ([]db.Column, db.RowStream, error) {
