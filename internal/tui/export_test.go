@@ -87,6 +87,25 @@ func TestWriteCSVExportsAllFilteredTableRows(t *testing.T) {
 	}
 }
 
+func TestWriteCSVExportsTableRowsThroughStream(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "table.csv")
+	client := &streamFakeDriver{fakeDriver: fakeDriver{
+		cols: []db.Column{{Name: "id"}},
+		rows: [][]string{{"1"}, {"2"}},
+	}}
+	rows, err := writeCSV(client, time.Second, csvExportRequest{
+		path:    path,
+		columns: client.cols,
+		table:   &db.Table{Schema: "public", Name: "people"},
+	})
+	if err != nil {
+		t.Fatalf("writeCSV() error = %v", err)
+	}
+	if rows != 2 || len(client.streamRequests) != 1 || client.lastLimit != 0 {
+		t.Fatalf("streamed table export = rows %d, requests %#v, limit %d", rows, client.streamRequests, client.lastLimit)
+	}
+}
+
 func TestFailedExportRemovesPartialFile(t *testing.T) {
 	wantErr := errors.New("read failed")
 	client := &exportErrorDriver{err: wantErr}

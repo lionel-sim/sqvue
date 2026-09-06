@@ -296,6 +296,29 @@ func writeExportRows(client db.Driver, timeout time.Duration, request exportRequ
 			}
 		}
 	}
+	if request.table != nil {
+		if streamer, ok := client.(db.TableRowStreamer); ok {
+			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			defer cancel()
+			_, stream, err := streamer.OpenTableRowStream(ctx, db.TableRowStreamRequest{Table: *request.table, Filters: request.filters})
+			if err != nil {
+				return fmt.Errorf("open table stream: %w", err)
+			}
+			defer stream.Close()
+			for {
+				values, exhausted, err := db.ReadRowStream(stream, exportBatchSize)
+				if err != nil {
+					return fmt.Errorf("load table rows: %w", err)
+				}
+				if err := writeRows(values); err != nil {
+					return err
+				}
+				if exhausted {
+					return nil
+				}
+			}
+		}
+	}
 	if request.table == nil {
 		return writeRows(request.queryRows)
 	}
