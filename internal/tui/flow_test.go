@@ -28,6 +28,8 @@ type fakeDriver struct {
 	queryResult   db.Result
 	lastQuery     string
 	backupCaps    db.BackupCapabilities
+	lastBackup    db.BackupRequest
+	backupErr     error
 }
 
 func (f *fakeDriver) DbType() db.DbType {
@@ -82,7 +84,10 @@ func (f *fakeDriver) BackupCapabilities() db.BackupCapabilities {
 	}
 	return db.BackupCapabilities{Database: true, FileExtension: "sql"}
 }
-func (f *fakeDriver) Backup(context.Context, db.BackupRequest) error { return nil }
+func (f *fakeDriver) Backup(_ context.Context, request db.BackupRequest) error {
+	f.lastBackup = request
+	return f.backupErr
+}
 
 func makeRows(n int) [][]string {
 	rows := make([][]string, n)

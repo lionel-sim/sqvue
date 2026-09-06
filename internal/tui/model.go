@@ -78,6 +78,7 @@ const (
 	overlayRowDetail
 	overlayExportCSV
 	overlayBackupScope
+	overlayBackupPath
 )
 
 type overlayState struct {
@@ -90,16 +91,17 @@ type overlayState struct {
 	browseFilterCursor                       int
 	sqlInput                                 textinput.Model
 	exportInput                              textinput.Model
+	backupInput                              textinput.Model
 	help                                     help.Model
 	columnCursor, columnScroll, detailScroll int
 	backupScopeCursor                        int
 }
 type viewportState struct{ width, height int }
 type loadState struct {
-	status, copyStatusKind         string
-	loading                        bool
-	lastErr                        error
-	loadID, copyStatusID, exportID uint64
+	status, copyStatusKind                   string
+	loading                                  bool
+	lastErr                                  error
+	loadID, copyStatusID, exportID, backupID uint64
 }
 
 func New(opts Options) Model {
@@ -116,9 +118,13 @@ func New(opts Options) Model {
 	export.Prompt = "Export CSV to: "
 	export.Placeholder = "path/to/results.csv"
 	export.CharLimit = 0
+	backup := textinput.New()
+	backup.Prompt = "Back up to: "
+	backup.Placeholder = "path/to/backup"
+	backup.CharLimit = 0
 	return Model{client: opts.Client, timeout: opts.Timeout,
 		resultState:  resultState{pageSize: maxPageSize, rowCounts: make(map[string]int64), browseRowCounts: make(map[string]int64)},
-		overlayState: overlayState{filterInput: filter, browseFilterInput: browseFilter, sqlInput: sql, exportInput: export, help: help.New()},
+		overlayState: overlayState{filterInput: filter, browseFilterInput: browseFilter, sqlInput: sql, exportInput: export, backupInput: backup, help: help.New()},
 		loadState:    loadState{status: "loading tables...", loading: true}, keys: Default(), exportDirectory: opts.ExportDirectory,
 	}
 }

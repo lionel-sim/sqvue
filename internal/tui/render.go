@@ -30,6 +30,8 @@ func Render(m Model) string {
 		return renderRowDetailModal(m)
 	case overlayBackupScope:
 		return renderModalOverMain(m, renderBackupScopeModal(m))
+	case overlayBackupPath:
+		return renderModalOverMain(m, renderBackupPathModal(m))
 	}
 	return renderMain(m)
 }

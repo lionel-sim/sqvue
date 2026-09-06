@@ -49,6 +49,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.fail("CSV export failed", msg.err)
 		}
 		m.status, m.lastErr = fmt.Sprintf("exported %d rows to %s", msg.rows, msg.path), nil
+	case backupCompletedMsg:
+		if msg.backupID != m.backupID {
+			return m, nil
+		}
+		if msg.err != nil {
+			return m.fail("database backup failed", msg.err)
+		}
+		m.status, m.lastErr = fmt.Sprintf("database backed up to %s", msg.path), nil
 	}
 	return m, nil
 }
@@ -60,6 +68,7 @@ func (m Model) handleWindowSize(msg tea.WindowSizeMsg) (Model, tea.Cmd) {
 	m.browseFilterInput.Width = inputWidth(msg.Width, m.browseFilterInput.Prompt)
 	m.sqlInput.Width = inputWidth(msg.Width, m.sqlInput.Prompt)
 	m.exportInput.Width = inputWidth(msg.Width, m.exportInput.Prompt)
+	m.backupInput.Width = inputWidth(msg.Width, m.backupInput.Prompt)
 	if msg.Height > 0 {
 		m.pageSize = m.computedPageSize()
 	}
@@ -94,6 +103,9 @@ func (m Model) handleOverlayKey(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
 		return m, cmd, true
 	case overlayBackupScope:
 		m, cmd := m.handleBackupScopeKey(msg)
+		return m, cmd, true
+	case overlayBackupPath:
+		m, cmd := m.handleBackupPathKey(msg)
 		return m, cmd, true
 	case overlayColumnPicker:
 		m, cmd := m.handleColumnsKey(msg)

@@ -51,4 +51,9 @@ type (
 		rows     int
 		err      error
 	}
+	backupCompletedMsg struct {
+		backupID uint64
+		path     string
+		err      error
+	}
 )
