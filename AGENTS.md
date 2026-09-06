@@ -19,6 +19,7 @@
 - Keep each task narrowly scoped. Do not refactor adjacent code unless it is needed for correctness or the user asks.
 - For new user-facing behavior, update the README, roadmap, keyboard-help text, and tests in the same change.
 - Add focused tests for new behavior and run formatting, relevant narrow tests, then `go test ./...`; use race tests and `go vet ./...` for asynchronous or stateful TUI work.
+- After implementation and verification, perform a code review of the complete diff before handing off. Check correctness, error and cancellation paths, state/lifecycle regressions, SQL safety, terminal rendering safety, test coverage, and documentation alignment; fix any findings before completion.
 - Before handing off or committing, run `git diff --check` and review `git diff --stat`.
 - Commit completed, independently testable work after verification unless the user explicitly asks not to commit.
 - Treat `.codex/` as local machine configuration; do not add it to commits.
