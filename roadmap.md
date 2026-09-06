@@ -115,7 +115,7 @@ safer query execution, and richer relational navigation.
 - [ ] Edit active table cells
   - [x] Bind `e` to edit the active grid cell while retaining CSV export outside grid focus; keep SQL-result grids read-only
   - [x] Enable editing only when the selected table has a declared primary key; show a clear status message otherwise
-  - [ ] Open a prefilled, terminal-safe cell editor and require an explicit confirmation before saving
+  - [x] Open a prefilled, terminal-safe cell editor and require an explicit confirmation before saving
   - [ ] Add a driver-neutral single-cell update contract using primary-key values, with parameterized PostgreSQL, SQLite, and MySQL implementations
   - [ ] Refresh the updated row and report asynchronous success or failure without losing grid focus, filters, visible columns, or pagination state
   - [ ] Cover composite primary keys, null and typed values, cancellation, driver errors, and context-sensitive key bindings; document the workflow

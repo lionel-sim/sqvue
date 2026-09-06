@@ -145,8 +145,9 @@ func TestEditCellKeyIsContextSensitive(t *testing.T) {
 	}
 
 	m.columns = []db.Column{{Name: "id", IsPrimary: true}}
+	m.rows = [][]string{{"1"}}
 	m, _ = update(m, keyMsg("e"))
-	if m.status != "cell editing is not available yet" {
+	if m.status != "edit cell value" || m.activeOverlay != overlayCellEdit {
 		t.Fatalf("primary-key table edit status = %q", m.status)
 	}
 }
@@ -160,6 +161,30 @@ func TestEditCellOnlyAppearsForPrimaryKeyTables(t *testing.T) {
 	m.columns = []db.Column{{Name: "id", IsPrimary: true}}
 	if !m.helpKeyMap().EditCell.Enabled() {
 		t.Fatal("cell editing is disabled with a primary key")
+	}
+}
+
+func TestEditCellOpensPrefilledEditorAndConfirmation(t *testing.T) {
+	m := testModel()
+	m.focused = true
+	m.columns = []db.Column{{Name: "note", IsPrimary: true}}
+	m.rows = [][]string{{"line one\nline two"}}
+
+	m, _ = update(m, keyMsg("e"))
+	if m.activeOverlay != overlayCellEdit {
+		t.Fatalf("edit overlay = %v", m.activeOverlay)
+	}
+	if got := m.cellEditInput.Value(); got != `line one\nline two` {
+		t.Fatalf("editor value = %q", got)
+	}
+
+	m, _ = update(m, tea.KeyMsg{Type: tea.KeyEnter})
+	if m.activeOverlay != overlayCellEditConfirm {
+		t.Fatalf("confirmation overlay = %v", m.activeOverlay)
+	}
+	m, _ = update(m, tea.KeyMsg{Type: tea.KeyEsc})
+	if m.activeOverlay != overlayCellEdit {
+		t.Fatalf("editor overlay after cancel = %v", m.activeOverlay)
 	}
 }
 

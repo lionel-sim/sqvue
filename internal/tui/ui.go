@@ -73,6 +73,7 @@ func (m Model) handleWindowSize(msg tea.WindowSizeMsg) (Model, tea.Cmd) {
 	m.sqlInput.Width = inputWidth(msg.Width, m.sqlInput.Prompt)
 	m.exportInput.Width = inputWidth(msg.Width, m.exportInput.Prompt)
 	m.backupInput.Width = inputWidth(msg.Width, m.backupInput.Prompt)
+	m.cellEditInput.Width = inputWidth(msg.Width, m.cellEditInput.Prompt)
 	if msg.Height > 0 {
 		m.pageSize = m.computedPageSize()
 	}
@@ -115,6 +116,12 @@ func (m Model) handleOverlayKey(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
 		return m, cmd, true
 	case overlayBackupPath:
 		m, cmd := m.handleBackupPathKey(msg)
+		return m, cmd, true
+	case overlayCellEdit:
+		m, cmd := m.handleCellEditKey(msg)
+		return m, cmd, true
+	case overlayCellEditConfirm:
+		m, cmd := m.handleCellEditConfirmKey(msg)
 		return m, cmd, true
 	case overlayColumnPicker:
 		m, cmd := m.handleColumnsKey(msg)

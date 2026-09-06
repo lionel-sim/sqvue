@@ -56,8 +56,7 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 			m.status = "editing requires a table with a primary key"
 			return m, nil
 		}
-		m.status = "cell editing is not available yet"
-		return m, nil
+		return m.beginCellEdit()
 	case key.Matches(msg, m.keys.OpenReference):
 		return m.followActiveForeignKey()
 	case key.Matches(msg, m.keys.HalfPageDown):
@@ -72,6 +71,54 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.changeGridPage(+1)
 	case key.Matches(msg, m.keys.PageUp):
 		return m.changeGridPage(-1)
+	}
+	return m, nil
+}
+
+func (m Model) beginCellEdit() (Model, tea.Cmd) {
+	column := m.activeColumn()
+	if column == nil || m.rowCursor < 0 || m.rowCursor >= len(m.rows) {
+		m.status = "no cell is selected"
+		return m, nil
+	}
+	m.cellEditColumn = column.Name
+	m.cellEditOriginal = m.activeCellValue()
+	m.cellEditInput.Prompt = "Edit " + sanitizeText(column.Name) + ": "
+	m.cellEditInput.SetValue(sanitizeText(m.cellEditOriginal))
+	m.cellEditInput.Focus()
+	m.activeOverlay = overlayCellEdit
+	m.status = "edit cell value"
+	return m, nil
+}
+
+func (m Model) handleCellEditKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch {
+	case msg.String() == "esc":
+		m.activeOverlay = overlayNone
+		m.cellEditInput.Blur()
+		m.restoreBrowseStatus()
+	case key.Matches(msg, m.keys.Confirm):
+		m.activeOverlay = overlayCellEditConfirm
+		m.cellEditInput.Blur()
+		m.status = "confirm cell update"
+	default:
+		var cmd tea.Cmd
+		m.cellEditInput, cmd = m.cellEditInput.Update(msg)
+		m.cellEditInput.SetValue(sanitizeText(m.cellEditInput.Value()))
+		return m, cmd
+	}
+	return m, nil
+}
+
+func (m Model) handleCellEditConfirmKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	switch {
+	case msg.String() == "esc":
+		m.activeOverlay = overlayCellEdit
+		m.cellEditInput.Focus()
+		m.status = "edit cell value"
+	case key.Matches(msg, m.keys.Confirm):
+		m.activeOverlay = overlayNone
+		m.status = "cell editing is not available yet"
 	}
 	return m, nil
 }

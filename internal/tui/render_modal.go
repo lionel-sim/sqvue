@@ -15,6 +15,25 @@ func renderRowDetailModal(m Model) string {
 	return renderModalOverMain(m, renderRowDetailDialog(m))
 }
 
+func renderCellEditModal(m Model) string {
+	width := detailDialogWidth(m)
+	input := m.cellEditInput
+	input.Width = max(1, width-ansi.StringWidth(input.Prompt)-4)
+	content := input.View() + "\n\n" + m.theme.Muted.Render("Enter reviews the update. Esc cancels.")
+	panelLines := strings.Split(m.theme.Dialog.Width(width).Render(content), "\n")
+	return titledDialog(m, panelLines, ansi.StringWidth(panelLines[0]), "Edit cell")
+}
+
+func renderCellEditConfirmModal(m Model) string {
+	width := detailDialogWidth(m)
+	content := "Column: " + sanitizeText(m.cellEditColumn) + "\n" +
+		"Current: " + sanitizeText(m.cellEditOriginal) + "\n" +
+		"New: " + sanitizeText(m.cellEditInput.Value()) + "\n\n" +
+		m.theme.Muted.Render("Enter saves the update. Esc returns to editing.")
+	panelLines := strings.Split(m.theme.Dialog.Width(width).Render(content), "\n")
+	return titledDialog(m, panelLines, ansi.StringWidth(panelLines[0]), "Confirm cell update")
+}
+
 func renderModalOverMain(m Model, dialog string) string {
 	background := m
 	background.activeOverlay = overlayNone

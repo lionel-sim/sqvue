@@ -96,6 +96,8 @@ const (
 	overlayExport
 	overlayBackupScope
 	overlayBackupPath
+	overlayCellEdit
+	overlayCellEditConfirm
 )
 
 type overlayState struct {
@@ -110,6 +112,8 @@ type overlayState struct {
 	exportInput                              textinput.Model
 	exportFormat                             exportFormat
 	backupInput                              textinput.Model
+	cellEditInput                            textinput.Model
+	cellEditColumn, cellEditOriginal         string
 	help                                     help.Model
 	columnCursor, columnScroll, detailScroll int
 	backupScopeCursor                        int
@@ -144,11 +148,13 @@ func New(opts Options) Model {
 	backup.Prompt = "Back up to: "
 	backup.Placeholder = "path/to/backup"
 	backup.CharLimit = 0
+	cellEdit := newThemedTextInput(styles)
+	cellEdit.CharLimit = 0
 	helpModel := help.New()
 	applyHelpTheme(&helpModel, styles)
 	return Model{client: opts.Client, timeout: opts.Timeout,
 		resultState:  resultState{pageSize: maxPageSize, rowCounts: make(map[string]int64), browseRowCounts: make(map[string]int64)},
-		overlayState: overlayState{filterInput: filter, browseFilterInput: browseFilter, sqlInput: sql, exportInput: export, backupInput: backup, help: helpModel},
+		overlayState: overlayState{filterInput: filter, browseFilterInput: browseFilter, sqlInput: sql, exportInput: export, backupInput: backup, cellEditInput: cellEdit, help: helpModel},
 		loadState:    loadState{status: "loading tables...", loading: true}, keys: Default(), exportDirectory: opts.ExportDirectory, theme: styles,
 	}
 }
