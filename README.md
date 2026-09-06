@@ -1,6 +1,8 @@
 # sqvue
 
 [![CI](https://github.com/lionel-sim/sqvue/actions/workflows/ci.yml/badge.svg)](https://github.com/lionel-sim/sqvue/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/lionel-sim/sqvue?display_name=tag)](https://github.com/lionel-sim/sqvue/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A terminal-based database viewer built with Go. sqvue gives you a lightweight TUI to browse schemas, tables, and row data directly from your terminal.
 
