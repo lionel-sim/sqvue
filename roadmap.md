@@ -77,7 +77,7 @@ For each driver:
   - [x] Offer a save-path prompt, write RFC 4180-compatible CSV, and surface success or write errors in the TUI
 - [x] Export results as JSON
   - [x] Export visible columns as a JSON array, with the same table/SQL, filtered-row, save-path, and background-status flow as CSV
-- [ ] Streaming / large-result handling (cursor or fetch-more pagination instead of LIMIT/OFFSET)
+- [x] Streaming / large-result handling (cursor or fetch-more pagination instead of LIMIT/OFFSET)
   - [x] Define a driver-neutral row-stream contract with explicit close/cancellation semantics and focused unit tests
   - [x] Implement filtered and unfiltered table row streams in the PostgreSQL, SQLite, and MySQL drivers, preserving each driver's existing ordering and parameterized filters
   - [x] Page table browsing from an active stream, resetting and closing streams when the table, schema, filters, view mode, or window page size changes
