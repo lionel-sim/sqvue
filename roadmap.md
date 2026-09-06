@@ -89,7 +89,7 @@ For each driver:
 - [x] Saved connections / connection profiles (XDG config file, named profiles, and `--profile`)
 - [ ] Configure themes through the config file
   - [x] Replace mutable global theme styles with an immutable semantic theme value while preserving the current default appearance
-  - [ ] Add named ANSI-256 presets (`default`, `light`, and `high-contrast`)
+  - [x] Add named ANSI-256 presets (`default`, `light`, and `high-contrast`)
   - [ ] Add a `settings.theme` configuration value with validation and startup resolution
   - [ ] Pass the resolved theme through command setup, TUI options, and model state
   - [ ] Apply themes consistently to renderers, inputs, help, and all dialogs

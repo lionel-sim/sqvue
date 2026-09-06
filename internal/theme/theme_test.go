@@ -25,3 +25,37 @@ func TestDefaultPreservesANSI256Palette(t *testing.T) {
 		}
 	}
 }
+
+func TestByNameReturnsEachBuiltInTheme(t *testing.T) {
+	for _, name := range Names() {
+		got, err := ByName(name)
+		if err != nil {
+			t.Fatalf("ByName(%q) error = %v", name, err)
+		}
+		if got.Title.GetForeground() == nil || got.DialogBackground == "" {
+			t.Fatalf("ByName(%q) returned an incomplete theme: %#v", name, got)
+		}
+	}
+}
+
+func TestByNameRejectsUnknownTheme(t *testing.T) {
+	if _, err := ByName("sepia"); err == nil {
+		t.Fatal("ByName accepted an unknown theme")
+	}
+}
+
+func TestBuiltInThemesHaveDistinctSelectionColors(t *testing.T) {
+	defaultTheme, err := ByName("default")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"light", "high-contrast"} {
+		got, err := ByName(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Selected.GetForeground() == defaultTheme.Selected.GetForeground() {
+			t.Errorf("%s selection colour matches default", name)
+		}
+	}
+}
