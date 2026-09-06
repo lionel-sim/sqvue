@@ -185,15 +185,15 @@ does not include other tables referenced by foreign keys.
 | `g` / `G`        | First / last focused row |
 | `h` / `←` and `l` / `→` | Previous / next cell in focused rows |
 | `count` + `j` / `k` / `h` / `l` | Repeat focused-grid movement (for example, `23j`) |
-| `y` / `Y`        | Copy focused cell / visible row |
+| `y` / `Y`        | Copy focused cell / visible row (focused grid) |
 | `o`              | Open the matching row in the focused cell's foreign-key table as a clearable equality filter |
 | `/`              | Add a focused-row filter for the active column (contains is literal and case-insensitive; choose LIKE, `>`, `<`, `>=`, `<=`, or null checks; PostgreSQL also offers ILIKE; null checks apply immediately; filters use AND) |
 | `x`              | Clear focused-row filters |
 | `S`              | Sort the focused active column (ascending, descending, then clear) |
 | `f` / `PgDn`     | Next page             |
 | `b` / `PgUp`     | Previous page         |
-| `d`              | Show column descriptions |
-| `Enter`          | Show row values for the active row |
+| `d`              | Show column descriptions (table picker) |
+| `y`              | Show rows (table picker) |
 | `c`              | Choose visible columns |
 | `e`              | Edit the active cell in a focused table grid (primary-key tables only); otherwise export visible columns as CSV |
 | `E`              | Export visible columns as JSON |
@@ -209,7 +209,7 @@ does not include other tables referenced by foreign keys.
 | `Ctrl+S` (in SQL prompt) | Save the current named query |
 | `Ctrl+O` (in SQL prompt) | List saved queries (Enter runs; `r` renames; `d`, Enter deletes) |
 | `j` / `k` or `↓` / `↑` (in SQL prompt) | Next / previous query history entry |
-| `Enter`          | Focus displayed rows, or show selected-row details |
+| `Enter`          | Focus displayed rows, or show selected-row details (focused grid) |
 | `?`              | Show keyboard help    |
 | `r`              | Refresh tables        |
 | `Esc`            | Return from rows to table picker, or close an overlay |
