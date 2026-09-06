@@ -106,6 +106,27 @@ func TestDriverBrowsesAndQueriesSQLite(t *testing.T) {
 		t.Fatalf("select result = %#v", result)
 	}
 
+	queryStream, err := driver.OpenQueryRowStream(ctx, db.Query{SQL: "select name from categories order by id"})
+	if err != nil {
+		t.Fatalf("OpenQueryRowStream() error = %v", err)
+	}
+	queryRows, exhausted, err := db.ReadRowStream(queryStream, 10)
+	if err != nil || !exhausted || len(queryStream.Columns()) != 1 || len(queryRows) != 3 || queryRows[2][0] != "music" {
+		t.Fatalf("query stream = columns %#v, rows %#v, exhausted %t, error %v", queryStream.Columns(), queryRows, exhausted, err)
+	}
+	if err := queryStream.Close(); err != nil {
+		t.Fatalf("query stream Close() error = %v", err)
+	}
+
+	queryStream, err = driver.OpenQueryRowStream(ctx, db.Query{SQL: "update categories set note = 'streamed' where id = 1"})
+	if err != nil {
+		t.Fatalf("OpenQueryRowStream() for update error = %v", err)
+	}
+	queryRows, exhausted, err = db.ReadRowStream(queryStream, 1)
+	if err != nil || !exhausted || len(queryRows) != 0 || queryStream.RowsAffected() != 1 {
+		t.Fatalf("update stream = rows %#v, exhausted %t, affected %d, error %v", queryRows, exhausted, queryStream.RowsAffected(), err)
+	}
+
 	result, err = driver.Query(ctx, db.Query{SQL: "update categories set note = 'featured' where id = 1"})
 	if err != nil || result.RowsAffected != 1 {
 		t.Fatalf("update result = %#v, error = %v", result, err)

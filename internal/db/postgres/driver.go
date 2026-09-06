@@ -23,6 +23,7 @@ type Driver struct {
 }
 
 var _ db.TableRowStreamer = (*Driver)(nil)
+var _ db.QueryRowStreamer = (*Driver)(nil)
 
 const maxQueryRows = 1_000
 
@@ -206,6 +207,72 @@ func (d *Driver) Query(ctx context.Context, q db.Query) (db.Result, error) {
 	}
 	return result, rows.Err()
 }
+
+func (d *Driver) OpenQueryRowStream(ctx context.Context, q db.Query) (db.QueryRowStream, error) {
+	if d.pool == nil {
+		return nil, fmt.Errorf("not connected")
+	}
+	started := time.Now()
+	rows, err := d.pool.Query(ctx, q.SQL, q.Args...)
+	if err != nil {
+		return nil, err
+	}
+	fieldDescriptions := rows.FieldDescriptions()
+	columns := make([]string, len(fieldDescriptions))
+	values := make([]any, len(columns))
+	scanTargets := make([]any, len(columns))
+	for i, fd := range fieldDescriptions {
+		columns[i] = string(fd.Name)
+		scanTargets[i] = &values[i]
+	}
+	return &queryRowStream{rows: rows, columns: columns, values: values, scanTargets: scanTargets, started: started}, nil
+}
+
+type queryRowStream struct {
+	rows         pgx.Rows
+	columns      []string
+	values       []any
+	scanTargets  []any
+	started      time.Time
+	rowsAffected int64
+	closed       bool
+}
+
+func (s *queryRowStream) Next() ([]string, error) {
+	if s.closed {
+		return nil, io.EOF
+	}
+	if !s.rows.Next() {
+		err := s.rows.Err()
+		_ = s.Close()
+		if err != nil {
+			return nil, err
+		}
+		return nil, io.EOF
+	}
+	if err := s.rows.Scan(s.scanTargets...); err != nil {
+		_ = s.Close()
+		return nil, err
+	}
+	row := make([]string, len(s.values))
+	for i, value := range s.values {
+		row[i] = formatValue(value)
+	}
+	return row, nil
+}
+
+func (s *queryRowStream) Close() error {
+	if !s.closed {
+		s.closed = true
+		s.rows.Close()
+		s.rowsAffected = s.rows.CommandTag().RowsAffected()
+	}
+	return nil
+}
+
+func (s *queryRowStream) Columns() []string   { return append([]string(nil), s.columns...) }
+func (s *queryRowStream) RowsAffected() int64 { return s.rowsAffected }
+func (s *queryRowStream) DurationMs() int64   { return time.Since(s.started).Milliseconds() }
 
 func (d *Driver) Rows(ctx context.Context, tbl db.Table, limit, offset int) ([]db.Column, [][]string, error) {
 	if d.pool == nil {

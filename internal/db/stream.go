@@ -30,6 +30,23 @@ type TableRowStreamer interface {
 	OpenTableRowStream(ctx context.Context, request TableRowStreamRequest) ([]Column, RowStream, error)
 }
 
+// QueryRowStream exposes metadata for an ad-hoc SQL result stream. RowsAffected
+// is final after the stream reaches io.EOF or is closed; it is zero for queries
+// that return rows. DurationMs measures elapsed time since the query began.
+type QueryRowStream interface {
+	RowStream
+	Columns() []string
+	RowsAffected() int64
+	DurationMs() int64
+}
+
+// QueryRowStreamer is implemented by drivers that can incrementally read
+// ad-hoc SQL results. The supplied context must stay active until the returned
+// stream is closed.
+type QueryRowStreamer interface {
+	OpenQueryRowStream(ctx context.Context, query Query) (QueryRowStream, error)
+}
+
 // ReadRowStream reads at most limit rows from stream. exhausted is true only
 // when the stream reached io.EOF while reading this batch. The caller retains
 // ownership of stream and must close it when no further rows are needed.

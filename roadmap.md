@@ -82,7 +82,7 @@ For each driver:
   - [x] Implement filtered and unfiltered table row streams in the PostgreSQL, SQLite, and MySQL drivers, preserving each driver's existing ordering and parameterized filters
   - [x] Page table browsing from an active stream, resetting and closing streams when the table, schema, filters, view mode, or window page size changes
   - [ ] Stream ad-hoc SQL query results into fetch-more pages rather than retaining the current fixed 1,000-row result set
-    - [ ] Define query-stream metadata and implement it for PostgreSQL, SQLite, and MySQL without changing non-row command results
+    - [x] Define query-stream metadata and implement it for PostgreSQL, SQLite, and MySQL without changing non-row command results
     - [ ] Page SQL results from a live stream, including backward navigation, stale-load cleanup, and query status reporting
     - [ ] Preserve complete CSV and JSON query exports without retaining every streamed row in TUI memory
   - [ ] Cover stream lifecycle, error, pagination, and cancellation behavior; document fetch-more behavior and key bindings

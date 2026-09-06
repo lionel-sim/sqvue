@@ -21,6 +21,7 @@ type Driver struct {
 }
 
 var _ db.TableRowStreamer = (*Driver)(nil)
+var _ db.QueryRowStreamer = (*Driver)(nil)
 
 func New() *Driver                  { return &Driver{} }
 func (d *Driver) DbType() db.DbType { return db.DbTypeMySQL }
@@ -412,6 +413,94 @@ func (d *Driver) Query(ctx context.Context, query db.Query) (db.Result, error) {
 	}
 	return db.Result{Columns: columns, Rows: resultRows, DurationMs: time.Since(started).Milliseconds(), Truncated: truncated}, nil
 }
+
+func (d *Driver) OpenQueryRowStream(ctx context.Context, query db.Query) (db.QueryRowStream, error) {
+	if d.db == nil {
+		return nil, fmt.Errorf("not connected")
+	}
+	started := time.Now()
+	if !returnsRows(query.SQL) {
+		result, err := d.db.ExecContext(ctx, query.SQL, query.Args...)
+		if err != nil {
+			return nil, err
+		}
+		affected, err := result.RowsAffected()
+		if err != nil {
+			affected = 0
+		}
+		return completedQueryRowStream{rowsAffected: affected, durationMs: time.Since(started).Milliseconds()}, nil
+	}
+	rows, err := d.db.QueryContext(ctx, query.SQL, query.Args...)
+	if err != nil {
+		return nil, err
+	}
+	columns, err := rows.Columns()
+	if err != nil {
+		_ = rows.Close()
+		return nil, err
+	}
+	values := make([]any, len(columns))
+	scanTargets := make([]any, len(columns))
+	for i := range values {
+		scanTargets[i] = &values[i]
+	}
+	return &queryRowStream{rows: rows, columns: columns, values: values, scanTargets: scanTargets, started: started}, nil
+}
+
+type completedQueryRowStream struct {
+	rowsAffected int64
+	durationMs   int64
+}
+
+func (completedQueryRowStream) Next() ([]string, error) { return nil, io.EOF }
+func (completedQueryRowStream) Close() error            { return nil }
+func (completedQueryRowStream) Columns() []string       { return nil }
+func (s completedQueryRowStream) RowsAffected() int64   { return s.rowsAffected }
+func (s completedQueryRowStream) DurationMs() int64     { return s.durationMs }
+
+type queryRowStream struct {
+	rows        *sql.Rows
+	columns     []string
+	values      []any
+	scanTargets []any
+	started     time.Time
+	closed      bool
+}
+
+func (s *queryRowStream) Next() ([]string, error) {
+	if s.closed {
+		return nil, io.EOF
+	}
+	if !s.rows.Next() {
+		err := s.rows.Err()
+		_ = s.Close()
+		if err != nil {
+			return nil, err
+		}
+		return nil, io.EOF
+	}
+	if err := s.rows.Scan(s.scanTargets...); err != nil {
+		_ = s.Close()
+		return nil, err
+	}
+	row := make([]string, len(s.values))
+	for i, value := range s.values {
+		row[i] = formatValue(value)
+	}
+	return row, nil
+}
+
+func (s *queryRowStream) Close() error {
+	if !s.closed {
+		s.closed = true
+		return s.rows.Close()
+	}
+	return nil
+}
+
+func (s *queryRowStream) Columns() []string { return append([]string(nil), s.columns...) }
+func (*queryRowStream) RowsAffected() int64 { return 0 }
+func (s *queryRowStream) DurationMs() int64 { return time.Since(s.started).Milliseconds() }
 
 func (d *Driver) columnMetadata(ctx context.Context, schema, table string) ([]db.Column, error) {
 	if d.db == nil {
