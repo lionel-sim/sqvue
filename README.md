@@ -12,6 +12,7 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 - Focus and navigate row data while preserving the selected row across pages and column visibility changes
 - Sort table and query results by the active column, with the selected order retained for filtering, paging, streams, and exports
 - Run ad-hoc SQL queries, recall profile-specific history, save named queries, and page through results
+- Switch among configured connection profiles without exposing credentials
 - Export visible result columns to CSV or JSON
 - Back up PostgreSQL, SQLite, and MySQL databases or the currently selected table
 - Use a discoverable keyboard-help modal and compact footer controls
@@ -192,6 +193,7 @@ does not include other tables referenced by foreign keys.
 | `E`              | Export visible columns as JSON |
 | `B`              | Back up the database or current table |
 | `s`              | Switch schema         |
+| `P`              | Switch configured connection profile |
 | `/`              | Filter table list     |
 | `:`              | Run an SQL query      |
 | `Ctrl+S` (in SQL prompt) | Save the current named query |
@@ -216,6 +218,10 @@ Press `S` in a focused row or SQL-result grid to sort the active column. Press
 it again for descending order, and a third time to restore the driver's normal
 table order or the original query order. The footer status shows the active
 sort; table filters, incremental streams, and CSV/JSON exports retain it.
+
+Press `P` from the table picker to choose a configured connection profile. sqvue
+only displays profile names, keeps the current connection when reconnection
+fails, and cancels outstanding loads and streams before loading the new schema.
 
 ## Testing
 

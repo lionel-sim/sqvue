@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -52,6 +53,47 @@ func TestNewAppliesThemeToInputsAndHelp(t *testing.T) {
 	}
 	if m.help.Styles.FullKey.GetForeground() != styles.Selected.GetForeground() {
 		t.Fatal("help keys did not receive the theme selected style")
+	}
+}
+
+func TestProfilePickerRendersNamesWithoutConnectionDetails(t *testing.T) {
+	m := testModel()
+	m.profileName = "local"
+	m.profiles = []ConnectionProfile{
+		{Name: "local", Config: db.ConnectConfig{User: "reader", Password: "super-secret", Database: "app"}, Timeout: time.Second},
+		{Name: "reporting", Config: db.ConnectConfig{User: "analyst", Password: "another-secret", Database: "warehouse"}, Timeout: time.Second},
+	}
+	m, _ = m.openProfilePicker()
+	if m.activeOverlay != overlayProfilePicker || m.profileCursor != 0 {
+		t.Fatalf("profile picker = overlay %v, cursor %d", m.activeOverlay, m.profileCursor)
+	}
+	view := Render(m)
+	if !strings.Contains(view, "local") || !strings.Contains(view, "reporting") || strings.Contains(view, "super-secret") || strings.Contains(view, "another-secret") {
+		t.Fatalf("profile picker rendered connection details: %q", view)
+	}
+}
+
+func TestProfileReconnectResetsBrowserOnlyAfterSuccessfulConnection(t *testing.T) {
+	previous := &fakeDriver{}
+	replacement := &fakeDriver{}
+	m := testModel()
+	m.client, m.profileName, m.reconnectID = previous, "local", 2
+	m.schemas = []db.Schema{{Name: "public"}}
+	m.tables = []db.Table{{Schema: "public", Name: "accounts"}}
+	m.rows = [][]string{{"1"}}
+	m.queryActive, m.focused = true, true
+	profile := ConnectionProfile{Name: "reporting", Timeout: time.Second}
+	m, cmd := m.handleProfileConnected(profileConnectedMsg{reconnectID: 2, profile: profile, client: replacement})
+	if cmd == nil || m.client != replacement || m.profileName != "reporting" || len(m.tables) != 0 || len(m.rows) != 0 || m.queryActive || m.focused {
+		t.Fatalf("successful reconnect did not reset browser state")
+	}
+
+	m = testModel()
+	m.client, m.profileName, m.reconnectID = previous, "local", 3
+	m.tables = []db.Table{{Schema: "public", Name: "accounts"}}
+	m, cmd = m.handleProfileConnected(profileConnectedMsg{reconnectID: 3, profile: profile, err: errors.New("offline")})
+	if cmd != nil || m.client != previous || m.profileName != "local" || len(m.tables) != 1 || m.lastErr == nil {
+		t.Fatalf("failed reconnect did not preserve the current connection")
 	}
 }
 

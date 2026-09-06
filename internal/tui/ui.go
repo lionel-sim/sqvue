@@ -71,6 +71,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.cellEditRefreshPending = true
 		return m.startLoadRows()
+	case profileConnectedMsg:
+		return m.handleProfileConnected(msg)
 	}
 	return m, nil
 }
@@ -163,6 +165,9 @@ func (m Model) handleOverlayKey(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
 		return m, cmd, true
 	case overlaySchemaPicker:
 		m, cmd := m.handleSchemaKey(msg)
+		return m, cmd, true
+	case overlayProfilePicker:
+		m, cmd := m.handleProfilePickerKey(msg)
 		return m, cmd, true
 	}
 	return m, nil, false

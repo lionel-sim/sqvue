@@ -19,6 +19,15 @@ type Options struct {
 	Theme           theme.Theme
 	QueryStore      *config.QueryStore
 	ProfileName     string
+	Profiles        []ConnectionProfile
+}
+
+// ConnectionProfile contains the connection data needed for an in-app switch.
+// Only Name is ever rendered by the TUI.
+type ConnectionProfile struct {
+	Name    string
+	Config  db.ConnectConfig
+	Timeout time.Duration
 }
 type viewMode int
 
@@ -41,6 +50,8 @@ type Model struct {
 	theme           theme.Theme
 	queryStore      *config.QueryStore
 	profileName     string
+	profiles        []ConnectionProfile
+	profileCursor   int
 }
 
 type browserState struct {
@@ -116,6 +127,7 @@ const (
 	overlaySavedQueries
 	overlayRenameQuery
 	overlayDeleteQueryConfirm
+	overlayProfilePicker
 )
 
 type overlayState struct {
@@ -140,10 +152,10 @@ type overlayState struct {
 }
 type viewportState struct{ width, height int }
 type loadState struct {
-	status, copyStatusKind                             string
-	loading                                            bool
-	lastErr                                            error
-	loadID, copyStatusID, exportID, backupID, updateID uint64
+	status, copyStatusKind                                          string
+	loading                                                         bool
+	lastErr                                                         error
+	loadID, copyStatusID, exportID, backupID, updateID, reconnectID uint64
 }
 
 func New(opts Options) Model {
@@ -179,7 +191,7 @@ func New(opts Options) Model {
 		resultState:  resultState{pageSize: maxPageSize, rowCounts: make(map[string]int64), browseRowCounts: make(map[string]int64), queryState: queryState{historyIndex: -1}},
 		overlayState: overlayState{filterInput: filter, browseFilterInput: browseFilter, sqlInput: sql, exportInput: export, backupInput: backup, cellEditInput: cellEdit, queryNameInput: queryName, help: helpModel},
 		loadState:    loadState{status: "loading tables...", loading: true}, keys: Default(), exportDirectory: opts.ExportDirectory, theme: styles,
-		queryStore: opts.QueryStore, profileName: opts.ProfileName,
+		queryStore: opts.QueryStore, profileName: opts.ProfileName, profiles: append([]ConnectionProfile(nil), opts.Profiles...),
 	}
 }
 
@@ -204,3 +216,13 @@ func applyHelpTheme(helpModel *help.Model, styles theme.Theme) {
 }
 
 func (m Model) Init() tea.Cmd { return loadSchemasCmd(m.client, m.timeout, m.loadID) }
+
+// Close releases the current database connection when the program exits.
+func (m Model) Close() error {
+	m.closeTableStream()
+	m.closeQueryStream()
+	if m.client != nil {
+		return m.client.Close()
+	}
+	return nil
+}

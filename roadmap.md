@@ -135,10 +135,10 @@ safer query execution, and richer relational navigation.
   - [ ] Add a compact table relationship view using existing foreign-key metadata
   - [ ] Navigate inbound and outbound relationships and open related rows with parameterized filters
   - [ ] Preserve terminal-safe rendering and add focused navigation tests
-- [ ] Switch connection profiles inside the TUI
-  - [ ] Present configured profiles in a picker without exposing credentials
-  - [ ] Reconnect safely, cancel stale loads and streams, and retain a clear connection status
-  - [ ] Document reconnection behavior and error recovery
+- [x] Switch connection profiles inside the TUI
+  - [x] Present configured profiles in a picker without exposing credentials
+  - [x] Reconnect safely, cancel stale loads and streams, and retain a clear connection status
+  - [x] Document reconnection behavior and error recovery
 - [ ] SQL editor quality of life
   - [ ] Support multi-line editing, query history navigation, and readable SQL error locations
   - [ ] Add optional formatting and `EXPLAIN`/query-plan views without silently executing mutations

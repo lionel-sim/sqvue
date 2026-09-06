@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -88,8 +89,6 @@ func run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("connect: %w", err)
 	}
-	defer client.Close()
-
 	m := tui.New(tui.Options{
 		Client:          client,
 		Timeout:         cfg.Timeout,
@@ -97,14 +96,39 @@ func run(cmd *cobra.Command, args []string) error {
 		Theme:           styles,
 		QueryStore:      queryStore,
 		ProfileName:     selectedProfileName(file),
+		Profiles:        tuiProfiles(file),
 	})
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
-	if _, err := p.Run(); err != nil {
+	finalModel, err := p.Run()
+	if typed, ok := finalModel.(tui.Model); ok {
+		_ = typed.Close()
+	} else {
+		_ = client.Close()
+	}
+	if err != nil {
 		log.Printf("tui error: %v", err)
 		return err
 	}
 	return nil
+}
+
+func tuiProfiles(file config.File) []tui.ConnectionProfile {
+	names := make([]string, 0, len(file.Connections))
+	for name := range file.Connections {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	profiles := make([]tui.ConnectionProfile, 0, len(names))
+	for _, name := range names {
+		profile := config.DefaultDBProfile().Merge(file.Connections[name])
+		profiles = append(profiles, tui.ConnectionProfile{
+			Name:    name,
+			Config:  db.ConnectConfig{DbType: db.DbType(profile.DBType), DSN: profile.ConnString, Host: profile.Host, Port: profile.Port, User: profile.User, Password: profile.Password, Database: profile.Database, SSLMode: profile.SSLMode},
+			Timeout: profile.Timeout,
+		})
+	}
+	return profiles
 }
 
 func selectedProfileName(file config.File) string {

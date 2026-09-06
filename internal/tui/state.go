@@ -114,6 +114,7 @@ func (m Model) helpKeyMap() Map {
 	keys.SaveQuery.SetEnabled(false)
 	keys.SavedQueries.SetEnabled(false)
 	keys.Schema.SetEnabled(!m.focused)
+	keys.Profiles.SetEnabled(!m.focused && len(m.profiles) > 0)
 	keys.Filter.SetEnabled(!m.focused)
 	keys.ShowDescriptions.SetEnabled(!m.focused)
 	keys.ShowValues.SetEnabled(!m.focused)

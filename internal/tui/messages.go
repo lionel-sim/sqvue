@@ -87,4 +87,10 @@ type (
 		column   string
 		err      error
 	}
+	profileConnectedMsg struct {
+		reconnectID uint64
+		profile     ConnectionProfile
+		client      db.Driver
+		err         error
+	}
 )

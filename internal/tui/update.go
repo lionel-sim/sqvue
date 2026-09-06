@@ -28,6 +28,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.beginJSONExport()
 	case key.Matches(msg, m.keys.Backup):
 		return m.beginBackup()
+	case key.Matches(msg, m.keys.Profiles) && !m.focused:
+		return m.openProfilePicker()
 	case m.focused:
 		return m.handleGridKey(msg)
 	default:
