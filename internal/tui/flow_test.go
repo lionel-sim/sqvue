@@ -273,6 +273,35 @@ func TestQueryResultsStreamForwardAndReopenForPreviousPage(t *testing.T) {
 	}
 }
 
+func TestMutatingQueryDoesNotUseReplayableStream(t *testing.T) {
+	client := &queryStreamFakeDriver{fakeDriver: fakeDriver{queryResult: db.Result{Columns: []string{"id"}, Rows: [][]any{{1}}}}}
+	m := New(Options{Client: client, Timeout: time.Second})
+	m.sqlInput.SetValue("insert into items default values returning id")
+
+	m, cmd := m.handleSQLKey(keyMsg("enter"))
+	m, _ = update(m, runCmd(cmd))
+	if len(client.queryRequests) != 0 || !m.queryActive || m.queryStreaming {
+		t.Fatalf("mutating query state = requests %#v, active %t, streaming %t", client.queryRequests, m.queryActive, m.queryStreaming)
+	}
+}
+
+func TestIsStreamableQuery(t *testing.T) {
+	for _, test := range []struct {
+		sql  string
+		want bool
+	}{
+		{sql: "select 1", want: true},
+		{sql: "/* comment */ -- another\n SELECT 1", want: true},
+		{sql: "with rows as (select 1) select * from rows", want: false},
+		{sql: "update items set name = 'x' returning id", want: false},
+		{sql: "explain analyze update items set name = 'x'", want: false},
+	} {
+		if got := isStreamableQuery(test.sql); got != test.want {
+			t.Errorf("isStreamableQuery(%q) = %t, want %t", test.sql, got, test.want)
+		}
+	}
+}
+
 func TestStaleTableStreamResultIsClosedAndCancelled(t *testing.T) {
 	m := testModel()
 	m.loadID = 2

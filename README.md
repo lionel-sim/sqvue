@@ -110,8 +110,9 @@ creating a backup.
 It defaults to sqvue's current working directory; relative paths are resolved
 from that directory. Prompts let you change the final path, and sqvue will not
 overwrite an existing file. Table exports include every row matching the active
-filters. For streamed SQL results, exports rerun the active query from the
-beginning so they include rows beyond the currently displayed page.
+filters. `SELECT` results stream incrementally; their exports rerun the active
+query from the beginning so they include rows beyond the currently displayed
+page. Other SQL results remain materialized to avoid replaying mutations.
 Press `e` for CSV or `E` for JSON. JSON exports are arrays of objects whose
 keys are the visible column names.
 

@@ -26,7 +26,7 @@ func (m Model) handleSQLKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		m.activeOverlay, m.loading, m.status = overlayNone, true, "running query..."
 		m.sqlInput.Blur()
 		requestID := m.nextRequestID()
-		if streamer, ok := m.client.(db.QueryRowStreamer); ok {
+		if streamer, ok := m.client.(db.QueryRowStreamer); ok && isStreamableQuery(sql) {
 			return m, openQueryRowStreamCmd(streamer, db.Query{SQL: sql}, m.pageSize, 0, requestID, true)
 		}
 		return m, runQueryCmd(m.client, sql, m.timeout, requestID)
@@ -34,6 +34,39 @@ func (m Model) handleSQLKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.sqlInput, cmd = m.sqlInput.Update(msg)
 	return m, cmd
+}
+
+// isStreamableQuery permits only SELECT statements because streamed results
+// are replayed for backward paging and full-result exports.
+func isStreamableQuery(sql string) bool {
+	remaining := strings.TrimSpace(sql)
+	for {
+		switch {
+		case strings.HasPrefix(remaining, "--"):
+			if end := strings.IndexByte(remaining, '\n'); end >= 0 {
+				remaining = strings.TrimSpace(remaining[end+1:])
+			} else {
+				return false
+			}
+		case strings.HasPrefix(remaining, "/*"):
+			end := strings.Index(remaining[2:], "*/")
+			if end < 0 {
+				return false
+			}
+			remaining = strings.TrimSpace(remaining[end+4:])
+		default:
+			return strings.EqualFold(firstSQLKeyword(remaining), "select")
+		}
+	}
+}
+
+func firstSQLKeyword(sql string) string {
+	for i, r := range sql {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')) {
+			return sql[:i]
+		}
+	}
+	return sql
 }
 func (m Model) handleFilterKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	if msg.String() == "esc" || key.Matches(msg, m.keys.Confirm) {
