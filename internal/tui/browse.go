@@ -84,6 +84,13 @@ func (m Model) handleTableStreamRowsLoaded(msg tableStreamRowsLoadedMsg) (Model,
 	if msg.stream != nil {
 		m.tableStream = tableStreamState{stream: msg.stream, cancel: msg.cancel, key: m.browseStreamKeyForCurrentTable(), nextPage: m.page + 1}
 	}
+	if msg.rowCount != nil {
+		if msg.browseKey != "" {
+			m.browseRowCounts[msg.browseKey] = *msg.rowCount
+		} else if t := m.currentTable(); t != nil {
+			m.rowCounts[t.String()] = *msg.rowCount
+		}
+	}
 	if len(msg.rows) == 0 && msg.exhausted && m.page > 0 {
 		m.page--
 		m.hasNextPage = false

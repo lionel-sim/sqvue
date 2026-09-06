@@ -178,6 +178,9 @@ func TestTableBrowsingStreamsForwardAndReopensForPreviousPage(t *testing.T) {
 	if got := m.rows; len(got) != 2 || got[0][0] != "1" || got[1][0] != "2" || !m.hasNextPage {
 		t.Fatalf("first streamed page = %#v, hasNext %t", got, m.hasNextPage)
 	}
+	if _, ok := m.rowCounts["public.items"]; !ok {
+		t.Fatal("first streamed page did not load the table row count")
+	}
 
 	m, cmd = m.changePage(+1)
 	m, _ = update(m, runCmd(cmd))

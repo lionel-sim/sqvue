@@ -24,6 +24,8 @@ type (
 		columns   []db.Column
 		rows      [][]string
 		exhausted bool
+		rowCount  *int64
+		browseKey string
 		stream    db.RowStream
 		cancel    func()
 		err       error
