@@ -67,6 +67,22 @@ func TestInsertRowStatementUsesParametersAndTypedValues(t *testing.T) {
 	}
 }
 
+func TestDeleteRowStatementUsesParametersAndPrimaryKey(t *testing.T) {
+	query, args, err := mysqlDeleteRowStatement(db.RowDeleteRequest{
+		Table:      db.Table{Schema: "app", Name: "order items"},
+		PrimaryKey: []db.PrimaryKeyValue{{Column: "tenant_id", Value: "north"}, {Column: "id", Value: "7"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "delete from `app`.`order items` where `tenant_id` = ? and `id` = ?"; query != want {
+		t.Fatalf("query = %q, want %q", query, want)
+	}
+	if len(args) != 2 || args[0] != "north" || args[1] != "7" {
+		t.Fatalf("args = %#v", args)
+	}
+}
+
 func TestRowOrderUsesPrimaryKeyColumns(t *testing.T) {
 	columns := []db.Column{{Name: "tenant_id", IsPrimary: true}, {Name: "id", IsPrimary: true}, {Name: "name"}}
 	if got := rowOrder(columns); got != "`tenant_id`, `id`" {

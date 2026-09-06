@@ -28,6 +28,7 @@ var _ db.QueryRowStreamer = (*Driver)(nil)
 var _ db.QuerySorter = (*Driver)(nil)
 var _ db.CellUpdater = (*Driver)(nil)
 var _ db.RowInserter = (*Driver)(nil)
+var _ db.RowDeleter = (*Driver)(nil)
 
 func New() *Driver                  { return &Driver{} }
 func (d *Driver) DbType() db.DbType { return db.DbTypeSQLite }
@@ -314,6 +315,43 @@ func sqliteInsertRowStatement(request db.RowInsertRequest) (string, []any, error
 		}
 	}
 	query := "insert into " + qualifiedTable + " (" + strings.Join(columns, ", ") + ") values (" + strings.Join(values, ", ") + ")"
+	return query, args, nil
+}
+
+// DeleteRow deletes exactly one row identified by its primary key.
+func (d *Driver) DeleteRow(ctx context.Context, request db.RowDeleteRequest) error {
+	if d.db == nil {
+		return fmt.Errorf("not connected")
+	}
+	query, args, err := sqliteDeleteRowStatement(request)
+	if err != nil {
+		return err
+	}
+	result, err := d.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected != 1 {
+		return fmt.Errorf("row delete affected %d rows, want 1", affected)
+	}
+	return nil
+}
+
+func sqliteDeleteRowStatement(request db.RowDeleteRequest) (string, []any, error) {
+	if err := request.Validate(); err != nil {
+		return "", nil, err
+	}
+	where := make([]string, 0, len(request.PrimaryKey))
+	args := make([]any, 0, len(request.PrimaryKey))
+	for _, key := range request.PrimaryKey {
+		where = append(where, quoteIdent(key.Column)+" = ?")
+		args = append(args, key.Value)
+	}
+	query := "delete from " + qualifiedName(request.Table.Schema, request.Table.Name) + " where " + strings.Join(where, " and ")
 	return query, args, nil
 }
 

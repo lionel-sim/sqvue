@@ -28,6 +28,7 @@ var _ db.QueryRowStreamer = (*Driver)(nil)
 var _ db.QuerySorter = (*Driver)(nil)
 var _ db.CellUpdater = (*Driver)(nil)
 var _ db.RowInserter = (*Driver)(nil)
+var _ db.RowDeleter = (*Driver)(nil)
 
 const (
 	maxQueryRows  = 1_000
@@ -496,6 +497,39 @@ func postgresInsertRowStatement(request db.RowInsertRequest) (string, []any, err
 		}
 	}
 	query := "insert into " + qualifiedTable + " (" + strings.Join(columns, ", ") + ") values (" + strings.Join(values, ", ") + ")"
+	return query, args, nil
+}
+
+// DeleteRow deletes exactly one row identified by its primary key.
+func (d *Driver) DeleteRow(ctx context.Context, request db.RowDeleteRequest) error {
+	if d.pool == nil {
+		return fmt.Errorf("not connected")
+	}
+	query, args, err := postgresDeleteRowStatement(request)
+	if err != nil {
+		return err
+	}
+	commandTag, err := d.pool.Exec(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	if commandTag.RowsAffected() != 1 {
+		return fmt.Errorf("row delete affected %d rows, want 1", commandTag.RowsAffected())
+	}
+	return nil
+}
+
+func postgresDeleteRowStatement(request db.RowDeleteRequest) (string, []any, error) {
+	if err := request.Validate(); err != nil {
+		return "", nil, err
+	}
+	where := make([]string, 0, len(request.PrimaryKey))
+	args := make([]any, 0, len(request.PrimaryKey))
+	for index, key := range request.PrimaryKey {
+		where = append(where, pgx.Identifier{key.Column}.Sanitize()+fmt.Sprintf(" = $%d", index+1))
+		args = append(args, key.Value)
+	}
+	query := "delete from " + pgx.Identifier{request.Table.Schema, request.Table.Name}.Sanitize() + " where " + strings.Join(where, " and ")
 	return query, args, nil
 }
 

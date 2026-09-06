@@ -150,6 +150,22 @@ func TestInsertRowStatementUsesParametersAndTypedValues(t *testing.T) {
 	}
 }
 
+func TestDeleteRowStatementUsesParametersAndPrimaryKey(t *testing.T) {
+	query, args, err := postgresDeleteRowStatement(db.RowDeleteRequest{
+		Table:      db.Table{Schema: "public", Name: "order items"},
+		PrimaryKey: []db.PrimaryKeyValue{{Column: "tenant_id", Value: "north"}, {Column: "id", Value: "7"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `delete from "public"."order items" where "tenant_id" = $1 and "id" = $2`; query != want {
+		t.Fatalf("query = %q, want %q", query, want)
+	}
+	if len(args) != 2 || args[0] != "north" || args[1] != "7" {
+		t.Fatalf("args = %#v", args)
+	}
+}
+
 func TestBrowseWhereUsesParameterizedOperators(t *testing.T) {
 	where, args, err := postgresBrowseWhere([]db.RowFilter{
 		{Column: "name", Operator: db.FilterEqual, Value: "Ada"},

@@ -120,6 +120,13 @@ func assertSQLiteQueryAndUpdate(t *testing.T, ctx context.Context, d *Driver, ta
 	if err != nil || len(result.Rows) != 1 || result.Rows[0][0] != "art" || result.Rows[0][1] != "none" || result.Rows[0][2] != "null" {
 		t.Fatalf("insert = %#v, %v", result, err)
 	}
+	if err := d.DeleteRow(ctx, db.RowDeleteRequest{Table: table, PrimaryKey: []db.PrimaryKeyValue{{Column: "id", Value: "3"}}}); err != nil {
+		t.Fatalf("DeleteRow() error = %v", err)
+	}
+	result, err = d.Query(ctx, db.Query{SQL: "select count(*) from categories where id = 3"})
+	if err != nil || result.Rows[0][0] != int64(0) {
+		t.Fatalf("delete = %#v, %v", result, err)
+	}
 }
 
 func TestSortedQueryQuotesSQLiteIdentifiers(t *testing.T) {
@@ -214,6 +221,22 @@ func TestInsertRowStatementUsesParametersAndTypedValues(t *testing.T) {
 	query, args, err = sqliteInsertRowStatement(db.RowInsertRequest{Table: request.Table})
 	if err != nil || query != `insert into "main"."order items" default values` || len(args) != 0 {
 		t.Fatalf("default insert = %q, %#v, %v", query, args, err)
+	}
+}
+
+func TestDeleteRowStatementUsesParametersAndPrimaryKey(t *testing.T) {
+	query, args, err := sqliteDeleteRowStatement(db.RowDeleteRequest{
+		Table:      db.Table{Schema: "main", Name: "order items"},
+		PrimaryKey: []db.PrimaryKeyValue{{Column: "tenant_id", Value: "north"}, {Column: "id", Value: "7"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `delete from "main"."order items" where "tenant_id" = ? and "id" = ?`; query != want {
+		t.Fatalf("query = %q, want %q", query, want)
+	}
+	if len(args) != 2 || args[0] != "north" || args[1] != "7" {
+		t.Fatalf("args = %#v", args)
 	}
 }
 
