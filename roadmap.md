@@ -147,17 +147,17 @@ safer query execution, and richer relational navigation.
 
 ## Phase 5 - INSERT / DELETE capabilities
 
-- [ ] Insert a single row through the table grid
-  - [ ] Bind `a` in a focused base-table grid to open a terminal-safe new-row form; keep views and SQL-result grids read-only
-  - [ ] List columns with their data types, required/default/generated status, and foreign-key targets
-  - [ ] Give every editable field an explicit state: use database default (omit the column), set `NULL`, or enter a literal value; never infer `NULL` from typed text
-  - [ ] Offer a `NOW` field action only for date/time-compatible columns; represent it as a typed database-current-timestamp value, not user-supplied SQL, and render the appropriate driver expression
-  - [ ] Automatically omit generated/read-only columns and add the driver metadata needed to identify identity, auto-increment, and computed columns
-  - [ ] Require an insert confirmation that summarizes the table and every supplied value/state before writing
-  - [ ] Define a driver-neutral single-row insert contract, then implement parameterized and dialect-safe PostgreSQL, SQLite, and MySQL inserts, including rows that use only defaults
-  - [ ] Refresh the current browse view after success without losing focus, filters, sort, pagination, or visible-column choices; clearly report when filters hide the inserted row
-  - [ ] Surface database validation, constraint, cancellation, and driver errors in the form without discarding entered values
-  - [ ] Add focused driver and TUI tests, update keyboard help and README workflow documentation, and preserve terminal-safe rendering
+- [x] Insert a single row through the table grid
+  - [x] Bind `a` in a focused base-table grid to open a terminal-safe new-row form; keep views and SQL-result grids read-only
+  - [x] List columns with their data types, required/default/generated status, and foreign-key targets
+  - [x] Give every editable field an explicit state: use database default (omit the column), set `NULL`, or enter a literal value; never infer `NULL` from typed text
+  - [x] Offer a `NOW` field action only for date/time-compatible columns; represent it as a typed database-current-timestamp value, not user-supplied SQL, and render the appropriate driver expression
+  - [x] Automatically omit generated/read-only columns and add the driver metadata needed to identify identity, auto-increment, and computed columns
+  - [x] Require an insert confirmation that summarizes the table and every supplied value/state before writing
+  - [x] Define a driver-neutral single-row insert contract, then implement parameterized and dialect-safe PostgreSQL, SQLite, and MySQL inserts, including rows that use only defaults
+  - [x] Refresh the current browse view after success without losing focus, filters, sort, pagination, or visible-column choices; clearly report when filters hide the inserted row
+  - [x] Surface database validation, constraint, cancellation, and driver errors in the form without discarding entered values
+  - [x] Add focused driver and TUI tests, update keyboard help and README workflow documentation, and preserve terminal-safe rendering
 
 ## Phase 6 — Multi-DB / future
 

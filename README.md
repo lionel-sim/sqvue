@@ -11,6 +11,7 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 - Page through row data with total-row counts, type-aware value rendering, and incremental loading for large results
 - Focus and navigate row data while preserving the selected row across pages and column visibility changes
 - Sort table and query results by the active column, with the selected order retained for filtering, paging, streams, and exports
+- Insert one row at a time through a guided table form, using database defaults, explicit `NULL`, literal values, or a database-side current timestamp
 - Run ad-hoc SQL queries, recall profile-specific history, save named queries, and page through results
 - Switch among configured connection profiles without exposing credentials
 - Export visible result columns to CSV or JSON
@@ -213,6 +214,7 @@ does not include other tables referenced by foreign keys.
 | `Ctrl+N` / `Ctrl+P` (in SQL editor) | Next / previous query history entry |
 | `↓` / `↑` (in SQL editor) | Move cursor to the next / previous editor line |
 | `Enter`          | Focus displayed rows, or show selected-row details (focused grid) |
+| `a` (focused table grid) | Add a row |
 | `?`              | Show keyboard help    |
 | `r`              | Refresh the current table view, or rerun active SQL results |
 | `Esc`            | Return from rows to table picker, or close an overlay |
@@ -228,6 +230,16 @@ only for tables with declared primary keys (including composite keys), and SQL
 result grids stay read-only. Review the old and new values before confirming;
 enter `NULL` to set a database `NULL` value. sqvue refreshes the current page
 after a successful update.
+
+Press `a` in a focused base-table grid to add one row. The form starts each
+editable field at **use database default**; generated columns are not written.
+Use `j`/`k` to select a field, Enter to enter a literal value, `d` to restore
+the database default, `n` to set a database `NULL`, or `t` to set `NOW` for a
+date/time field. A typed `NULL` remains the literal text `NULL`. `Ctrl+R`
+reviews the complete row, and Enter on the confirmation screen inserts it.
+Database validation errors return to the form without discarding values. After
+success, sqvue refreshes the current view and warns if active filters may hide
+the new row.
 
 Press `S` in a focused row or SQL-result grid to sort the active column. Press
 it again for descending order, and a third time to restore the driver's normal
