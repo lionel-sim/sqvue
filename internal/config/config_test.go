@@ -218,7 +218,8 @@ func TestQueryStorePersistsPerProfileHistoryAndQueries(t *testing.T) {
 }
 
 func TestQueryStorePathUsesConfigDirectory(t *testing.T) {
-	if got := QueryStorePath("/tmp/sqvue/config.toml"); got != "/tmp/sqvue/queries.toml" {
-		t.Fatalf("QueryStorePath() = %q", got)
+	configPath := filepath.Join(t.TempDir(), "sqvue", "config.toml")
+	if got, want := QueryStorePath(configPath), filepath.Join(filepath.Dir(configPath), "queries.toml"); got != want {
+		t.Fatalf("QueryStorePath() = %q, want %q", got, want)
 	}
 }
