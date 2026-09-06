@@ -43,20 +43,27 @@ func (m Model) handleSQLKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 }
 
 func (m Model) runSQL(sql string) (Model, tea.Cmd) {
+	return m.rerunSQL(sql, true, false)
+}
+
+func (m Model) rerunSQL(sql string, saveHistory, preserveEditor bool) (Model, tea.Cmd) {
 	sql = strings.TrimSpace(sql)
 	if sql == "" {
 		return m, nil
 	}
 	m.closeTableStream()
 	m.closeQueryStream()
-	if m.queryStore != nil {
+	if saveHistory && m.queryStore != nil {
 		if err := m.queryStore.AddHistory(m.profileName, sql); err != nil {
 			m.status, m.lastErr = "save SQL history failed: "+err.Error(), err
 			return m, nil
 		}
 	}
 	m.historyIndex = -1
-	m.querySort, m.querySourceSQL, m.queryPreserveEditor = db.SortSpec{}, sql, false
+	if !preserveEditor {
+		m.querySort = db.SortSpec{}
+	}
+	m.querySourceSQL, m.queryPreserveEditor = sql, preserveEditor
 	m.activeOverlay, m.loading, m.status = overlayNone, true, "running query..."
 	m.sqlInput.Blur()
 	requestID := m.nextRequestID()
@@ -156,6 +163,15 @@ func (m Model) showValues() (Model, tea.Cmd) {
 	}
 	return m, nil
 }
+
+func (m Model) refreshCurrentView() (Model, tea.Cmd) {
+	if m.queryActive && m.querySQL != "" {
+		return m.rerunSQL(m.querySQL, false, true)
+	}
+	m.closeTableStream()
+	m.loading, m.status = true, "reloading tables..."
+	return m, loadTablesCmd(m.client, m.currentSchema(), m.timeout, m.nextRequestID())
+}
 func (m Model) moveSelection(delta int) (Model, tea.Cmd) {
 	target := m.selected + delta
 	if target < 0 || target >= len(m.tables) {
@@ -214,16 +230,37 @@ func (m Model) handleTablesLoaded(msg tablesLoadedMsg) (Model, tea.Cmd) {
 	if msg.err != nil {
 		return m.fail("failed to load tables", msg.err)
 	}
+	previous, hasPrevious := m.selectedTable()
 	m.allTables, m.lastErr = msg.tables, nil
-	m.browseSort = db.SortSpec{}
 	m.rowCounts, m.browseRowCounts = make(map[string]int64), make(map[string]int64)
-	m.applyFilter()
+	m.applyFilterPreservingState()
 	m.status = fmt.Sprintf("found %d tables", len(m.tables))
+	if hasPrevious && m.selectTable(previous) {
+		return m.startLoad()
+	}
 	if len(m.tables) > 0 {
 		m.selected, m.scroll, m.page, m.rowCursor, m.cellCursor, m.mode = 0, 0, 0, 0, 0, modeValues
 		return m.startLoadRows()
 	}
 	return m, nil
+}
+
+func (m Model) selectedTable() (db.Table, bool) {
+	table := m.currentTable()
+	if table == nil {
+		return db.Table{}, false
+	}
+	return *table, true
+}
+
+func (m *Model) selectTable(table db.Table) bool {
+	for index, candidate := range m.tables {
+		if candidate.Schema == table.Schema && candidate.Name == table.Name {
+			m.selected, m.scroll = index, keepInView(index, m.scroll, tableListHeight, len(m.tables))
+			return true
+		}
+	}
+	return false
 }
 func (m Model) handleSchemasLoaded(msg schemasLoadedMsg) (Model, tea.Cmd) {
 	if !m.isCurrent(msg.requestID) {
@@ -247,6 +284,17 @@ func (m Model) handleSchemasLoaded(msg schemasLoadedMsg) (Model, tea.Cmd) {
 	return m, loadTablesCmd(m.client, m.currentSchema(), m.timeout, m.nextRequestID())
 }
 func (m *Model) applyFilter() {
+	m.applyFilterResults()
+	m.selected, m.scroll = 0, 0
+	m.resetBrowseContext()
+	m.browseSort = db.SortSpec{}
+}
+
+func (m *Model) applyFilterPreservingState() {
+	m.applyFilterResults()
+}
+
+func (m *Model) applyFilterResults() {
 	needle := strings.ToLower(strings.TrimSpace(m.filterInput.Value()))
 	m.tables = m.tables[:0]
 	for _, table := range m.allTables {
@@ -254,9 +302,6 @@ func (m *Model) applyFilter() {
 			m.tables = append(m.tables, table)
 		}
 	}
-	m.selected, m.scroll = 0, 0
-	m.resetBrowseContext()
-	m.browseSort = db.SortSpec{}
 }
 func (m Model) currentSchema() string {
 	if m.schema < 0 || m.schema >= len(m.schemas) {

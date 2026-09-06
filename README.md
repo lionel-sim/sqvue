@@ -212,7 +212,7 @@ does not include other tables referenced by foreign keys.
 | `j` / `k` or `↓` / `↑` (in SQL prompt) | Next / previous query history entry |
 | `Enter`          | Focus displayed rows, or show selected-row details (focused grid) |
 | `?`              | Show keyboard help    |
-| `r`              | Refresh tables        |
+| `r`              | Refresh the current table view, or rerun active SQL results |
 | `Esc`            | Return from rows to table picker, or close an overlay |
 | `q` / `Ctrl+C`   | Quit                  |
 

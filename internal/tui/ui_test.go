@@ -22,6 +22,35 @@ func testModel() Model {
 	return m
 }
 
+func TestTableRefreshKeepsSelectedTableAndBrowseState(t *testing.T) {
+	m := New(Options{Client: &fakeDriver{}, Timeout: time.Second})
+	m.tables = []db.Table{{Schema: "public", Name: "accounts"}, {Schema: "public", Name: "orders"}}
+	m.allTables = append([]db.Table(nil), m.tables...)
+	m.selected, m.page, m.rowCursor, m.cellCursor = 1, 2, 3, 1
+	m.browseSort = db.SortSpec{Column: "id", Descending: true}
+	m.visibleColumnKey, m.visibleColumns = "public.orders", []bool{true, false}
+	m.loadID = 1
+
+	got, _ := m.handleTablesLoaded(tablesLoadedMsg{requestID: 1, tables: []db.Table{{Schema: "public", Name: "orders"}, {Schema: "public", Name: "accounts"}}})
+	if got.currentTable().Name != "orders" || got.page != 2 || got.rowCursor != 3 || got.cellCursor != 1 {
+		t.Fatalf("refresh state = table %#v, page %d, row %d, cell %d", got.currentTable(), got.page, got.rowCursor, got.cellCursor)
+	}
+	if got.browseSort != (db.SortSpec{Column: "id", Descending: true}) || got.visibleColumnKey != "public.orders" {
+		t.Fatalf("refresh lost browse state: sort %#v, columns %q", got.browseSort, got.visibleColumnKey)
+	}
+}
+
+func TestSQLRefreshRerunsActiveQueryWithoutClearingEditor(t *testing.T) {
+	m := New(Options{Client: &fakeDriver{}, Timeout: time.Second})
+	m.queryActive, m.querySQL = true, "select * from accounts"
+	m.querySort = db.SortSpec{Column: "name", Descending: true}
+	m.sqlInput.SetValue("select * from accounts")
+	got, cmd := m.refreshCurrentView()
+	if cmd == nil || !got.loading || !got.queryPreserveEditor || got.querySourceSQL != got.querySQL || got.querySort != m.querySort {
+		t.Fatalf("SQL refresh state = loading %t, preserve %t, source %q, sort %#v", got.loading, got.queryPreserveEditor, got.querySourceSQL, got.querySort)
+	}
+}
+
 func TestNewUsesProvidedTheme(t *testing.T) {
 	styles, err := theme.ByName("light")
 	if err != nil {

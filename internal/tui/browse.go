@@ -219,16 +219,17 @@ func (m Model) handleQueryLoaded(msg queryLoadedMsg) (Model, tea.Cmd) {
 	}
 	m.closeQueryStream()
 	m.queryActive, m.queryStreaming, m.lastErr, m.mode, m.page, m.rowCursor, m.cellCursor = true, false, nil, modeValues, 0, 0, 0
-	m.querySQL, m.querySourceSQL, m.querySort = msg.sql, msg.sql, db.SortSpec{}
+	if !m.queryPreserveEditor {
+		m.querySort = db.SortSpec{}
+	}
+	m.querySQL, m.querySourceSQL = msg.sql, msg.sql
 	m.queryDuration, m.queryAffected, m.queryTruncated = msg.result.DurationMs, msg.result.RowsAffected, msg.result.Truncated
+	previousColumns, previousVisible := m.columns, m.visibleColumns
 	m.columns = make([]db.Column, len(msg.result.Columns))
 	for i, name := range msg.result.Columns {
 		m.columns[i] = db.Column{Name: name}
 	}
-	m.visibleColumns, m.visibleColumnKey = make([]bool, len(m.columns)), "query"
-	for i := range m.visibleColumns {
-		m.visibleColumns[i] = true
-	}
+	m.visibleColumns, m.visibleColumnKey = refreshedQueryColumns(previousColumns, previousVisible, m.columns, m.queryPreserveEditor)
 	m.queryRows = make([][]string, len(msg.result.Rows))
 	for i, row := range msg.result.Rows {
 		m.queryRows[i] = make([]string, len(row))
@@ -237,12 +238,35 @@ func (m Model) handleQueryLoaded(msg queryLoadedMsg) (Model, tea.Cmd) {
 		}
 	}
 	m.queryBaseRows = append([][]string(nil), m.queryRows...)
+	if m.queryPreserveEditor {
+		sortQueryRows(m.queryRows, m.columns, m.querySort)
+	}
 	m.setQueryPage()
 	if !m.queryPreserveEditor {
 		m.sqlInput.SetValue("")
 	}
 	m.queryPreserveEditor = false
 	return m, nil
+}
+
+func refreshedQueryColumns(previous []db.Column, visible []bool, current []db.Column, preserve bool) ([]bool, string) {
+	if preserve && len(previous) == len(current) && len(visible) == len(current) {
+		matches := true
+		for i := range current {
+			if previous[i].Name != current[i].Name {
+				matches = false
+				break
+			}
+		}
+		if matches {
+			return append([]bool(nil), visible...), "query"
+		}
+	}
+	visible = make([]bool, len(current))
+	for i := range visible {
+		visible[i] = true
+	}
+	return visible, "query"
 }
 
 func (m Model) handleQueryStreamRowsLoaded(msg queryStreamRowsLoadedMsg) (Model, tea.Cmd) {
@@ -254,16 +278,14 @@ func (m Model) handleQueryStreamRowsLoaded(msg queryStreamRowsLoadedMsg) (Model,
 		return m.failQueryStreamMessage(msg)
 	}
 	if msg.initial {
+		previousColumns, previousVisible := m.columns, m.visibleColumns
 		m.queryActive, m.queryStreaming, m.lastErr, m.mode, m.page, m.rowCursor, m.cellCursor = true, true, nil, modeValues, 0, 0, 0
 		m.querySQL, m.queryRows, m.queryBaseRows, m.queryTruncated = msg.sql, nil, nil, false
 		m.columns = make([]db.Column, len(msg.columns))
 		for i, name := range msg.columns {
 			m.columns[i] = db.Column{Name: name}
 		}
-		m.visibleColumns, m.visibleColumnKey = make([]bool, len(m.columns)), "query"
-		for i := range m.visibleColumns {
-			m.visibleColumns[i] = true
-		}
+		m.visibleColumns, m.visibleColumnKey = refreshedQueryColumns(previousColumns, previousVisible, m.columns, m.queryPreserveEditor)
 	}
 	if msg.stream != nil {
 		m.queryStream, m.queryStreamCancel, m.queryStreamNextPage = msg.stream, msg.cancel, m.page+1

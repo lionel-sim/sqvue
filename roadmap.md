@@ -143,6 +143,7 @@ safer query execution, and richer relational navigation.
   - [x] Support multi-line editing, query history navigation, and readable SQL error locations
   - [x] Add optional formatting and `EXPLAIN`/query-plan views without silently executing mutations
   - [x] Keep editor key bindings discoverable in the help modal and README
+  - [x] Refresh the active table or SQL result without discarding its browsing state
 
 ## Phase 5 — Multi-DB / future
 

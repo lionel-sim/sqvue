@@ -41,9 +41,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 func (m Model) handleBrowserKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, m.keys.Refresh):
-		m.loading, m.status = true, "reloading tables..."
-		requestID := m.nextRequestID()
-		return m, loadTablesCmd(m.client, m.currentSchema(), m.timeout, requestID)
+		return m.refreshCurrentView()
 	case key.Matches(msg, m.keys.Schema):
 		if len(m.schemas) > 0 {
 			m.activeOverlay, m.schemaCursor = overlaySchemaPicker, m.schema
