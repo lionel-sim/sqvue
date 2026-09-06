@@ -193,12 +193,12 @@ func Default() Map {
 			key.WithHelp("Ctrl+o", "saved queries (editor)"),
 		),
 		HistoryPrev: key.NewBinding(
-			key.WithKeys("ctrl+up"),
-			key.WithHelp("Ctrl+↑", "previous SQL history"),
+			key.WithKeys("ctrl+p"),
+			key.WithHelp("Ctrl+p", "previous SQL history"),
 		),
 		HistoryNext: key.NewBinding(
-			key.WithKeys("ctrl+down"),
-			key.WithHelp("Ctrl+↓", "next SQL history"),
+			key.WithKeys("ctrl+n"),
+			key.WithHelp("Ctrl+n", "next SQL history"),
 		),
 		Toggle: key.NewBinding(
 			key.WithKeys(" "),
