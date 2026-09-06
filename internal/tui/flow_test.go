@@ -201,6 +201,28 @@ func TestTableBrowsingStreamsForwardAndReopensForPreviousPage(t *testing.T) {
 	}
 }
 
+func TestStreamedExactPageBoundaryHasNoPhantomNextPage(t *testing.T) {
+	client := &streamFakeDriver{fakeDriver: fakeDriver{
+		cols: []db.Column{{Name: "id"}},
+		rows: [][]string{{"1"}, {"2"}, {"3"}, {"4"}},
+	}}
+	m := New(Options{Client: client, Timeout: time.Second})
+	m.tables = []db.Table{{Schema: "public", Name: "items"}}
+	m.pageSize = 2
+	m, cmd := m.startLoadRows()
+	m, _ = update(m, runCmd(cmd))
+	m, cmd = m.changePage(+1)
+	m, _ = update(m, runCmd(cmd))
+	if m.hasNextPage {
+		t.Fatal("last exact-size page reported a next page")
+	}
+	page := m.page
+	m, cmd = m.changePage(+1)
+	if cmd != nil || m.page != page {
+		t.Fatalf("phantom next page changed state: command %t, page %d", cmd != nil, m.page)
+	}
+}
+
 func TestTableStreamResetsForBrowseContextAndResize(t *testing.T) {
 	client := &streamFakeDriver{fakeDriver: fakeDriver{
 		cols: []db.Column{{Name: "id"}},

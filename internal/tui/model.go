@@ -60,6 +60,7 @@ type tableStreamState struct {
 	cancel   func()
 	key      string
 	nextPage int
+	pending  [][]string
 }
 type gridState struct {
 	focused                                             bool
@@ -75,6 +76,7 @@ type queryState struct {
 	queryStream                  db.QueryRowStream
 	queryStreamCancel            func()
 	queryStreamNextPage          int
+	queryStreamPending           [][]string
 }
 type overlayMode uint8
 

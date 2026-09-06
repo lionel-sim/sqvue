@@ -107,7 +107,7 @@ func (m Model) handleTableStreamRowsLoaded(msg tableStreamRowsLoadedMsg) (Model,
 	if t := m.currentTable(); t != nil {
 		m.ensureVisibleColumns(t.String())
 	}
-	m.rows, m.hasNextPage = msg.rows, !msg.exhausted
+	m.rows, m.tableStream.pending, m.hasNextPage = splitStreamPage(msg.rows, m.pageSize, msg.exhausted)
 	if m.rowCursor >= len(m.rows) {
 		m.rowCursor = max(0, len(m.rows)-1)
 	}
@@ -235,7 +235,7 @@ func (m Model) handleQueryStreamRowsLoaded(msg queryStreamRowsLoadedMsg) (Model,
 		m.setQueryPage()
 		return m, nil
 	}
-	m.rows, m.hasNextPage = msg.rows, !msg.exhausted
+	m.rows, m.queryStreamPending, m.hasNextPage = splitStreamPage(msg.rows, m.pageSize, msg.exhausted)
 	m.queryDuration, m.queryAffected = msg.duration, msg.affected
 	if m.rowCursor >= len(m.rows) {
 		m.rowCursor = max(0, len(m.rows)-1)
@@ -357,7 +357,7 @@ func (m *Model) closeQueryStream() {
 	if m.queryStream != nil {
 		_ = m.queryStream.Close()
 	}
-	m.queryStream, m.queryStreamCancel, m.queryStreamNextPage = nil, nil, 0
+	m.queryStream, m.queryStreamCancel, m.queryStreamNextPage, m.queryStreamPending = nil, nil, 0, nil
 }
 
 func (m Model) startLoadQueryRows() (Model, tea.Cmd) {
@@ -369,12 +369,19 @@ func (m Model) startLoadQueryRows() (Model, tea.Cmd) {
 	m.status = fmt.Sprintf("loading query page %d...", m.page+1)
 	requestID := m.nextRequestID()
 	if m.queryStream != nil && m.page == m.queryStreamNextPage {
-		return m, readQueryRowStreamCmd(m.queryStream, m.pageSize, requestID)
+		return m, readQueryRowStreamCmd(m.queryStream, m.pageSize, m.queryStreamPending, requestID)
 	}
 	m.closeQueryStream()
 	ctx, cancel := context.WithTimeout(context.Background(), m.timeout)
 	m.queryStreamCancel = cancel
 	return m, openQueryRowStreamCmd(ctx, cancel, streamer, db.Query{SQL: m.querySQL}, m.pageSize, m.page*m.pageSize, requestID, false)
+}
+
+func splitStreamPage(rows [][]string, pageSize int, exhausted bool) ([][]string, [][]string, bool) {
+	if len(rows) <= pageSize {
+		return rows, nil, !exhausted
+	}
+	return rows[:pageSize], rows[pageSize:], true
 }
 
 func (m Model) loadCurrentRowCount(t db.Table) tea.Cmd {
