@@ -31,6 +31,7 @@ func (m Model) handleColumnsKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 			return m, nil
 		}
 		m.visibleColumns[m.columnCursor] = !m.visibleColumns[m.columnCursor]
+		m.saveVisibleColumns()
 	}
 	m.columnScroll = keepInView(m.columnCursor, m.columnScroll, m.columnPickerHeight(), len(m.columns))
 	return m, nil
@@ -40,10 +41,29 @@ func (m *Model) ensureVisibleColumns(key string) {
 	if m.visibleColumnKey == key && len(m.visibleColumns) == len(m.columns) {
 		return
 	}
-	m.visibleColumnKey, m.visibleColumns = key, make([]bool, len(m.columns))
+	m.saveVisibleColumns()
+	m.visibleColumnKey = key
+	if key != "query" {
+		if saved := m.visibleColumnsByTable[key]; len(saved) == len(m.columns) {
+			m.visibleColumns = append([]bool(nil), saved...)
+			return
+		}
+	}
+	m.visibleColumns = make([]bool, len(m.columns))
 	for i := range m.visibleColumns {
 		m.visibleColumns[i] = true
 	}
+	m.saveVisibleColumns()
+}
+
+func (m *Model) saveVisibleColumns() {
+	if m.visibleColumnKey == "" || m.visibleColumnKey == "query" {
+		return
+	}
+	if m.visibleColumnsByTable == nil {
+		m.visibleColumnsByTable = make(map[string][]bool)
+	}
+	m.visibleColumnsByTable[m.visibleColumnKey] = append([]bool(nil), m.visibleColumns...)
 }
 func (m Model) visibleColumnCount() int {
 	count := 0

@@ -218,6 +218,8 @@ does not include other tables referenced by foreign keys.
 
 Press `c` in a row or SQL-result view to open the column picker. Use `j`/`k`
 to choose a column, Space to show or hide it, and Enter or Esc to return.
+Table column choices are retained when switching away and back during the
+current connection.
 
 Press `e` in a focused table grid to edit the active cell. Editing is available
 only for tables with declared primary keys (including composite keys), and SQL

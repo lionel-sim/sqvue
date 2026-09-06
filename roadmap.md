@@ -42,7 +42,7 @@ For each driver:
 
 ## Phase 3 — General TUI capabilities
 
-- [x] Column visibility picker for row and SQL-result views
+- [x] Column visibility picker for row and SQL-result views, retaining table choices while browsing
 - [x] Data-grid focus mode
   - [x] Press Enter to move focus between the table picker and data grid; Esc returns to the picker
   - [x] Highlight the active row and show the current focus state in the footer

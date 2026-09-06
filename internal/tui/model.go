@@ -73,6 +73,7 @@ type resultState struct {
 	browseSort                 db.SortSpec
 	visibleColumns             []bool
 	visibleColumnKey           string
+	visibleColumnsByTable      map[string][]bool
 	tableStream                tableStreamState
 	queryState
 }
@@ -191,7 +192,7 @@ func New(opts Options) Model {
 	helpModel := help.New()
 	applyHelpTheme(&helpModel, styles)
 	return Model{client: opts.Client, timeout: opts.Timeout,
-		resultState:  resultState{pageSize: maxPageSize, rowCounts: make(map[string]int64), browseRowCounts: make(map[string]int64), queryState: queryState{historyIndex: -1}},
+		resultState:  resultState{pageSize: maxPageSize, rowCounts: make(map[string]int64), browseRowCounts: make(map[string]int64), visibleColumnsByTable: make(map[string][]bool), queryState: queryState{historyIndex: -1}},
 		overlayState: overlayState{filterInput: filter, browseFilterInput: browseFilter, sqlInput: sql, exportInput: export, backupInput: backup, cellEditInput: cellEdit, queryNameInput: queryName, help: helpModel},
 		loadState:    loadState{status: "loading tables...", loading: true}, keys: Default(), exportDirectory: opts.ExportDirectory, theme: styles,
 		queryStore: opts.QueryStore, profileName: opts.ProfileName, profiles: append([]ConnectionProfile(nil), opts.Profiles...),

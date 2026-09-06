@@ -1040,6 +1040,10 @@ func TestColumnVisibilityResetsForDifferentTable(t *testing.T) {
 	if !m.visibleColumns[0] || !m.visibleColumns[1] {
 		t.Fatalf("visibility leaked to different table: %#v", m.visibleColumns)
 	}
+	m.ensureVisibleColumns("public.accounts")
+	if m.visibleColumns[1] {
+		t.Fatalf("visibility was not restored for the original table: %#v", m.visibleColumns)
+	}
 }
 
 func TestFilterCancelRestoresPreviousFilter(t *testing.T) {

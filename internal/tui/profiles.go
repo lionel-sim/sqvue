@@ -98,7 +98,7 @@ func (m *Model) resetAfterProfileSwitch() {
 	m.mode, m.columns, m.rows, m.tableInfo = modeValues, nil, nil, db.TableInfo{}
 	m.page, m.hasNextPage, m.rowCursor, m.cellCursor, m.pendingRowMoves = 0, false, 0, 0, 0
 	m.rowCounts, m.browseRowCounts = make(map[string]int64), make(map[string]int64)
-	m.browseFilters, m.browseSort, m.visibleColumns, m.visibleColumnKey = nil, db.SortSpec{}, nil, ""
+	m.browseFilters, m.browseSort, m.visibleColumns, m.visibleColumnKey, m.visibleColumnsByTable = nil, db.SortSpec{}, nil, "", make(map[string][]bool)
 	m.queryActive, m.queryRows, m.queryBaseRows, m.querySQL, m.querySourceSQL, m.queryPreserveEditor, m.queryStreaming, m.querySort = false, nil, nil, "", "", false, false, db.SortSpec{}
 	m.filterInput.SetValue("")
 	m.sqlInput.SetValue("")
