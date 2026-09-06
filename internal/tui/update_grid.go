@@ -47,6 +47,13 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m.copyToClipboard(m.activeCellValue(), "cell")
 	case key.Matches(msg, m.keys.CopyRow):
 		return m.copyToClipboard(m.activeRowValue(), "row")
+	case key.Matches(msg, m.keys.EditCell):
+		if m.queryActive {
+			m.status = "editing is unavailable for SQL results"
+			return m, nil
+		}
+		m.status = "cell editing is not available yet"
+		return m, nil
 	case key.Matches(msg, m.keys.OpenReference):
 		return m.followActiveForeignKey()
 	case key.Matches(msg, m.keys.HalfPageDown):

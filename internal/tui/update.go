@@ -22,7 +22,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		} else if m.mode == modeValues && len(m.rows) > 0 {
 			m.focused = true
 		}
-	case key.Matches(msg, m.keys.ExportCSV):
+	case key.Matches(msg, m.keys.ExportCSV) && !m.focused:
 		return m.beginCSVExport()
 	case key.Matches(msg, m.keys.ExportJSON):
 		return m.beginJSONExport()

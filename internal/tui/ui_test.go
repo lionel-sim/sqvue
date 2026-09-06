@@ -128,6 +128,23 @@ func TestEnterFocusesGridAndEscapeReturnsToTablePicker(t *testing.T) {
 	}
 }
 
+func TestEditCellKeyIsContextSensitive(t *testing.T) {
+	m := testModel()
+	m.focused = true
+	m.queryActive = true
+	m, _ = update(m, keyMsg("e"))
+	if m.status != "editing is unavailable for SQL results" {
+		t.Fatalf("SQL edit status = %q", m.status)
+	}
+
+	m = testModel()
+	m.focused = true
+	m, _ = update(m, keyMsg("e"))
+	if m.status != "cell editing is not available yet" {
+		t.Fatalf("table edit status = %q", m.status)
+	}
+}
+
 func TestGridNavigationMovesActiveRow(t *testing.T) {
 	m := testModel()
 	m.rows = makeRows(10)

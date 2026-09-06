@@ -113,7 +113,7 @@ Build on the completed browsing foundation with faster recurring investigation,
 safer query execution, and richer relational navigation.
 
 - [ ] Edit active table cells
-  - [ ] Bind `e` to edit the active grid cell while retaining CSV export outside grid focus; keep SQL-result grids read-only
+  - [x] Bind `e` to edit the active grid cell while retaining CSV export outside grid focus; keep SQL-result grids read-only
   - [ ] Enable editing only when the selected table has a declared primary key; show a clear status message otherwise
   - [ ] Open a prefilled, terminal-safe cell editor and require an explicit confirmation before saving
   - [ ] Add a driver-neutral single-cell update contract using primary-key values, with parameterized PostgreSQL, SQLite, and MySQL implementations
