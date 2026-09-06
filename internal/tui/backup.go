@@ -14,7 +14,6 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"sqvue/internal/db"
-	"sqvue/internal/theme"
 )
 
 func (m Model) backupDriver() db.BackupDriver {
@@ -83,22 +82,22 @@ func renderBackupScopeModal(m Model) string {
 	for i, option := range m.backupScopeOptions() {
 		line := "  " + option.label
 		if i == m.backupScopeCursor {
-			line = theme.Selected.Render("→ " + option.label)
+			line = m.theme.Selected.Render("→ " + option.label)
 		}
 		content.WriteString(line + "\n")
 	}
-	content.WriteString("\n" + theme.Muted.Render("Use j/k to choose, Enter to continue, Esc to cancel."))
-	panelLines := strings.Split(theme.Dialog.Width(46).Render(content.String()), "\n")
-	return titledDialog(panelLines, ansi.StringWidth(panelLines[0]), "Back up database")
+	content.WriteString("\n" + m.theme.Muted.Render("Use j/k to choose, Enter to continue, Esc to cancel."))
+	panelLines := strings.Split(m.theme.Dialog.Width(46).Render(content.String()), "\n")
+	return titledDialog(m, panelLines, ansi.StringWidth(panelLines[0]), "Back up database")
 }
 
 func renderBackupPathModal(m Model) string {
 	width := backupPathDialogWidth(m)
 	input := m.backupInput
 	input.Width = max(1, width-ansi.StringWidth(input.Prompt)-4)
-	content := input.View() + "\n\n" + theme.Muted.Render("Enter starts the backup. Esc cancels.")
-	panelLines := strings.Split(theme.Dialog.Width(width).Render(content), "\n")
-	return titledDialog(panelLines, ansi.StringWidth(panelLines[0]), "Save backup")
+	content := input.View() + "\n\n" + m.theme.Muted.Render("Enter starts the backup. Esc cancels.")
+	panelLines := strings.Split(m.theme.Dialog.Width(width).Render(content), "\n")
+	return titledDialog(m, panelLines, ansi.StringWidth(panelLines[0]), "Save backup")
 }
 
 func backupPathDialogWidth(m Model) int {

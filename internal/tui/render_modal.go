@@ -4,8 +4,6 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/x/ansi"
-
-	"sqvue/internal/theme"
 )
 
 func renderHelpModal(m Model) string {
@@ -52,7 +50,7 @@ func padRenderLine(line string, width int) string {
 }
 
 func renderHelpDialog(m Model) string {
-	panelBackground := theme.Palette["charcoal"]
+	panelBackground := m.theme.DialogBackground
 	width := 62
 	if m.width > 0 {
 		width = min(width, max(10, m.width-6))
@@ -63,11 +61,11 @@ func renderHelpDialog(m Model) string {
 	m.help.Styles.FullDesc = m.help.Styles.FullDesc.Background(panelBackground)
 	m.help.Styles.FullSeparator = m.help.Styles.FullSeparator.Background(panelBackground)
 	helpText := strings.ReplaceAll(m.help.View(m.helpKeyMap()), "\x1b[0m", "\x1b[0m\x1b[48;5;235m")
-	dismiss := theme.Muted.Background(panelBackground).Render("Press any key to return.")
+	dismiss := m.theme.Muted.Background(panelBackground).Render("Press any key to return.")
 	content := helpText + "\n\n" + dismiss
-	panelLines := strings.Split(theme.Dialog.Width(width).Render(content), "\n")
+	panelLines := strings.Split(m.theme.Dialog.Width(width).Render(content), "\n")
 	panelWidth := ansi.StringWidth(panelLines[0])
-	return titledDialog(panelLines, panelWidth, "Keyboard shortcuts")
+	return titledDialog(m, panelLines, panelWidth, "Keyboard shortcuts")
 }
 
 func renderRowDetailDialog(m Model) string {
@@ -76,9 +74,9 @@ func renderRowDetailDialog(m Model) string {
 	start := min(m.detailScroll, max(0, len(lines)-detailContentHeight(m)))
 	end := min(start+detailContentHeight(m), len(lines))
 	content := strings.Join(lines[start:end], "\n")
-	panelLines := strings.Split(theme.Dialog.Width(width).Render(content), "\n")
+	panelLines := strings.Split(m.theme.Dialog.Width(width).Render(content), "\n")
 	panelWidth := ansi.StringWidth(panelLines[0])
-	return titledDialog(panelLines, panelWidth, "Row details")
+	return titledDialog(m, panelLines, panelWidth, "Row details")
 }
 
 func detailDialogWidth(m Model) int {
@@ -150,12 +148,12 @@ func wrapDetailValue(value string, width int) []string {
 	return lines
 }
 
-func titledDialog(lines []string, width int, title string) string {
+func titledDialog(m Model, lines []string, width int, title string) string {
 	titleEdge := "━ " + title + " "
-	top := theme.DialogBorder.Render("┏" + titleEdge + strings.Repeat("━", max(0, width-ansi.StringWidth(titleEdge))) + "┓")
-	bottom := theme.DialogBorder.Render("┗" + strings.Repeat("━", width) + "┛")
+	top := m.theme.DialogBorder.Render("┏" + titleEdge + strings.Repeat("━", max(0, width-ansi.StringWidth(titleEdge))) + "┓")
+	bottom := m.theme.DialogBorder.Render("┗" + strings.Repeat("━", width) + "┛")
 	for i, line := range lines {
-		lines[i] = theme.DialogBorder.Render("┃") + line + theme.DialogBorder.Render("┃")
+		lines[i] = m.theme.DialogBorder.Render("┃") + line + m.theme.DialogBorder.Render("┃")
 	}
 	return top + "\n" + strings.Join(lines, "\n") + "\n" + bottom
 }

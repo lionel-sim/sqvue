@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"sqvue/internal/db"
+	"sqvue/internal/theme"
 )
 
 type Options struct {
@@ -33,6 +34,7 @@ type Model struct {
 	loadState
 	keys            Map
 	exportDirectory string
+	theme           theme.Theme
 }
 
 type browserState struct {
@@ -140,7 +142,7 @@ func New(opts Options) Model {
 	return Model{client: opts.Client, timeout: opts.Timeout,
 		resultState:  resultState{pageSize: maxPageSize, rowCounts: make(map[string]int64), browseRowCounts: make(map[string]int64)},
 		overlayState: overlayState{filterInput: filter, browseFilterInput: browseFilter, sqlInput: sql, exportInput: export, backupInput: backup, help: help.New()},
-		loadState:    loadState{status: "loading tables...", loading: true}, keys: Default(), exportDirectory: opts.ExportDirectory,
+		loadState:    loadState{status: "loading tables...", loading: true}, keys: Default(), exportDirectory: opts.ExportDirectory, theme: theme.Default(),
 	}
 }
 

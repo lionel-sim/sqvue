@@ -53,9 +53,10 @@ func TestRenderVisibleRowsHighlightsActiveRow(t *testing.T) {
 	columns := []db.Column{{Name: "name"}}
 	rows := [][]string{{"books"}, {"games"}}
 	var b strings.Builder
-	renderVisibleRows(&b, columns, rows, rowRenderOptions{width: 20, maxRows: -1, activeRow: 1, activeColumn: 0})
+	styles := theme.Default()
+	renderVisibleRows(&b, styles, columns, rows, rowRenderOptions{width: 20, maxRows: -1, activeRow: 1, activeColumn: 0})
 
-	want := theme.ActiveCell.Render(formatRow(rows[1], layoutColumns(20, columns, rows)))
+	want := styles.ActiveCell.Render(formatRow(rows[1], layoutColumns(20, columns, rows)))
 	if !strings.Contains(b.String(), want) {
 		t.Fatalf("active row is not highlighted:\n%s", b.String())
 	}
@@ -65,10 +66,11 @@ func TestRenderVisibleRowsHighlightsActiveCell(t *testing.T) {
 	columns := []db.Column{{Name: "id"}, {Name: "name"}}
 	rows := [][]string{{"1", "books"}}
 	var b strings.Builder
-	renderVisibleRows(&b, columns, rows, rowRenderOptions{width: 20, maxRows: -1, activeRow: 0, activeColumn: 1})
+	styles := theme.Default()
+	renderVisibleRows(&b, styles, columns, rows, rowRenderOptions{width: 20, maxRows: -1, activeRow: 0, activeColumn: 1})
 
 	widths := layoutColumns(20, columns, rows)
-	want := theme.ActiveCell.Render(formatCell("books", widths[1]))
+	want := styles.ActiveCell.Render(formatCell("books", widths[1]))
 	if !strings.Contains(b.String(), want) {
 		t.Fatalf("active cell is not highlighted:\n%s", b.String())
 	}
@@ -188,7 +190,7 @@ func TestHelpShowsBindingsForCurrentFocus(t *testing.T) {
 
 func TestRenderTableListUsesSchemaHeaderAndMarksViews(t *testing.T) {
 	var b strings.Builder
-	renderTableList(&b, "public", []db.Table{
+	renderTableList(&b, theme.Default(), "public", []db.Table{
 		{Schema: "public", Name: "categories", Type: "table"},
 		{Schema: "public", Name: "sales_summary", Type: "view"},
 	}, 0, 0, "")

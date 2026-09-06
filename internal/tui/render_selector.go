@@ -8,12 +8,12 @@ import (
 	"sqvue/internal/theme"
 )
 
-func renderTableList(b *strings.Builder, schema string, tables []db.Table, selected, offset int, filter string) {
+func renderTableList(b *strings.Builder, styles theme.Theme, schema string, tables []db.Table, selected, offset int, filter string) {
 	header := fmt.Sprintf("Tables: %s", sanitizeText(schema))
 	if filter != "" {
 		header += fmt.Sprintf(" [filter: %s]", sanitizeText(filter))
 	}
-	b.WriteString(theme.Title.Render(header) + "\n")
+	b.WriteString(styles.Title.Render(header) + "\n")
 	if len(tables) == 0 {
 		b.WriteString("  (no tables found)\n")
 		for i := 1; i < tableListHeight; i++ {
@@ -36,7 +36,7 @@ func renderTableList(b *strings.Builder, schema string, tables []db.Table, selec
 		}
 		line := prefix + name
 		if i == selected {
-			line = theme.Selected.Render(line)
+			line = styles.Selected.Render(line)
 		}
 		b.WriteString(line + "\n")
 	}
@@ -45,8 +45,8 @@ func renderTableList(b *strings.Builder, schema string, tables []db.Table, selec
 	}
 }
 
-func renderSchemaList(b *strings.Builder, schemas []db.Schema, selected, offset int) {
-	b.WriteString(theme.Title.Render("Schemas") + "\n")
+func renderSchemaList(b *strings.Builder, styles theme.Theme, schemas []db.Schema, selected, offset int) {
+	b.WriteString(styles.Title.Render("Schemas") + "\n")
 	end := min(offset+tableListHeight, len(schemas))
 	for i := offset; i < end; i++ {
 		schema := schemas[i]
@@ -56,7 +56,7 @@ func renderSchemaList(b *strings.Builder, schemas []db.Schema, selected, offset 
 		}
 		line := prefix + sanitizeText(schema.Name)
 		if i == selected {
-			line = theme.Selected.Render(line)
+			line = styles.Selected.Render(line)
 		}
 		b.WriteString(line + "\n")
 	}
@@ -65,8 +65,8 @@ func renderSchemaList(b *strings.Builder, schemas []db.Schema, selected, offset 
 	}
 }
 
-func renderColumnPicker(b *strings.Builder, columns []db.Column, visible []bool, cursor, offset, maxRows int) {
-	b.WriteString(theme.Title.Render("Visible columns (Space toggle, Enter done)") + "\n")
+func renderColumnPicker(b *strings.Builder, styles theme.Theme, columns []db.Column, visible []bool, cursor, offset, maxRows int) {
+	b.WriteString(styles.Title.Render("Visible columns (Space toggle, Enter done)") + "\n")
 	end := min(offset+maxRows, len(columns))
 	for i := offset; i < end; i++ {
 		mark := "[ ]"
@@ -75,7 +75,7 @@ func renderColumnPicker(b *strings.Builder, columns []db.Column, visible []bool,
 		}
 		line := fmt.Sprintf("%s %s", mark, sanitizeText(columns[i].Name))
 		if i == cursor {
-			line = theme.Selected.Render("> " + line)
+			line = styles.Selected.Render("> " + line)
 		} else {
 			line = "  " + line
 		}

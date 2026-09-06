@@ -5,8 +5,6 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/x/ansi"
-
-	"sqvue/internal/theme"
 )
 
 func padToFooter(b *strings.Builder, height int) {
@@ -36,9 +34,9 @@ func renderFooter(m Model) string {
 	if gap < 1 {
 		gap = 1
 	}
-	styledStatus := theme.Status.Render(status)
+	styledStatus := m.theme.Status.Render(status)
 	if m.lastErr != nil {
-		styledStatus = theme.Error.Render(status)
+		styledStatus = m.theme.Error.Render(status)
 	}
-	return theme.Muted.Render(bindings) + strings.Repeat(" ", gap) + styledStatus
+	return m.theme.Muted.Render(bindings) + strings.Repeat(" ", gap) + styledStatus
 }

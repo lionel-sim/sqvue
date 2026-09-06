@@ -12,7 +12,7 @@ import (
 // renderRows writes the column header and up to maxRows data rows. A negative
 // maxRows (terminal height unknown) shows all rows without clipping.
 func renderRows(b *strings.Builder, columns []db.Column, rows [][]string, width, maxRows int) {
-	renderVisibleRows(b, columns, rows, rowRenderOptions{width: width, maxRows: maxRows, activeRow: -1, activeColumn: -1})
+	renderVisibleRows(b, theme.Default(), columns, rows, rowRenderOptions{width: width, maxRows: maxRows, activeRow: -1, activeColumn: -1})
 }
 
 type rowRenderOptions struct {
@@ -21,7 +21,7 @@ type rowRenderOptions struct {
 	activeRow, activeColumn int
 }
 
-func renderVisibleRows(b *strings.Builder, columns []db.Column, rows [][]string, options rowRenderOptions) {
+func renderVisibleRows(b *strings.Builder, styles theme.Theme, columns []db.Column, rows [][]string, options rowRenderOptions) {
 	columns, rows = visibleData(columns, rows, options.visibleColumns)
 	if len(columns) == 0 {
 		b.WriteString("(no rows to display)\n")
@@ -35,20 +35,20 @@ func renderVisibleRows(b *strings.Builder, columns []db.Column, rows [][]string,
 		}
 		line := formatRow(row, widths)
 		if i == options.activeRow {
-			line = formatActiveRow(row, widths, options.activeColumn)
+			line = formatActiveRow(styles, row, widths, options.activeColumn)
 		}
 		b.WriteString(line + "\n")
 	}
 }
 
-func formatActiveRow(cells []string, widths []int, activeColumn int) string {
+func formatActiveRow(styles theme.Theme, cells []string, widths []int, activeColumn int) string {
 	parts := make([]string, len(cells))
 	for i, cell := range cells {
 		part := formatCell(cell, widths[i])
 		if i == activeColumn {
-			parts[i] = theme.ActiveCell.Render(part)
+			parts[i] = styles.ActiveCell.Render(part)
 		} else {
-			parts[i] = theme.ActiveRow.Render(part)
+			parts[i] = styles.ActiveRow.Render(part)
 		}
 	}
 	return strings.Join(parts, colSep)

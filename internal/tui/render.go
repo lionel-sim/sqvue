@@ -40,13 +40,13 @@ func renderMain(m Model) string {
 	var b strings.Builder
 
 	if m.activeOverlay == overlaySchemaPicker {
-		renderSchemaList(&b, m.schemas, m.schemaCursor, m.schemaScroll)
+		renderSchemaList(&b, m.theme, m.schemas, m.schemaCursor, m.schemaScroll)
 	} else {
-		renderTableList(&b, m.currentSchema(), m.tables, m.selected, m.scroll, m.filterInput.Value())
+		renderTableList(&b, m.theme, m.currentSchema(), m.tables, m.selected, m.scroll, m.filterInput.Value())
 	}
 	b.WriteString("\n")
 	if m.activeOverlay == overlayColumnPicker {
-		renderColumnPicker(&b, m.columns, m.visibleColumns, m.columnCursor, m.columnScroll, m.columnPickerHeight())
+		renderColumnPicker(&b, m.theme, m.columns, m.visibleColumns, m.columnCursor, m.columnScroll, m.columnPickerHeight())
 	} else if m.activeOverlay == overlaySQL {
 		b.WriteString(m.sqlInput.View() + "\n")
 	} else if m.activeOverlay == overlayExport {
@@ -68,7 +68,7 @@ func renderMain(m Model) string {
 		if m.focused {
 			activeRow = m.rowCursor
 		}
-		renderVisibleRows(&b, m.columns, m.rows, rowRenderOptions{
+		renderVisibleRows(&b, m.theme, m.columns, m.rows, rowRenderOptions{
 			visibleColumns: m.visibleColumns,
 			width:          m.width,
 			maxRows:        m.height - reservedRows,
