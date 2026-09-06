@@ -158,6 +158,14 @@ safer query execution, and richer relational navigation.
   - [x] Refresh the current browse view after success without losing focus, filters, sort, pagination, or visible-column choices; clearly report when filters hide the inserted row
   - [x] Surface database validation, constraint, cancellation, and driver errors in the form without discarding entered values
   - [x] Add focused driver and TUI tests, update keyboard help and README workflow documentation, and preserve terminal-safe rendering
+- [ ] Delete the active table row
+  - [ ] Bind `d` in a focused base-table grid; retain `d` for column descriptions outside grid focus, and keep views and SQL-result grids read-only
+  - [ ] Enable deletion only for rows in tables with declared primary keys (including composite keys), with a clear status message otherwise
+  - [ ] Open a terminal-safe confirmation that identifies the target table and primary-key values; require Enter to delete and let Esc cancel without changes
+  - [ ] Define a driver-neutral single-row delete contract using primary-key values, with parameterized, dialect-safe PostgreSQL, SQLite, and MySQL implementations that require exactly one affected row
+  - [ ] Run the delete asynchronously with normal timeout/cancellation handling; return constraint, permission, and driver errors to the confirmation without losing the selected row
+  - [ ] Refresh the browse view and row counts after success, preserving focus, filters, sorting, and visible columns while safely stepping back when the deleted row empties the current page
+  - [ ] Add focused driver and TUI tests for composite keys, confirmation/cancellation, row-count and pagination state, errors, and context-sensitive key bindings; update keyboard help and README documentation
 
 ## Phase 6 — Multi-DB / future
 
