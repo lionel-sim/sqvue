@@ -159,11 +159,20 @@ func (m Model) cellUpdateRequest() (db.CellUpdateRequest, error) {
 		}
 		primaryKey = append(primaryKey, db.PrimaryKeyValue{Column: candidate.Name, Value: row[index]})
 	}
-	request := db.CellUpdateRequest{Table: *table, Column: column.Name, Value: m.cellEditInput.Value(), PrimaryKey: primaryKey}
+	request := db.CellUpdateRequest{Table: *table, Column: column.Name, Value: cellEditValue(m.cellEditInput.Value()), PrimaryKey: primaryKey}
 	if err := request.Validate(); err != nil {
 		return db.CellUpdateRequest{}, err
 	}
 	return request, nil
+}
+
+// cellEditValue reserves NULL as an explicit request to clear a database value.
+// Other values remain strings so drivers can apply their native type coercion.
+func cellEditValue(value string) any {
+	if value == "NULL" {
+		return nil
+	}
+	return value
 }
 
 func (m Model) copyToClipboard(value, kind string) (Model, tea.Cmd) {

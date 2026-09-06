@@ -8,14 +8,14 @@ import (
 // PrimaryKeyValue identifies one declared primary-key column in a row.
 type PrimaryKeyValue struct {
 	Column string
-	Value  string
+	Value  any
 }
 
 // CellUpdateRequest describes one parameterized table-cell update.
 type CellUpdateRequest struct {
 	Table      Table
 	Column     string
-	Value      string
+	Value      any
 	PrimaryKey []PrimaryKeyValue
 }
 

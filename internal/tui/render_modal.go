@@ -19,7 +19,7 @@ func renderCellEditModal(m Model) string {
 	width := detailDialogWidth(m)
 	input := m.cellEditInput
 	input.Width = max(1, width-ansi.StringWidth(input.Prompt)-4)
-	content := input.View() + "\n\n" + m.theme.Muted.Render("Enter reviews the update. Esc cancels.")
+	content := input.View() + "\n\n" + m.theme.Muted.Render("Enter reviews the update. Esc cancels. Type NULL to clear the value.")
 	panelLines := strings.Split(m.theme.Dialog.Width(width).Render(content), "\n")
 	return titledDialog(m, panelLines, ansi.StringWidth(panelLines[0]), "Edit cell")
 }

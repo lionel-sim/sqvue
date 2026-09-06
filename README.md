@@ -177,7 +177,8 @@ does not include other tables referenced by foreign keys.
 | `d`              | Show column descriptions |
 | `y`              | Show row values       |
 | `c`              | Choose visible columns |
-| `e` / `E`        | Export visible columns as CSV / JSON |
+| `e`              | Edit the active cell in a focused table grid (primary-key tables only); otherwise export visible columns as CSV |
+| `E`              | Export visible columns as JSON |
 | `B`              | Back up the database or current table |
 | `s`              | Switch schema         |
 | `/`              | Filter table list     |
@@ -190,6 +191,12 @@ does not include other tables referenced by foreign keys.
 
 Press `c` in a row or SQL-result view to open the column picker. Use `j`/`k`
 to choose a column, Space to show or hide it, and Enter or Esc to return.
+
+Press `e` in a focused table grid to edit the active cell. Editing is available
+only for tables with declared primary keys (including composite keys), and SQL
+result grids stay read-only. Review the old and new values before confirming;
+enter `NULL` to set a database `NULL` value. sqvue refreshes the current page
+after a successful update.
 
 ## Testing
 

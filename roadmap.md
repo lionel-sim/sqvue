@@ -112,13 +112,13 @@ For each driver:
 Build on the completed browsing foundation with faster recurring investigation,
 safer query execution, and richer relational navigation.
 
-- [ ] Edit active table cells
+- [x] Edit active table cells
   - [x] Bind `e` to edit the active grid cell while retaining CSV export outside grid focus; keep SQL-result grids read-only
   - [x] Enable editing only when the selected table has a declared primary key; show a clear status message otherwise
   - [x] Open a prefilled, terminal-safe cell editor and require an explicit confirmation before saving
   - [x] Add a driver-neutral single-cell update contract using primary-key values, with parameterized PostgreSQL, SQLite, and MySQL implementations
   - [x] Refresh the updated row and report asynchronous success or failure without losing grid focus, filters, visible columns, or pagination state
-  - [ ] Cover composite primary keys, null and typed values, cancellation, driver errors, and context-sensitive key bindings; document the workflow
+  - [x] Cover composite primary keys, null and typed values, cancellation, driver errors, and context-sensitive key bindings; document the workflow
 - [ ] Query history and saved queries
   - [ ] Retain per-profile SQL history with previous/next navigation in the SQL prompt
   - [ ] Save, list, run, rename, and delete named queries in the XDG config directory

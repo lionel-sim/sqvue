@@ -151,6 +151,28 @@ func TestEditCellKeyIsContextSensitive(t *testing.T) {
 	if m.status != "edit cell value" || m.activeOverlay != overlayCellEdit {
 		t.Fatalf("primary-key table edit status = %q", m.status)
 	}
+
+	m = testModel()
+	m.columns = []db.Column{{Name: "id"}}
+	m, _ = update(m, keyMsg("e"))
+	if m.activeOverlay != overlayExport {
+		t.Fatalf("unfocused e overlay = %v, want CSV export", m.activeOverlay)
+	}
+}
+
+func TestCellEditRequestUsesCompositePrimaryKeyAndNull(t *testing.T) {
+	m := testModel()
+	m.columns = []db.Column{{Name: "tenant", IsPrimary: true}, {Name: "id", IsPrimary: true}, {Name: "note"}}
+	m.rows = [][]string{{"north", "7", "before"}}
+	m.cellCursor = 2
+	m.cellEditInput.SetValue("NULL")
+	request, err := m.cellUpdateRequest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if request.Value != nil || len(request.PrimaryKey) != 2 || request.PrimaryKey[0] != (db.PrimaryKeyValue{Column: "tenant", Value: "north"}) || request.PrimaryKey[1] != (db.PrimaryKeyValue{Column: "id", Value: "7"}) {
+		t.Fatalf("cell update request = %#v", request)
+	}
 }
 
 func TestEditCellOnlyAppearsForPrimaryKeyTables(t *testing.T) {

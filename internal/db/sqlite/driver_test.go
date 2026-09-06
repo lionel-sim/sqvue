@@ -151,6 +151,45 @@ func TestQuoteIdent(t *testing.T) {
 	}
 }
 
+func TestUpdateCellSupportsCompositeKeysNullsTypesAndCancellation(t *testing.T) {
+	ctx := context.Background()
+	driver := New()
+	if err := driver.Connect(ctx, db.ConnectConfig{DSN: filepath.Join(t.TempDir(), "updates.db")}); err != nil {
+		t.Fatalf("Connect() error = %v", err)
+	}
+	t.Cleanup(func() { _ = driver.Close() })
+	for _, statement := range []string{
+		"create table items (tenant integer not null, id integer not null, label text, amount integer not null, primary key (tenant, id))",
+		"insert into items (tenant, id, label, amount) values (7, 9, 'before', 1)",
+	} {
+		if _, err := driver.Query(ctx, db.Query{SQL: statement}); err != nil {
+			t.Fatalf("Query(%q) error = %v", statement, err)
+		}
+	}
+	request := db.CellUpdateRequest{
+		Table:      db.Table{Schema: "main", Name: "items"},
+		Column:     "label",
+		Value:      nil,
+		PrimaryKey: []db.PrimaryKeyValue{{Column: "tenant", Value: "7"}, {Column: "id", Value: "9"}},
+	}
+	if err := driver.UpdateCell(ctx, request); err != nil {
+		t.Fatalf("UpdateCell(NULL) error = %v", err)
+	}
+	request.Column, request.Value = "amount", "42"
+	if err := driver.UpdateCell(ctx, request); err != nil {
+		t.Fatalf("UpdateCell(integer) error = %v", err)
+	}
+	result, err := driver.Query(ctx, db.Query{SQL: "select typeof(label), typeof(amount), amount from items where tenant = 7 and id = 9"})
+	if err != nil || len(result.Rows) != 1 || result.Rows[0][0] != "null" || result.Rows[0][1] != "integer" || result.Rows[0][2] != int64(42) {
+		t.Fatalf("updated values = %#v, error = %v", result.Rows, err)
+	}
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	if err := driver.UpdateCell(cancelled, request); err == nil {
+		t.Fatal("UpdateCell() succeeded with a cancelled context")
+	}
+}
+
 func TestUpdateCellStatementUsesParametersAndPrimaryKey(t *testing.T) {
 	query, args, err := sqliteUpdateCellStatement(db.CellUpdateRequest{
 		Table:      db.Table{Schema: "main", Name: "order items"},
