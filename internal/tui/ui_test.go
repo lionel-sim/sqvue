@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"sqvue/internal/db"
+	"sqvue/internal/theme"
 )
 
 func testModel() Model {
@@ -14,6 +15,24 @@ func testModel() Model {
 	m.tables = []db.Table{{Schema: "public", Name: "a"}, {Schema: "public", Name: "b"}}
 	m.loading = false
 	return m
+}
+
+func TestNewUsesProvidedTheme(t *testing.T) {
+	styles, err := theme.ByName("light")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(Options{Theme: styles})
+	if m.theme.DialogBackground != styles.DialogBackground {
+		t.Fatalf("model theme background = %q, want %q", m.theme.DialogBackground, styles.DialogBackground)
+	}
+}
+
+func TestNewDefaultsThemeWhenNoneIsProvided(t *testing.T) {
+	m := New(Options{})
+	if m.theme.DialogBackground != theme.Default().DialogBackground {
+		t.Fatalf("model theme background = %q, want default %q", m.theme.DialogBackground, theme.Default().DialogBackground)
+	}
 }
 
 func keyMsg(k string) tea.KeyMsg {

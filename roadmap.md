@@ -91,7 +91,7 @@ For each driver:
   - [x] Replace mutable global theme styles with an immutable semantic theme value while preserving the current default appearance
   - [x] Add named ANSI-256 presets (`default`, `light`, and `high-contrast`)
   - [x] Add a `settings.theme` configuration value with validation and startup resolution
-  - [ ] Pass the resolved theme through command setup, TUI options, and model state
+  - [x] Pass the resolved theme through command setup, TUI options, and model state
   - [ ] Apply themes consistently to renderers, inputs, help, and all dialogs
   - [ ] Add configuration/rendering coverage and document available themes
 - [x] Test coverage for drivers (integration tests against real Postgres and MySQL instances, plus SQLite temporary databases)

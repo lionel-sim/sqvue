@@ -56,6 +56,10 @@ func run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	styles, err := file.Settings.ResolveTheme()
+	if err != nil {
+		return err
+	}
 	if created {
 		fmt.Fprintf(cmd.ErrOrStderr(), "Created config file at %s\n", path)
 	}
@@ -86,6 +90,7 @@ func run(cmd *cobra.Command, args []string) error {
 		Client:          client,
 		Timeout:         cfg.Timeout,
 		ExportDirectory: exportDirectory(file.Settings.ExportDirectory),
+		Theme:           styles,
 	})
 
 	p := tea.NewProgram(m, tea.WithAltScreen())

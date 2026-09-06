@@ -15,6 +15,7 @@ type Options struct {
 	Client          db.Driver
 	Timeout         time.Duration
 	ExportDirectory string
+	Theme           theme.Theme
 }
 type viewMode int
 
@@ -122,6 +123,10 @@ type loadState struct {
 }
 
 func New(opts Options) Model {
+	styles := opts.Theme
+	if styles.DialogBackground == "" {
+		styles = theme.Default()
+	}
 	filter := textinput.New()
 	filter.Prompt = "Filter tables: "
 	filter.Placeholder = "type to search"
@@ -142,7 +147,7 @@ func New(opts Options) Model {
 	return Model{client: opts.Client, timeout: opts.Timeout,
 		resultState:  resultState{pageSize: maxPageSize, rowCounts: make(map[string]int64), browseRowCounts: make(map[string]int64)},
 		overlayState: overlayState{filterInput: filter, browseFilterInput: browseFilter, sqlInput: sql, exportInput: export, backupInput: backup, help: help.New()},
-		loadState:    loadState{status: "loading tables...", loading: true}, keys: Default(), exportDirectory: opts.ExportDirectory, theme: theme.Default(),
+		loadState:    loadState{status: "loading tables...", loading: true}, keys: Default(), exportDirectory: opts.ExportDirectory, theme: styles,
 	}
 }
 
