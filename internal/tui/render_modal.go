@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -105,6 +106,21 @@ func renderRowInsertConfirmModal(m Model) string {
 	lines = append(lines, "", m.theme.Muted.Render("Enter inserts the row. Esc returns to editing."))
 	panelLines := strings.Split(m.theme.Dialog.Width(width).Render(strings.Join(lines, "\n")), "\n")
 	return titledDialog(m, panelLines, ansi.StringWidth(panelLines[0]), "Confirm row insert")
+}
+
+func renderRowDeleteConfirmModal(m Model) string {
+	width := detailDialogWidth(m)
+	lines := make([]string, 0, len(m.rowDeleteRequest.PrimaryKey)+3)
+	lines = append(lines, "Delete this row permanently?")
+	if table := m.currentTable(); table != nil {
+		lines = append(lines, "Table: "+sanitizeText(table.String()))
+	}
+	for _, key := range m.rowDeleteRequest.PrimaryKey {
+		lines = append(lines, sanitizeText(key.Column)+": "+sanitizeText(fmt.Sprint(key.Value)))
+	}
+	lines = append(lines, "", m.theme.Muted.Render("Enter deletes the row. Esc cancels."))
+	panelLines := strings.Split(m.theme.Dialog.Width(width).Render(strings.Join(lines, "\n")), "\n")
+	return titledDialog(m, panelLines, ansi.StringWidth(panelLines[0]), "Confirm row deletion")
 }
 
 func rowInsertFieldDisplay(field rowInsertField) string {

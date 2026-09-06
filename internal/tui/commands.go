@@ -169,6 +169,15 @@ func insertRowCmd(inserter db.RowInserter, request db.RowInsertRequest, timeout 
 	}
 }
 
+func deleteRowCmd(deleter db.RowDeleter, request db.RowDeleteRequest, timeout time.Duration, deleteID uint64) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		err := deleter.DeleteRow(ctx, request)
+		return rowDeletedMsg{deleteID: deleteID, err: err}
+	}
+}
+
 type queryStreamLoadRequest struct {
 	ctx       context.Context
 	cancel    func()

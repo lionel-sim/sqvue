@@ -20,6 +20,8 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 	}
 	switch {
+	case key.Matches(msg, m.keys.DeleteRow):
+		return m.beginRowDelete()
 	case key.Matches(msg, m.keys.AddRow):
 		return m.beginRowInsert()
 	case key.Matches(msg, m.keys.Sort):

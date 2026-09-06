@@ -122,6 +122,7 @@ func (m Model) helpKeyMap() Map {
 	keys.CopyRow.SetEnabled(m.focused)
 	keys.EditCell.SetEnabled(m.focused && !m.queryActive && m.hasPrimaryKey())
 	keys.AddRow.SetEnabled(m.canInsertRow())
+	keys.DeleteRow.SetEnabled(m.canDeleteRow())
 	keys.Sort.SetEnabled(m.focused && m.mode == modeValues && m.activeColumn() != nil)
 	keys.OpenReference.SetEnabled(m.focused)
 	keys.BrowseFilter.SetEnabled(m.focused && !m.queryActive)

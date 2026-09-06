@@ -69,6 +69,14 @@ func (m Model) handleRowsLoaded(msg rowsLoadedMsg) (Model, tea.Cmd) {
 		}
 		return m, nil
 	}
+	if m.rowDeleteRefreshPending {
+		m.rowDeleteRefreshPending = false
+		m.status = "deleted row"
+		if t := m.currentTable(); t != nil {
+			return m, m.loadCurrentRowCount(*t)
+		}
+		return m, nil
+	}
 	if t := m.currentTable(); t != nil {
 		m.setRowsStatus(*t)
 		return m, m.loadCurrentRowCount(*t)
@@ -108,6 +116,14 @@ func (m Model) handleTableStreamRowsLoaded(msg tableStreamRowsLoadedMsg) (Model,
 	if m.rowInsertRefreshPending {
 		m.rowInsertRefreshPending = false
 		m.status = m.rowInsertSuccessStatus()
+		if t := m.currentTable(); t != nil {
+			return m, m.loadCurrentRowCount(*t)
+		}
+		return m, nil
+	}
+	if m.rowDeleteRefreshPending {
+		m.rowDeleteRefreshPending = false
+		m.status = "deleted row"
 		if t := m.currentTable(); t != nil {
 			return m, m.loadCurrentRowCount(*t)
 		}

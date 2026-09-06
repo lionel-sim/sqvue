@@ -97,6 +97,21 @@ func (m Model) handleCompletionMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.rowInsertRefreshPending = true
 		m.clearCurrentRowCounts()
 		return m.startLoadRows()
+	case rowDeletedMsg:
+		if msg.deleteID != m.deleteID {
+			return m, nil
+		}
+		m.loading = false
+		if msg.err != nil {
+			m.activeOverlay = overlayRowDeleteConfirm
+			return m.fail("row delete failed", msg.err)
+		}
+		m.rowDeleteRefreshPending = true
+		m.clearCurrentRowCounts()
+		if len(m.rows) == 1 && m.page > 0 {
+			m.page--
+		}
+		return m.startLoadRows()
 	case profileConnectedMsg:
 		return m.handleProfileConnected(msg)
 	}
@@ -184,6 +199,9 @@ func (m Model) handleOverlayKey(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
 		return m, cmd, true
 	case overlayRowInsertConfirm:
 		m, cmd := m.handleRowInsertConfirmKey(msg)
+		return m, cmd, true
+	case overlayRowDeleteConfirm:
+		m, cmd := m.handleRowDeleteConfirmKey(msg)
 		return m, cmd, true
 	case overlayColumnPicker:
 		m, cmd := m.handleColumnsKey(msg)

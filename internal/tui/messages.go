@@ -91,6 +91,10 @@ type (
 		insertID uint64
 		err      error
 	}
+	rowDeletedMsg struct {
+		deleteID uint64
+		err      error
+	}
 	profileConnectedMsg struct {
 		reconnectID uint64
 		profile     ConnectionProfile

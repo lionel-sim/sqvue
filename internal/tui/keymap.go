@@ -20,6 +20,7 @@ type Map struct {
 	CopyRow           key.Binding
 	EditCell          key.Binding
 	AddRow            key.Binding
+	DeleteRow         key.Binding
 	OpenReference     key.Binding
 	ShowDescriptions  key.Binding
 	ShowValues        key.Binding
@@ -112,6 +113,10 @@ func Default() Map {
 		AddRow: key.NewBinding(
 			key.WithKeys("a"),
 			key.WithHelp("a", "add row"),
+		),
+		DeleteRow: key.NewBinding(
+			key.WithKeys("d"),
+			key.WithHelp("d", "delete row"),
 		),
 		OpenReference: key.NewBinding(
 			key.WithKeys("o"),
@@ -213,9 +218,9 @@ func Default() Map {
 }
 
 func (m Map) ShortHelp() []key.Binding {
-	return []key.Binding{m.Help, m.SQL, m.Columns, m.EditCell, m.AddRow, m.ExportCSV, m.ExportJSON, m.Backup, m.Sort, m.SaveQuery, m.SavedQueries, m.Profiles, m.Schema, m.Filter, m.BrowseFilter, m.ClearBrowseFilter, m.Quit}
+	return []key.Binding{m.Help, m.SQL, m.Columns, m.EditCell, m.AddRow, m.DeleteRow, m.ExportCSV, m.ExportJSON, m.Backup, m.Sort, m.SaveQuery, m.SavedQueries, m.Profiles, m.Schema, m.Filter, m.BrowseFilter, m.ClearBrowseFilter, m.Quit}
 }
 
 func (m Map) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{m.Up, m.Down, m.Left, m.Right, m.PageUp, m.PageDown, m.HalfPageUp, m.HalfPageDown, m.FirstRow, m.LastRow}, {m.CopyCell, m.CopyRow, m.EditCell, m.AddRow, m.OpenReference, m.BrowseFilter, m.ClearBrowseFilter, m.Sort, m.SQL, m.RunSQL, m.FormatSQL, m.ExplainSQL, m.Columns, m.ExportCSV, m.ExportJSON, m.Backup, m.SaveQuery, m.SavedQueries, m.Profiles, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
+	return [][]key.Binding{{m.Up, m.Down, m.Left, m.Right, m.PageUp, m.PageDown, m.HalfPageUp, m.HalfPageDown, m.FirstRow, m.LastRow}, {m.CopyCell, m.CopyRow, m.EditCell, m.AddRow, m.DeleteRow, m.OpenReference, m.BrowseFilter, m.ClearBrowseFilter, m.Sort, m.SQL, m.RunSQL, m.FormatSQL, m.ExplainSQL, m.Columns, m.ExportCSV, m.ExportJSON, m.Backup, m.SaveQuery, m.SavedQueries, m.Profiles, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
 }

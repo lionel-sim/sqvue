@@ -554,6 +554,96 @@ func TestRowInsertFailureKeepsFormValues(t *testing.T) {
 	}
 }
 
+func TestRowDeleteRequestUsesCompositePrimaryKey(t *testing.T) {
+	m := New(Options{Client: &fakeDriver{}, Timeout: time.Second})
+	m.tables = []db.Table{{Schema: "public", Name: "items", Type: "table"}}
+	m.rows = [][]string{{"north", "7", "before"}}
+	m.columns = []db.Column{{Name: "tenant", IsPrimary: true}, {Name: "id", IsPrimary: true}, {Name: "name"}}
+	request, err := m.rowDeleteRequestForActiveRow()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(request.PrimaryKey) != 2 || request.PrimaryKey[0] != (db.PrimaryKeyValue{Column: "tenant", Value: "north"}) || request.PrimaryKey[1] != (db.PrimaryKeyValue{Column: "id", Value: "7"}) {
+		t.Fatalf("row delete request = %#v", request)
+	}
+}
+
+func TestRowDeleteIsContextSensitiveAndCanBeCancelled(t *testing.T) {
+	m := New(Options{Client: &fakeDriver{}, Timeout: time.Second})
+	m.tables = []db.Table{{Schema: "public", Name: "item_names", Type: "view"}}
+	m.focused = true
+	m.rows = [][]string{{"1"}}
+	m.columns = []db.Column{{Name: "id", IsPrimary: true}}
+	if m.helpKeyMap().DeleteRow.Enabled() {
+		t.Fatal("delete row is enabled for a view")
+	}
+	m, _ = update(m, keyMsg("d"))
+	if m.status != "deleting is available only for tables" {
+		t.Fatalf("view delete status = %q", m.status)
+	}
+
+	m.tables[0].Type = "table"
+	m.queryActive = true
+	m, _ = update(m, keyMsg("d"))
+	if m.status != "deleting is unavailable for SQL results" {
+		t.Fatalf("SQL delete status = %q", m.status)
+	}
+
+	m.queryActive = false
+	m.columns = []db.Column{{Name: "name"}}
+	m, _ = update(m, keyMsg("d"))
+	if m.status != "deleting requires a table with a primary key" {
+		t.Fatalf("no primary-key delete status = %q", m.status)
+	}
+
+	m.columns = []db.Column{{Name: "id", IsPrimary: true}}
+	m, _ = update(m, keyMsg("d"))
+	if m.activeOverlay != overlayRowDeleteConfirm || !m.helpKeyMap().DeleteRow.Enabled() {
+		t.Fatalf("delete overlay = %v, enabled %t", m.activeOverlay, m.helpKeyMap().DeleteRow.Enabled())
+	}
+	m, _ = update(m, tea.KeyMsg{Type: tea.KeyEsc})
+	if m.activeOverlay != overlayNone || m.deleteID != 0 {
+		t.Fatalf("cancelled delete state = overlay %v, delete ID %d", m.activeOverlay, m.deleteID)
+	}
+}
+
+func TestConfirmedRowDeleteRefreshesAndStepsBackFromEmptyPage(t *testing.T) {
+	client := &fakeDriver{cols: []db.Column{{Name: "id", IsPrimary: true}, {Name: "name"}}, rows: [][]string{{"1", "first"}, {"2", "second"}, {"3", "third"}}}
+	m := New(Options{Client: client, Timeout: time.Second})
+	m.tables = []db.Table{{Schema: "public", Name: "items", Type: "table"}}
+	m.focused, m.page, m.pageSize = true, 1, 2
+	m.columns = append([]db.Column(nil), client.cols...)
+	m.rows, m.visibleColumns = [][]string{{"3", "third"}}, []bool{true, true}
+	m.browseFilters = []db.RowFilter{{Column: "name", Operator: db.FilterContains, Value: "third"}}
+	m.browseSort = db.SortSpec{Column: "name"}
+
+	m, _ = update(m, keyMsg("d"))
+	m, cmd := update(m, tea.KeyMsg{Type: tea.KeyEnter})
+	m, cmd = update(m, runCmd(cmd))
+	if got := client.lastRowDelete; got.Table.Name != "items" || len(got.PrimaryKey) != 1 || got.PrimaryKey[0] != (db.PrimaryKeyValue{Column: "id", Value: "3"}) {
+		t.Fatalf("row delete request = %#v", got)
+	}
+	m, _ = update(m, runCmd(cmd))
+	if m.status != "deleted row" || !m.focused || m.page != 0 || m.browseSort != (db.SortSpec{Column: "name"}) || len(m.browseFilters) != 1 || len(m.visibleColumns) != 2 {
+		t.Fatalf("refreshed delete state = %#v", m)
+	}
+}
+
+func TestRowDeleteFailureReturnsToConfirmation(t *testing.T) {
+	client := &fakeDriver{rowDeleteErr: errBoom}
+	m := New(Options{Client: client, Timeout: time.Second})
+	m.tables = []db.Table{{Schema: "public", Name: "items", Type: "table"}}
+	m.focused = true
+	m.columns = []db.Column{{Name: "id", IsPrimary: true}}
+	m.rows = [][]string{{"1"}}
+	m, _ = update(m, keyMsg("d"))
+	m, cmd := update(m, tea.KeyMsg{Type: tea.KeyEnter})
+	m, _ = update(m, runCmd(cmd))
+	if m.activeOverlay != overlayRowDeleteConfirm || m.lastErr != errBoom || len(m.rowDeleteRequest.PrimaryKey) != 1 {
+		t.Fatalf("delete failure state = overlay %v, error %v, request %#v", m.activeOverlay, m.lastErr, m.rowDeleteRequest)
+	}
+}
+
 func TestGridNavigationMovesActiveRow(t *testing.T) {
 	m := testModel()
 	m.rows = makeRows(10)

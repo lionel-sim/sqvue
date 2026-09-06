@@ -129,6 +129,7 @@ const (
 	overlayRowInsert
 	overlayRowInsertValue
 	overlayRowInsertConfirm
+	overlayRowDeleteConfirm
 	overlaySaveQueryName
 	overlaySavedQueries
 	overlayRenameQuery
@@ -157,16 +158,18 @@ type overlayState struct {
 	rowInsertCursor, rowInsertScroll         int
 	rowInsertEditPrevious                    rowInsertField
 	rowInsertRefreshPending                  bool
+	rowDeleteRequest                         db.RowDeleteRequest
+	rowDeleteRefreshPending                  bool
 	help                                     help.Model
 	columnCursor, columnScroll, detailScroll int
 	backupScopeCursor                        int
 }
 type viewportState struct{ width, height int }
 type loadState struct {
-	status, copyStatusKind                                                    string
-	loading                                                                   bool
-	lastErr                                                                   error
-	loadID, copyStatusID, exportID, backupID, updateID, insertID, reconnectID uint64
+	status, copyStatusKind                                                              string
+	loading                                                                             bool
+	lastErr                                                                             error
+	loadID, copyStatusID, exportID, backupID, updateID, insertID, deleteID, reconnectID uint64
 }
 
 func New(opts Options) Model {

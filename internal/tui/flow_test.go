@@ -35,6 +35,8 @@ type fakeDriver struct {
 	cellUpdateErr  error
 	lastRowInsert  db.RowInsertRequest
 	rowInsertErr   error
+	lastRowDelete  db.RowDeleteRequest
+	rowDeleteErr   error
 }
 
 type streamFakeDriver struct {
@@ -168,6 +170,10 @@ func (f *fakeDriver) UpdateCell(_ context.Context, request db.CellUpdateRequest)
 func (f *fakeDriver) InsertRow(_ context.Context, request db.RowInsertRequest) error {
 	f.lastRowInsert = request
 	return f.rowInsertErr
+}
+func (f *fakeDriver) DeleteRow(_ context.Context, request db.RowDeleteRequest) error {
+	f.lastRowDelete = request
+	return f.rowDeleteErr
 }
 
 func makeRows(n int) [][]string {
