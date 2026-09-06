@@ -75,7 +75,7 @@ Run `sqvue --version` to show the binary version. Locally built binaries report
 
 ## Usage
 
-Provide a connection string via the `--conn` flag or the `DATABASE_URL` environment variable:
+Provide a connection string via the `--conn` flag or the `DATABASE_URL` environment variable. The examples below disable TLS only because they connect to a local development database:
 
 ```sh
 DATABASE_URL="postgres://user:pass@localhost:5432/mydb?sslmode=disable" ./bin/sqvue
@@ -83,6 +83,17 @@ DATABASE_URL="postgres://user:pass@localhost:5432/mydb?sslmode=disable" ./bin/sq
 # or
 ./bin/sqvue --conn "postgres://user:pass@localhost:5432/mydb?sslmode=disable"
 ```
+
+For a PostgreSQL database outside localhost, use verified TLS. `verify-full`
+validates both the certificate chain and that the certificate matches the host;
+provide the issuing CA when it is not already trusted by your system:
+
+```sh
+./bin/sqvue --conn "postgres://user:pass@db.example.com:5432/mydb?sslmode=verify-full&sslrootcert=/absolute/path/to/ca.pem"
+```
+
+Do not use `sslmode=disable` or `sslmode=require` for a remote database:
+`require` encrypts the connection but does not verify the server identity.
 
 You can also run directly from source with `make run` or `go run ./...`.
 
@@ -92,11 +103,22 @@ Open a SQLite database directly with its path or URI:
 ./bin/sqvue --db-type sqlite --conn ./sqvue_demo.db
 ```
 
-Connect to MySQL with its standard DSN format:
+Connect to a local MySQL database with its standard DSN format:
 
 ```sh
 ./bin/sqvue --db-type mysql --conn "user:password@tcp(localhost:3306)/my_database?parseTime=true"
 ```
+
+For a remote MySQL database, require TLS and use a certificate trusted by the
+system certificate store:
+
+```sh
+./bin/sqvue --db-type mysql --conn "user:password@tcp(db.example.com:3306)/my_database?parseTime=true&tls=true"
+```
+
+If the MySQL server uses a private CA, add that CA to the system trust store
+before connecting. sqvue does not yet expose a driver-specific registered TLS
+configuration for custom certificate handling.
 
 ### Connection profiles
 
