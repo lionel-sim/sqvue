@@ -45,8 +45,9 @@ type (
 		kind         string
 		copyStatusID uint64
 	}
-	csvExportedMsg struct {
+	exportedMsg struct {
 		exportID uint64
+		format   exportFormat
 		path     string
 		rows     int
 		err      error

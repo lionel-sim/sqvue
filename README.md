@@ -11,7 +11,7 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 - Page through row data with total-row counts and type-aware value rendering
 - Focus and navigate row data while preserving the selected row across pages and column visibility changes
 - Run ad-hoc SQL queries and page through their results
-- Export visible result columns to CSV
+- Export visible result columns to CSV or JSON
 - Back up PostgreSQL, SQLite, and MySQL databases or the currently selected table
 - Use a discoverable keyboard-help modal and compact footer controls
 - Pluggable database driver abstraction with a registry pattern
@@ -105,12 +105,14 @@ Explicitly supplied connection flags override matching profile fields. Avoid
 storing passwords in the config file—use a connection URL, environment variable,
 or Postgres password file instead.
 
-`settings.export_directory` sets the directory prefilled when exporting CSV or
+`settings.export_directory` sets the directory prefilled when exporting CSV, JSON, or
 creating a backup.
 It defaults to sqvue's current working directory; relative paths are resolved
 from that directory. Prompts let you change the final path, and sqvue will not
 overwrite an existing file. Table exports include every row matching the active
 filters; SQL exports include the query result held by sqvue.
+Press `e` for CSV or `E` for JSON. JSON exports are arrays of objects whose
+keys are the visible column names.
 
 ### Backups
 
@@ -162,7 +164,7 @@ does not include other tables referenced by foreign keys.
 | `d`              | Show column descriptions |
 | `y`              | Show row values       |
 | `c`              | Choose visible columns |
-| `e`              | Export visible columns as CSV |
+| `e` / `E`        | Export visible columns as CSV / JSON |
 | `B`              | Back up the database or current table |
 | `s`              | Switch schema         |
 | `/`              | Filter table list     |

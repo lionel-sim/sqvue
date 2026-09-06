@@ -76,7 +76,7 @@ const (
 	overlaySQL
 	overlayColumnPicker
 	overlayRowDetail
-	overlayExportCSV
+	overlayExport
 	overlayBackupScope
 	overlayBackupPath
 )
@@ -91,6 +91,7 @@ type overlayState struct {
 	browseFilterCursor                       int
 	sqlInput                                 textinput.Model
 	exportInput                              textinput.Model
+	exportFormat                             exportFormat
 	backupInput                              textinput.Model
 	help                                     help.Model
 	columnCursor, columnScroll, detailScroll int

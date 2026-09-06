@@ -41,12 +41,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.restoreBrowseStatus()
-	case csvExportedMsg:
+	case exportedMsg:
 		if msg.exportID != m.exportID {
 			return m, nil
 		}
 		if msg.err != nil {
-			return m.fail("CSV export failed", msg.err)
+			return m.fail(string(msg.format)+" export failed", msg.err)
 		}
 		m.status, m.lastErr = fmt.Sprintf("exported %d rows to %s", msg.rows, msg.path), nil
 	case backupCompletedMsg:
@@ -98,8 +98,8 @@ func (m Model) handleOverlayKey(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
 	case overlaySQL:
 		m, cmd := m.handleSQLKey(msg)
 		return m, cmd, true
-	case overlayExportCSV:
-		m, cmd := m.handleCSVExportKey(msg)
+	case overlayExport:
+		m, cmd := m.handleExportKey(msg)
 		return m, cmd, true
 	case overlayBackupScope:
 		m, cmd := m.handleBackupScopeKey(msg)
