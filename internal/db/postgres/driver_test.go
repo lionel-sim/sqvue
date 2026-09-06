@@ -1,7 +1,9 @@
 package postgres
 
 import (
+	"context"
 	"math/big"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -36,6 +38,54 @@ func TestPoolConfigEscapesConnectionFields(t *testing.T) {
 	if cfg.ConnConfig.TLSConfig == nil {
 		t.Fatal("expected TLS to be configured")
 	}
+}
+
+func TestPgDumpCommandUsesSafeConnectionOptions(t *testing.T) {
+	command, err := pgDumpCommand(context.Background(), db.ConnectConfig{
+		Host:     "db.example.com",
+		Port:     5432,
+		User:     "backup_user",
+		Password: "not-in-command-arguments",
+		Database: "warehouse",
+		SSLMode:  "require",
+	}, db.BackupRequest{Scope: db.BackupScopeTable, Path: "backup.sql", Table: db.Table{Schema: "reporting", Name: `order"items`}})
+	if err != nil {
+		t.Fatalf("pgDumpCommand() error = %v", err)
+	}
+	got := strings.Join(command.Args, " ")
+	for _, want := range []string{"--format=plain", "--host=db.example.com", "--port=5432", "--username=backup_user", "--dbname=warehouse", `--table="reporting"."order""items"`} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("pg_dump arguments = %q, missing %q", got, want)
+		}
+	}
+	if strings.Contains(got, "not-in-command-arguments") {
+		t.Fatalf("pg_dump arguments exposed password: %q", got)
+	}
+	if !containsEnv(command.Env, "PGPASSWORD=not-in-command-arguments") || !containsEnv(command.Env, "PGSSLMODE=require") {
+		t.Fatalf("pg_dump environment = %#v, want password and ssl mode", command.Env)
+	}
+}
+
+func TestPostgresBackupCapabilities(t *testing.T) {
+	capabilities := New().BackupCapabilities()
+	if !capabilities.Database || !capabilities.Table || capabilities.Schema || capabilities.FileExtension != "sql" {
+		t.Fatalf("backup capabilities = %#v", capabilities)
+	}
+}
+
+func TestPgDumpTablePatternQuotesIdentifiers(t *testing.T) {
+	if got := pgDumpTablePattern(db.Table{Schema: `sales"2026`, Name: `order"items`}); got != `"sales""2026"."order""items"` {
+		t.Fatalf("pgDumpTablePattern() = %q", got)
+	}
+}
+
+func containsEnv(environment []string, value string) bool {
+	for _, entry := range environment {
+		if entry == value {
+			return true
+		}
+	}
+	return false
 }
 
 func TestRowOrder(t *testing.T) {

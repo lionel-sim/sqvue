@@ -17,7 +17,8 @@ import (
 )
 
 type Driver struct {
-	pool *pgxpool.Pool
+	pool          *pgxpool.Pool
+	backupConnect db.ConnectConfig
 }
 
 const maxQueryRows = 1_000
@@ -39,7 +40,7 @@ func (d *Driver) Connect(ctx context.Context, cfg db.ConnectConfig) error {
 		return err
 	}
 	oldPool := d.pool
-	d.pool = pool
+	d.pool, d.backupConnect = pool, cfg
 	if oldPool != nil {
 		oldPool.Close()
 	}
