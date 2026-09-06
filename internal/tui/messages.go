@@ -45,4 +45,10 @@ type (
 		kind         string
 		copyStatusID uint64
 	}
+	csvExportedMsg struct {
+		exportID uint64
+		path     string
+		rows     int
+		err      error
+	}
 )

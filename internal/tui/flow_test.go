@@ -57,19 +57,19 @@ func (f *fakeDriver) Query(_ context.Context, q db.Query) (db.Result, error) {
 func (f *fakeDriver) Rows(ctx context.Context, tbl db.Table, limit, offset int) ([]db.Column, [][]string, error) {
 	f.lastLimit = limit
 	f.lastOffset = offset
-	rows := f.rows
-	if len(rows) > limit {
-		rows = rows[:limit]
-	}
-	return f.cols, rows, nil
+	return f.cols, f.pageRows(limit, offset), nil
 }
 func (f *fakeDriver) BrowseRows(_ context.Context, req db.BrowseRequest) ([]db.Column, [][]string, error) {
 	f.lastBrowse = req
-	rows := f.rows
-	if len(rows) > req.Limit {
-		rows = rows[:req.Limit]
+	return f.cols, f.pageRows(req.Limit, req.Offset), nil
+}
+
+func (f *fakeDriver) pageRows(limit, offset int) [][]string {
+	if offset >= len(f.rows) {
+		return nil
 	}
-	return f.cols, rows, nil
+	end := min(offset+limit, len(f.rows))
+	return f.rows[offset:end]
 }
 func (f *fakeDriver) CountBrowseRows(context.Context, db.BrowseRequest) (int64, error) {
 	return f.count, nil

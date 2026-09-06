@@ -29,6 +29,7 @@ type Map struct {
 	Help              key.Binding
 	SQL               key.Binding
 	Columns           key.Binding
+	ExportCSV         key.Binding
 	Toggle            key.Binding
 }
 
@@ -135,6 +136,10 @@ func Default() Map {
 			key.WithKeys("c"),
 			key.WithHelp("c", "choose columns"),
 		),
+		ExportCSV: key.NewBinding(
+			key.WithKeys("e"),
+			key.WithHelp("e", "export CSV"),
+		),
 		Toggle: key.NewBinding(
 			key.WithKeys(" "),
 			key.WithHelp("space", "toggle"),
@@ -143,9 +148,9 @@ func Default() Map {
 }
 
 func (m Map) ShortHelp() []key.Binding {
-	return []key.Binding{m.Help, m.SQL, m.Columns, m.Schema, m.Filter, m.BrowseFilter, m.ClearBrowseFilter, m.Quit}
+	return []key.Binding{m.Help, m.SQL, m.Columns, m.ExportCSV, m.Schema, m.Filter, m.BrowseFilter, m.ClearBrowseFilter, m.Quit}
 }
 
 func (m Map) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{m.Up, m.Down, m.Left, m.Right, m.PageUp, m.PageDown, m.HalfPageUp, m.HalfPageDown, m.FirstRow, m.LastRow}, {m.CopyCell, m.CopyRow, m.OpenReference, m.BrowseFilter, m.ClearBrowseFilter, m.SQL, m.Columns, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
+	return [][]key.Binding{{m.Up, m.Down, m.Left, m.Right, m.PageUp, m.PageDown, m.HalfPageUp, m.HalfPageDown, m.FirstRow, m.LastRow}, {m.CopyCell, m.CopyRow, m.OpenReference, m.BrowseFilter, m.ClearBrowseFilter, m.SQL, m.Columns, m.ExportCSV, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
 }

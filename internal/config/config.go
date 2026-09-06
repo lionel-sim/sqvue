@@ -31,7 +31,8 @@ type File struct {
 }
 
 type Settings struct {
-	DefaultProfile string `toml:"default_profile"`
+	DefaultProfile  string `toml:"default_profile"`
+	ExportDirectory string `toml:"export_directory"`
 }
 
 const defaultFile = `# sqvue configuration
@@ -41,6 +42,7 @@ const defaultFile = `# sqvue configuration
 
 [settings]
 # default_profile = "local"
+# export_directory = "." # Defaults to sqvue's current working directory.
 
 # [connections.local]
 # db_type = "postgres"

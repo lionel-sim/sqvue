@@ -11,6 +11,7 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 - Page through row data with total-row counts and type-aware value rendering
 - Focus and navigate row data while preserving the selected row across pages and column visibility changes
 - Run ad-hoc SQL queries and page through their results
+- Export visible result columns to CSV
 - Use a discoverable keyboard-help modal and compact footer controls
 - Pluggable database driver abstraction with a registry pattern
 - Built on [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Cobra](https://github.com/spf13/cobra)
@@ -19,7 +20,7 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 
 Work in progress. PostgreSQL, SQLite, and MySQL are supported: sqvue can connect with a DSN or individual connection flags; browse schemas, tables, and views; inspect column and foreign-key metadata and paginated row data; and run ad-hoc SQL in the TUI.
 
-Additional database drivers, exporting, and streaming large results remain planned. See [roadmap.md](roadmap.md) for the current plan.
+Streaming large results remains planned. See [roadmap.md](roadmap.md) for the current plan.
 
 ## Requirements
 
@@ -75,6 +76,7 @@ to select one automatically:
 ```toml
 [settings]
 default_profile = "local"
+export_directory = "./exports"
 
 [connections.local]
 db_type = "postgres"
@@ -101,6 +103,12 @@ uses its database path or URI in `conn`; and MySQL uses its standard DSN in
 Explicitly supplied connection flags override matching profile fields. Avoid
 storing passwords in the config file—use a connection URL, environment variable,
 or Postgres password file instead.
+
+`settings.export_directory` sets the directory prefilled when exporting CSV.
+It defaults to sqvue's current working directory; relative paths are resolved
+from that directory. The export prompt lets you change the final path, and
+sqvue will not overwrite an existing file. Table exports include every row
+matching the active filters; SQL exports include the query result held by sqvue.
 
 ### Flags
 
@@ -136,6 +144,7 @@ or Postgres password file instead.
 | `d`              | Show column descriptions |
 | `y`              | Show row values       |
 | `c`              | Choose visible columns |
+| `e`              | Export visible columns as CSV |
 | `s`              | Switch schema         |
 | `/`              | Filter table list     |
 | `:`              | Run an SQL query      |

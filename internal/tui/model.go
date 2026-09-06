@@ -11,8 +11,9 @@ import (
 )
 
 type Options struct {
-	Client  db.Driver
-	Timeout time.Duration
+	Client          db.Driver
+	Timeout         time.Duration
+	ExportDirectory string
 }
 type viewMode int
 
@@ -30,7 +31,8 @@ type Model struct {
 	overlayState
 	viewportState
 	loadState
-	keys Map
+	keys            Map
+	exportDirectory string
 }
 
 type browserState struct {
@@ -74,6 +76,7 @@ const (
 	overlaySQL
 	overlayColumnPicker
 	overlayRowDetail
+	overlayExportCSV
 )
 
 type overlayState struct {
@@ -85,15 +88,16 @@ type overlayState struct {
 	browseFilterColumn                       string
 	browseFilterCursor                       int
 	sqlInput                                 textinput.Model
+	exportInput                              textinput.Model
 	help                                     help.Model
 	columnCursor, columnScroll, detailScroll int
 }
 type viewportState struct{ width, height int }
 type loadState struct {
-	status, copyStatusKind string
-	loading                bool
-	lastErr                error
-	loadID, copyStatusID   uint64
+	status, copyStatusKind         string
+	loading                        bool
+	lastErr                        error
+	loadID, copyStatusID, exportID uint64
 }
 
 func New(opts Options) Model {
@@ -106,10 +110,14 @@ func New(opts Options) Model {
 	sql.Prompt = "SQL> "
 	sql.Placeholder = "SELECT * FROM ..."
 	sql.CharLimit = 0
+	export := textinput.New()
+	export.Prompt = "Export CSV to: "
+	export.Placeholder = "path/to/results.csv"
+	export.CharLimit = 0
 	return Model{client: opts.Client, timeout: opts.Timeout,
 		resultState:  resultState{pageSize: maxPageSize, rowCounts: make(map[string]int64), browseRowCounts: make(map[string]int64)},
-		overlayState: overlayState{filterInput: filter, browseFilterInput: browseFilter, sqlInput: sql, help: help.New()},
-		loadState:    loadState{status: "loading tables...", loading: true}, keys: Default(),
+		overlayState: overlayState{filterInput: filter, browseFilterInput: browseFilter, sqlInput: sql, exportInput: export, help: help.New()},
+		loadState:    loadState{status: "loading tables...", loading: true}, keys: Default(), exportDirectory: opts.ExportDirectory,
 	}
 }
 

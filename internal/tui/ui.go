@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/ansi"
@@ -39,6 +41,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.restoreBrowseStatus()
+	case csvExportedMsg:
+		if msg.exportID != m.exportID {
+			return m, nil
+		}
+		if msg.err != nil {
+			return m.fail("CSV export failed", msg.err)
+		}
+		m.status, m.lastErr = fmt.Sprintf("exported %d rows to %s", msg.rows, msg.path), nil
 	}
 	return m, nil
 }
@@ -49,6 +59,7 @@ func (m Model) handleWindowSize(msg tea.WindowSizeMsg) (Model, tea.Cmd) {
 	m.filterInput.Width = inputWidth(msg.Width, m.filterInput.Prompt)
 	m.browseFilterInput.Width = inputWidth(msg.Width, m.browseFilterInput.Prompt)
 	m.sqlInput.Width = inputWidth(msg.Width, m.sqlInput.Prompt)
+	m.exportInput.Width = inputWidth(msg.Width, m.exportInput.Prompt)
 	if msg.Height > 0 {
 		m.pageSize = m.computedPageSize()
 	}
@@ -77,6 +88,9 @@ func (m Model) handleOverlayKey(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
 		return m, nil, true
 	case overlaySQL:
 		m, cmd := m.handleSQLKey(msg)
+		return m, cmd, true
+	case overlayExportCSV:
+		m, cmd := m.handleCSVExportKey(msg)
 		return m, cmd, true
 	case overlayColumnPicker:
 		m, cmd := m.handleColumnsKey(msg)

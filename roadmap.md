@@ -72,12 +72,16 @@ For each driver:
   - [x] Move shared view-state helpers (`currentTable`, visible-column bookkeeping, request IDs, and failures) to the closest owning file
   - [x] Keep rendering files independent of key handling and database loading
   - [x] Run the full test suite after every extraction; preserve behavior and public key bindings
-- [ ] Export results (CSV, JSON)
+- [x] Export results as CSV
+  - [x] Export the current table or SQL-result view, respecting visible columns, active filters, and result ordering
+  - [x] Offer a save-path prompt, write RFC 4180-compatible CSV, and surface success or write errors in the TUI
+- [ ] Export results as JSON
 - [ ] Streaming / large-result handling (cursor or fetch-more pagination instead of LIMIT/OFFSET)
 - [x] Saved connections / connection profiles (XDG config file, named profiles, and `--profile`)
 - [ ] Configure themes through the config file
 - [x] Test coverage for drivers (integration tests against real Postgres and MySQL instances, plus SQLite temporary databases)
 - [x] CI: lint, build, and test matrix (GitHub Actions on Linux, macOS, and Windows)
+- [ ] Generate database backups
 
 ## Phase 4 — Multi-DB / future
 

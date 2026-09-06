@@ -17,6 +17,15 @@ func TestFirstNonEmpty(t *testing.T) {
 	}
 }
 
+func TestExportDirectory(t *testing.T) {
+	if got := exportDirectory("relative/exports"); !filepath.IsAbs(got) {
+		t.Fatalf("exportDirectory() = %q, want absolute path", got)
+	}
+	if got := exportDirectory(""); !filepath.IsAbs(got) {
+		t.Fatalf("exportDirectory(\"\") = %q, want current working directory", got)
+	}
+}
+
 func TestLoadProfileUsesConfiguredDefault(t *testing.T) {
 	originalProfileFlag := profileFlag
 	originalConnFlag := connFlag

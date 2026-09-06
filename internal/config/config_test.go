@@ -81,6 +81,7 @@ func TestLoadOrCreateLoadsProfile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.toml")
 	contents := `[settings]
 default_profile = "work"
+export_directory = "./exports"
 
 [connections.work]
 host = "db.example.com"
@@ -102,6 +103,9 @@ sslmode = "verify-full"
 	}
 	if file.Settings.DefaultProfile != "work" {
 		t.Fatalf("default profile = %q, want work", file.Settings.DefaultProfile)
+	}
+	if file.Settings.ExportDirectory != "./exports" {
+		t.Fatalf("export directory = %q, want ./exports", file.Settings.ExportDirectory)
 	}
 	profile, err := file.Profile("work")
 	if err != nil {

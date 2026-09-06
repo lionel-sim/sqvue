@@ -96,6 +96,7 @@ func (m Model) helpKeyMap() Map {
 	keys.ClearBrowseFilter.SetEnabled(m.focused && !m.queryActive && len(m.browseFilters) > 0)
 	keys.SQL.SetEnabled(!m.focused)
 	keys.Columns.SetEnabled(!m.focused)
+	keys.ExportCSV.SetEnabled(m.mode == modeValues && len(m.columns) > 0)
 	keys.Schema.SetEnabled(!m.focused)
 	keys.Filter.SetEnabled(!m.focused)
 	keys.ShowDescriptions.SetEnabled(!m.focused)

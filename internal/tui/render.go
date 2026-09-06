@@ -45,6 +45,8 @@ func renderMain(m Model) string {
 		renderColumnPicker(&b, m.columns, m.visibleColumns, m.columnCursor, m.columnScroll, m.columnPickerHeight())
 	} else if m.activeOverlay == overlaySQL {
 		b.WriteString(m.sqlInput.View() + "\n")
+	} else if m.activeOverlay == overlayExportCSV {
+		b.WriteString(m.exportInput.View() + "\n")
 	} else if m.activeOverlay == overlayFilter {
 		b.WriteString(m.filterInput.View() + "\n")
 	} else if m.activeOverlay == overlayBrowseFilterOperator {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -47,7 +48,11 @@ func init() {
 }
 
 func run(cmd *cobra.Command, args []string) error {
-	cfg, created, path, err := loadProfile(cmd)
+	file, created, path, err := loadConfig()
+	if err != nil {
+		return err
+	}
+	cfg, err := profileFromFile(file, cmd)
 	if err != nil {
 		return err
 	}
@@ -78,8 +83,9 @@ func run(cmd *cobra.Command, args []string) error {
 	defer client.Close()
 
 	m := tui.New(tui.Options{
-		Client:  client,
-		Timeout: cfg.Timeout,
+		Client:          client,
+		Timeout:         cfg.Timeout,
+		ExportDirectory: exportDirectory(file.Settings.ExportDirectory),
 	})
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
@@ -91,21 +97,33 @@ func run(cmd *cobra.Command, args []string) error {
 }
 
 func loadProfile(cmd *cobra.Command) (config.DBProfile, bool, string, error) {
-	path, err := config.DefaultPath()
+	file, created, path, err := loadConfig()
 	if err != nil {
 		return config.DBProfile{}, false, "", err
 	}
+	cfg, err := profileFromFile(file, cmd)
+	return cfg, created, path, err
+}
+
+func loadConfig() (config.File, bool, string, error) {
+	path, err := config.DefaultPath()
+	if err != nil {
+		return config.File{}, false, "", err
+	}
 	file, created, err := config.LoadOrCreate(path)
 	if err != nil {
-		return config.DBProfile{}, false, "", fmt.Errorf("load config: %w", err)
+		return config.File{}, false, "", fmt.Errorf("load config: %w", err)
 	}
+	return file, created, path, nil
+}
 
+func profileFromFile(file config.File, cmd *cobra.Command) (config.DBProfile, error) {
 	cfg := config.DefaultDBProfile()
 	profileName := firstNonEmpty(profileFlag, file.Settings.DefaultProfile)
 	if profileName != "" {
 		profile, err := file.Profile(profileName)
 		if err != nil {
-			return config.DBProfile{}, false, "", err
+			return config.DBProfile{}, err
 		}
 		cfg = cfg.Merge(profile)
 	}
@@ -142,7 +160,18 @@ func loadProfile(cmd *cobra.Command) (config.DBProfile, bool, string, error) {
 	if flags.Changed("timeout") {
 		cfg.Timeout = timeoutFlag
 	}
-	return cfg, created, path, nil
+	return cfg, nil
+}
+
+func exportDirectory(configured string) string {
+	if configured == "" {
+		configured = "."
+	}
+	path, err := filepath.Abs(configured)
+	if err != nil {
+		return configured
+	}
+	return path
 }
 
 func firstNonEmpty(values ...string) string {
