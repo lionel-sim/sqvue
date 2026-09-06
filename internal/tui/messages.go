@@ -45,6 +45,19 @@ type (
 		result    db.Result
 		err       error
 	}
+	queryStreamRowsLoadedMsg struct {
+		requestID uint64
+		sql       string
+		initial   bool
+		columns   []string
+		rows      [][]string
+		exhausted bool
+		stream    db.QueryRowStream
+		cancel    func()
+		duration  int64
+		affected  int64
+		err       error
+	}
 	clipboardWrittenMsg struct {
 		kind         string
 		copyStatusID uint64

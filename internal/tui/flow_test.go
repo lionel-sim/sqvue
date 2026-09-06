@@ -45,6 +45,29 @@ type fakeRowStream struct {
 	closed bool
 }
 
+type queryStreamFakeDriver struct {
+	fakeDriver
+	queryRequests []db.Query
+	queryStreams  []*fakeQueryRowStream
+}
+
+type fakeQueryRowStream struct {
+	fakeRowStream
+	columns  []string
+	affected int64
+}
+
+func (s *fakeQueryRowStream) Columns() []string   { return append([]string(nil), s.columns...) }
+func (s *fakeQueryRowStream) RowsAffected() int64 { return s.affected }
+func (*fakeQueryRowStream) DurationMs() int64     { return 1 }
+
+func (f *queryStreamFakeDriver) OpenQueryRowStream(_ context.Context, query db.Query) (db.QueryRowStream, error) {
+	stream := &fakeQueryRowStream{fakeRowStream: fakeRowStream{rows: f.rows}, columns: []string{"id"}}
+	f.queryRequests = append(f.queryRequests, query)
+	f.queryStreams = append(f.queryStreams, stream)
+	return stream, nil
+}
+
 func (s *fakeRowStream) Next() ([]string, error) {
 	if s.index >= len(s.rows) {
 		return nil, io.EOF
@@ -210,6 +233,58 @@ func TestTableStreamResetsForBrowseContextAndResize(t *testing.T) {
 	m, cmd = update(m, tea.WindowSizeMsg{Width: 100, Height: 20})
 	if cmd == nil || !third.closed {
 		t.Fatalf("resizing did not reset the active stream: command %v, closed %t", cmd != nil, third.closed)
+	}
+}
+
+func TestQueryResultsStreamForwardAndReopenForPreviousPage(t *testing.T) {
+	client := &queryStreamFakeDriver{fakeDriver: fakeDriver{rows: [][]string{{"1"}, {"2"}, {"3"}, {"4"}, {"5"}}}}
+	m := New(Options{Client: client, Timeout: time.Second})
+	m.pageSize = 2
+	m.sqlInput.SetValue("select id from items")
+
+	m, cmd := m.handleSQLKey(keyMsg("enter"))
+	m, _ = update(m, runCmd(cmd))
+	if !m.queryActive || !m.queryStreaming || len(client.queryRequests) != 1 {
+		t.Fatalf("initial query stream state = active %t, streaming %t, requests %#v", m.queryActive, m.queryStreaming, client.queryRequests)
+	}
+	if got := m.rows; len(got) != 2 || got[0][0] != "1" || got[1][0] != "2" || !m.hasNextPage {
+		t.Fatalf("first query page = %#v, hasNext %t", got, m.hasNextPage)
+	}
+
+	m, cmd = m.changePage(+1)
+	m, _ = update(m, runCmd(cmd))
+	if len(client.queryRequests) != 1 || m.page != 1 || m.rows[0][0] != "3" {
+		t.Fatalf("forward query page = requests %d, page %d, rows %#v", len(client.queryRequests), m.page, m.rows)
+	}
+
+	m, cmd = m.changePage(-1)
+	m, _ = update(m, runCmd(cmd))
+	if len(client.queryRequests) != 2 || !client.queryStreams[0].closed || m.page != 0 || m.rows[0][0] != "1" {
+		t.Fatalf("previous query page = requests %d, first closed %t, page %d, rows %#v", len(client.queryRequests), client.queryStreams[0].closed, m.page, m.rows)
+	}
+	request, err := m.exportRequest("query.json")
+	if err != nil || request.query == nil || request.query.SQL != "select id from items" {
+		t.Fatalf("streamed query export request = %#v, error %v", request, err)
+	}
+	active := client.queryStreams[1]
+	m, cmd = update(m, tea.WindowSizeMsg{Width: 100, Height: 20})
+	if cmd == nil || !active.closed {
+		t.Fatalf("resizing did not reset the query stream: command %t, closed %t", cmd != nil, active.closed)
+	}
+}
+
+func TestStaleTableStreamResultIsClosedAndCancelled(t *testing.T) {
+	m := testModel()
+	m.loadID = 2
+	stream := &fakeRowStream{}
+	cancelled := false
+	m, _ = update(m, tableStreamRowsLoadedMsg{
+		requestID: 1,
+		stream:    stream,
+		cancel:    func() { cancelled = true },
+	})
+	if !stream.closed || !cancelled {
+		t.Fatalf("stale stream cleanup = closed %t, cancelled %t", stream.closed, cancelled)
 	}
 }
 

@@ -132,6 +132,63 @@ func TestWriteJSONExportsAllFilteredTableRows(t *testing.T) {
 	}
 }
 
+func TestWriteJSONExportsAllStreamedQueryRows(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "query.json")
+	client := &queryStreamFakeDriver{fakeDriver: fakeDriver{rows: [][]string{{"1"}, {"2"}, {"3"}}}}
+	rows, err := writeJSON(client, time.Second, exportRequest{
+		path:    path,
+		columns: []db.Column{{Name: "id"}},
+		query:   &db.Query{SQL: "select id from items"},
+	})
+	if err != nil {
+		t.Fatalf("writeJSON() error = %v", err)
+	}
+	if rows != 3 || len(client.queryRequests) != 1 || client.queryRequests[0].SQL != "select id from items" {
+		t.Fatalf("streamed JSON export = rows %d, requests %#v", rows, client.queryRequests)
+	}
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	var records []map[string]string
+	if err := json.Unmarshal(contents, &records); err != nil {
+		t.Fatalf("JSON export is invalid: %v", err)
+	}
+	want := []map[string]string{{"id": "1"}, {"id": "2"}, {"id": "3"}}
+	if !reflect.DeepEqual(records, want) {
+		t.Fatalf("JSON records = %#v, want %#v", records, want)
+	}
+}
+
+func TestWriteCSVExportsAllStreamedQueryRows(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "query.csv")
+	client := &queryStreamFakeDriver{fakeDriver: fakeDriver{rows: [][]string{{"1"}, {"2"}, {"3"}}}}
+	rows, err := writeCSV(client, time.Second, csvExportRequest{
+		path:    path,
+		columns: []db.Column{{Name: "id"}},
+		query:   &db.Query{SQL: "select id from items"},
+	})
+	if err != nil {
+		t.Fatalf("writeCSV() error = %v", err)
+	}
+	if rows != 3 || len(client.queryRequests) != 1 {
+		t.Fatalf("streamed CSV export = rows %d, requests %#v", rows, client.queryRequests)
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer file.Close()
+	records, err := csv.NewReader(file).ReadAll()
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+	want := [][]string{{"id"}, {"1"}, {"2"}, {"3"}}
+	if !reflect.DeepEqual(records, want) {
+		t.Fatalf("CSV records = %#v, want %#v", records, want)
+	}
+}
+
 func TestCSVExportPromptUsesConfiguredDirectory(t *testing.T) {
 	m := New(Options{ExportDirectory: "/exports"})
 	m.tables = []db.Table{{Schema: "public", Name: "order items"}}

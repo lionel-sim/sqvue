@@ -6,6 +6,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"sqvue/internal/db"
 )
 
 func (m Model) handleSQLKey(msg tea.KeyMsg) (Model, tea.Cmd) {
@@ -20,9 +22,14 @@ func (m Model) handleSQLKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 			return m, nil
 		}
 		m.closeTableStream()
+		m.closeQueryStream()
 		m.activeOverlay, m.loading, m.status = overlayNone, true, "running query..."
 		m.sqlInput.Blur()
-		return m, runQueryCmd(m.client, sql, m.timeout, m.nextRequestID())
+		requestID := m.nextRequestID()
+		if streamer, ok := m.client.(db.QueryRowStreamer); ok {
+			return m, openQueryRowStreamCmd(streamer, db.Query{SQL: sql}, m.pageSize, 0, requestID, true)
+		}
+		return m, runQueryCmd(m.client, sql, m.timeout, requestID)
 	}
 	var cmd tea.Cmd
 	m.sqlInput, cmd = m.sqlInput.Update(msg)
@@ -70,6 +77,7 @@ func (m Model) handleSchemaKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 func (m Model) showDescriptions() (Model, tea.Cmd) {
 	if m.mode != modeDescriptions {
 		m.closeTableStream()
+		m.closeQueryStream()
 		m.queryActive, m.mode = false, modeDescriptions
 		return m.startLoadDescriptions()
 	}
@@ -111,6 +119,13 @@ func (m Model) changePage(delta int) (Model, tea.Cmd) {
 		return m, nil
 	}
 	if m.queryActive {
+		if m.queryStreaming {
+			if delta > 0 && !m.hasNextPage {
+				return m, nil
+			}
+			m.page += delta
+			return m.startLoadQueryRows()
+		}
 		if delta > 0 && (m.page+1)*m.pageSize >= len(m.queryRows) {
 			return m, nil
 		}

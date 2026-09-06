@@ -70,6 +70,11 @@ type queryState struct {
 	queryRows                    [][]string
 	queryDuration, queryAffected int64
 	queryTruncated               bool
+	querySQL                     string
+	queryStreaming               bool
+	queryStream                  db.QueryRowStream
+	queryStreamCancel            func()
+	queryStreamNextPage          int
 }
 type overlayMode uint8
 

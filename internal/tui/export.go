@@ -31,6 +31,7 @@ type exportRequest struct {
 	columns        []db.Column
 	visibleColumns []bool
 	queryRows      [][]string
+	query          *db.Query
 	table          *db.Table
 	filters        []db.RowFilter
 }
@@ -97,6 +98,10 @@ func (m Model) exportRequest(path string) (exportRequest, error) {
 		filters:        append([]db.RowFilter(nil), m.browseFilters...),
 	}
 	if m.queryActive {
+		if m.queryStreaming {
+			request.query = &db.Query{SQL: m.querySQL}
+			return request, nil
+		}
 		request.queryRows = append([][]string(nil), m.queryRows...)
 		return request, nil
 	}
@@ -254,6 +259,31 @@ func createExportFile(path, format string) (*os.File, error) {
 }
 
 func writeExportRows(client db.Driver, timeout time.Duration, request exportRequest, writeRows func([][]string) error) error {
+	if request.query != nil {
+		streamer, ok := client.(db.QueryRowStreamer)
+		if !ok {
+			return fmt.Errorf("query streaming is unavailable")
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		stream, err := streamer.OpenQueryRowStream(ctx, *request.query)
+		if err != nil {
+			return fmt.Errorf("open query stream: %w", err)
+		}
+		defer stream.Close()
+		for {
+			values, exhausted, err := db.ReadRowStream(stream, exportBatchSize)
+			if err != nil {
+				return fmt.Errorf("load query rows: %w", err)
+			}
+			if err := writeRows(values); err != nil {
+				return err
+			}
+			if exhausted {
+				return nil
+			}
+		}
+	}
 	if request.table == nil {
 		return writeRows(request.queryRows)
 	}

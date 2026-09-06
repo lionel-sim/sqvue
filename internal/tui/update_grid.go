@@ -81,6 +81,27 @@ func (m Model) moveGridRows(delta int) (Model, tea.Cmd) {
 		return m, nil
 	}
 	if m.queryActive {
+		if m.queryStreaming {
+			target := m.rowCursor + delta
+			if target >= 0 && target < len(m.rows) {
+				m.rowCursor = target
+				return m, nil
+			}
+			if target < 0 {
+				if m.page == 0 {
+					m.rowCursor = 0
+					return m, nil
+				}
+				m.page, m.pendingRowMoves = m.page-1, target
+				return m.startLoadQueryRows()
+			}
+			if !m.hasNextPage {
+				m.rowCursor = len(m.rows) - 1
+				return m, nil
+			}
+			m.page, m.pendingRowMoves = m.page+1, target-len(m.rows)
+			return m.startLoadQueryRows()
+		}
 		absolute := clamp(m.page*m.pageSize+m.rowCursor+delta, 0, max(0, len(m.queryRows)-1))
 		m.page, m.rowCursor = absolute/m.pageSize, absolute%m.pageSize
 		m.setQueryPage()

@@ -29,6 +29,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleCountLoaded(msg)
 	case queryLoadedMsg:
 		return m.handleQueryLoaded(msg)
+	case queryStreamRowsLoadedMsg:
+		return m.handleQueryStreamRowsLoaded(msg)
 	case clipboardWrittenMsg:
 		if msg.copyStatusID != m.copyStatusID {
 			return m, nil
@@ -75,6 +77,10 @@ func (m Model) handleWindowSize(msg tea.WindowSizeMsg) (Model, tea.Cmd) {
 		m.pageSize = m.computedPageSize()
 	}
 	if m.pageSize != oldSize && m.queryActive {
+		if m.queryStreaming {
+			m.closeQueryStream()
+			return m.startLoadQueryRows()
+		}
 		m.setQueryPage()
 		return m, nil
 	}

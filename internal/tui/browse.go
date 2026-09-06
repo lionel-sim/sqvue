@@ -161,7 +161,8 @@ func (m Model) handleQueryLoaded(msg queryLoadedMsg) (Model, tea.Cmd) {
 	if msg.err != nil {
 		return m.fail("query failed", msg.err)
 	}
-	m.queryActive, m.lastErr, m.mode, m.page, m.rowCursor, m.cellCursor = true, nil, modeValues, 0, 0, 0
+	m.closeQueryStream()
+	m.queryActive, m.queryStreaming, m.lastErr, m.mode, m.page, m.rowCursor, m.cellCursor = true, false, nil, modeValues, 0, 0, 0
 	m.queryDuration, m.queryAffected, m.queryTruncated = msg.result.DurationMs, msg.result.RowsAffected, msg.result.Truncated
 	m.columns = make([]db.Column, len(msg.result.Columns))
 	for i, name := range msg.result.Columns {
@@ -182,6 +183,88 @@ func (m Model) handleQueryLoaded(msg queryLoadedMsg) (Model, tea.Cmd) {
 	m.sqlInput.SetValue("")
 	return m, nil
 }
+
+func (m Model) handleQueryStreamRowsLoaded(msg queryStreamRowsLoadedMsg) (Model, tea.Cmd) {
+	if !m.isCurrent(msg.requestID) {
+		if msg.stream != nil {
+			_ = msg.stream.Close()
+		}
+		if msg.cancel != nil {
+			msg.cancel()
+		}
+		return m, nil
+	}
+	m.loading = false
+	if msg.err != nil {
+		if msg.stream != nil {
+			_ = msg.stream.Close()
+		}
+		if msg.cancel != nil {
+			msg.cancel()
+		}
+		m.closeQueryStream()
+		return m.fail("query failed", msg.err)
+	}
+	if msg.initial {
+		m.closeQueryStream()
+		m.queryActive, m.queryStreaming, m.lastErr, m.mode, m.page, m.rowCursor, m.cellCursor = true, true, nil, modeValues, 0, 0, 0
+		m.querySQL, m.queryRows, m.queryTruncated = msg.sql, nil, false
+		m.columns = make([]db.Column, len(msg.columns))
+		for i, name := range msg.columns {
+			m.columns[i] = db.Column{Name: name}
+		}
+		m.visibleColumns, m.visibleColumnKey = make([]bool, len(m.columns)), "query"
+		for i := range m.visibleColumns {
+			m.visibleColumns[i] = true
+		}
+	}
+	if msg.stream != nil {
+		m.queryStream, m.queryStreamCancel, m.queryStreamNextPage = msg.stream, msg.cancel, m.page+1
+	}
+	if len(msg.rows) == 0 && msg.exhausted && m.page > 0 {
+		m.page--
+		m.hasNextPage = false
+		m.closeQueryStream()
+		m.setQueryPage()
+		return m, nil
+	}
+	m.rows, m.hasNextPage = msg.rows, !msg.exhausted
+	m.queryDuration, m.queryAffected = msg.duration, msg.affected
+	if m.rowCursor >= len(m.rows) {
+		m.rowCursor = max(0, len(m.rows)-1)
+	}
+	if m.queryStream != nil {
+		m.queryStreamNextPage = m.page + 1
+	}
+	if m.pendingRowMoves != 0 {
+		pending := m.pendingRowMoves
+		m.pendingRowMoves = 0
+		switch {
+		case pending >= 0 && pending < len(m.rows):
+			m.rowCursor = pending
+		case pending >= len(m.rows) && m.hasNextPage:
+			m.page++
+			m.pendingRowMoves = pending - len(m.rows)
+			return m.startLoadQueryRows()
+		case pending < 0 && m.page > 0:
+			m.page--
+			m.pendingRowMoves = pending + len(m.rows)
+			return m.startLoadQueryRows()
+		case pending < 0:
+			m.rowCursor = 0
+		default:
+			m.rowCursor = max(0, len(m.rows)-1)
+		}
+	}
+	if msg.exhausted {
+		m.closeQueryStream()
+	}
+	m.cellCursor = clamp(m.cellCursor, 0, max(0, m.displayedColumnCount()-1))
+	m.lastErr = nil
+	m.setQueryPage()
+	m.sqlInput.SetValue("")
+	return m, nil
+}
 func formatQueryValue(value any) string {
 	if value == nil {
 		return "NULL"
@@ -192,6 +275,10 @@ func formatQueryValue(value any) string {
 	return fmt.Sprint(value)
 }
 func (m *Model) setQueryPage() {
+	if m.queryStreaming {
+		m.status = fmt.Sprintf("query page %d (%d rows, %d ms, %d affected)", m.page+1, len(m.rows), m.queryDuration, m.queryAffected)
+		return
+	}
 	start := min(m.page*m.pageSize, len(m.queryRows))
 	end := min(start+m.pageSize, len(m.queryRows))
 	m.rows = m.queryRows[start:end]
@@ -254,6 +341,31 @@ func (m *Model) closeTableStream() {
 		m.tableStream.cancel()
 	}
 	m.tableStream = tableStreamState{}
+}
+
+func (m *Model) closeQueryStream() {
+	if m.queryStream != nil {
+		_ = m.queryStream.Close()
+	}
+	if m.queryStreamCancel != nil {
+		m.queryStreamCancel()
+	}
+	m.queryStream, m.queryStreamCancel, m.queryStreamNextPage = nil, nil, 0
+}
+
+func (m Model) startLoadQueryRows() (Model, tea.Cmd) {
+	streamer, ok := m.client.(db.QueryRowStreamer)
+	if !ok || !m.queryStreaming {
+		return m, nil
+	}
+	m.loading = true
+	m.status = fmt.Sprintf("loading query page %d...", m.page+1)
+	requestID := m.nextRequestID()
+	if m.queryStream != nil && m.page == m.queryStreamNextPage {
+		return m, readQueryRowStreamCmd(m.queryStream, m.pageSize, requestID)
+	}
+	m.closeQueryStream()
+	return m, openQueryRowStreamCmd(streamer, db.Query{SQL: m.querySQL}, m.pageSize, m.page*m.pageSize, requestID, false)
 }
 
 func (m Model) loadCurrentRowCount(t db.Table) tea.Cmd {

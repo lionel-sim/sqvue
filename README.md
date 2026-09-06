@@ -8,7 +8,7 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 
 - Browse schemas, tables, and views with keyboard navigation; views are marked in the table list
 - Filter the table list and focused rows with parameterized comparisons; inspect column and foreign-key metadata; and choose visible columns
-- Page through row data with total-row counts and type-aware value rendering
+- Page through row data with total-row counts, type-aware value rendering, and incremental loading for large results
 - Focus and navigate row data while preserving the selected row across pages and column visibility changes
 - Run ad-hoc SQL queries and page through their results
 - Export visible result columns to CSV or JSON
@@ -110,7 +110,8 @@ creating a backup.
 It defaults to sqvue's current working directory; relative paths are resolved
 from that directory. Prompts let you change the final path, and sqvue will not
 overwrite an existing file. Table exports include every row matching the active
-filters; SQL exports include the query result held by sqvue.
+filters. For streamed SQL results, exports rerun the active query from the
+beginning so they include rows beyond the currently displayed page.
 Press `e` for CSV or `E` for JSON. JSON exports are arrays of objects whose
 keys are the visible column names.
 

@@ -81,11 +81,11 @@ For each driver:
   - [x] Define a driver-neutral row-stream contract with explicit close/cancellation semantics and focused unit tests
   - [x] Implement filtered and unfiltered table row streams in the PostgreSQL, SQLite, and MySQL drivers, preserving each driver's existing ordering and parameterized filters
   - [x] Page table browsing from an active stream, resetting and closing streams when the table, schema, filters, view mode, or window page size changes
-  - [ ] Stream ad-hoc SQL query results into fetch-more pages rather than retaining the current fixed 1,000-row result set
+  - [x] Stream ad-hoc SQL query results into fetch-more pages rather than retaining the current fixed 1,000-row result set
     - [x] Define query-stream metadata and implement it for PostgreSQL, SQLite, and MySQL without changing non-row command results
-    - [ ] Page SQL results from a live stream, including backward navigation, stale-load cleanup, and query status reporting
-    - [ ] Preserve complete CSV and JSON query exports without retaining every streamed row in TUI memory
-  - [ ] Cover stream lifecycle, error, pagination, and cancellation behavior; document fetch-more behavior and key bindings
+    - [x] Page SQL results from a live stream, including backward navigation, stale-load cleanup, and query status reporting
+    - [x] Preserve complete CSV and JSON query exports without retaining every streamed row in TUI memory
+  - [x] Cover stream lifecycle, error, pagination, and cancellation behavior; document fetch-more behavior and key bindings
 - [x] Saved connections / connection profiles (XDG config file, named profiles, and `--profile`)
 - [ ] Configure themes through the config file
 - [x] Test coverage for drivers (integration tests against real Postgres and MySQL instances, plus SQLite temporary databases)

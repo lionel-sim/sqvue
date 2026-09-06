@@ -123,6 +123,38 @@ func runQueryCmd(c db.Driver, sql string, timeout time.Duration, requestID uint6
 	}
 }
 
+func openQueryRowStreamCmd(c db.QueryRowStreamer, query db.Query, pageSize, skip int, requestID uint64, initial bool) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithCancel(context.Background())
+		stream, err := c.OpenQueryRowStream(ctx, query)
+		if err != nil {
+			cancel()
+			return queryStreamRowsLoadedMsg{requestID: requestID, sql: query.SQL, initial: initial, err: err}
+		}
+		if skip > 0 {
+			if _, _, err := db.ReadRowStream(stream, skip); err != nil {
+				_ = stream.Close()
+				cancel()
+				return queryStreamRowsLoadedMsg{requestID: requestID, sql: query.SQL, initial: initial, err: err}
+			}
+		}
+		rows, exhausted, err := db.ReadRowStream(stream, pageSize)
+		if err != nil {
+			_ = stream.Close()
+			cancel()
+			return queryStreamRowsLoadedMsg{requestID: requestID, sql: query.SQL, initial: initial, err: err}
+		}
+		return queryStreamRowsLoadedMsg{requestID: requestID, sql: query.SQL, initial: initial, columns: stream.Columns(), rows: rows, exhausted: exhausted, stream: stream, cancel: cancel, duration: stream.DurationMs(), affected: stream.RowsAffected()}
+	}
+}
+
+func readQueryRowStreamCmd(stream db.QueryRowStream, pageSize int, requestID uint64) tea.Cmd {
+	return func() tea.Msg {
+		rows, exhausted, err := db.ReadRowStream(stream, pageSize)
+		return queryStreamRowsLoadedMsg{requestID: requestID, rows: rows, exhausted: exhausted, duration: stream.DurationMs(), affected: stream.RowsAffected(), err: err}
+	}
+}
+
 func writeClipboardCmd(value, kind string, copyStatusID uint64) tea.Cmd {
 	return func() tea.Msg {
 		return clipboardWrittenMsg{kind: kind, copyStatusID: copyStatusID, err: clipboard.WriteAll(value)}
@@ -148,6 +180,7 @@ func (m Model) startLoad() (Model, tea.Cmd) {
 
 func (m Model) startLoadRows() (Model, tea.Cmd) {
 	if t := m.currentTable(); t != nil {
+		m.closeQueryStream()
 		m.queryActive = false
 		m.loading = true
 		m.status = fmt.Sprintf("loading %s page %d...", t.String(), m.page+1)
