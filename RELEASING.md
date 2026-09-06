@@ -12,10 +12,11 @@ Use semantic version tags with a leading `v`:
 - `v0.1.0-beta.1` creates a GitHub prerelease.
 - `v0.1.0` creates the corresponding stable release.
 
-To publish, push the completed `release/*` branch, open **Actions → Release →
-Run workflow**, select that branch, and enter the version tag. Do not create or
-push the tag yourself. The workflow validates that the tag does not already
-exist and supplies its version to `sqvue --version`; ordinary source builds
+To publish, name and push the completed branch as `release/v<semantic-version>`
+(for example, `release/v0.1.0-beta.1`). Open **Actions → Release → Run
+workflow** and select that branch. Do not create or push the tag yourself. The
+workflow derives the tag from the branch name, validates that it does not
+already exist, and supplies it to `sqvue --version`; ordinary source builds
 continue to report `dev`.
 
 When the workflow finishes, open the GitHub release draft, edit its title and
