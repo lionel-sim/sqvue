@@ -5,6 +5,8 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
+
+	"sqvue/internal/theme"
 )
 
 func renderHelpModal(m Model) string {
@@ -226,6 +228,21 @@ func titledDialog(m Model, lines []string, width int, title string) string {
 	bottom := m.theme.DialogBorder.Render("┗" + strings.Repeat("━", width) + "┛")
 	for i, line := range lines {
 		lines[i] = m.theme.DialogBorder.Render("┃") + line + m.theme.DialogBorder.Render("┃")
+	}
+	return top + "\n" + strings.Join(lines, "\n") + "\n" + bottom
+}
+
+// renderTitledPanel renders a fixed-height, terminal-width panel used by the
+// top-level table selector.
+func renderTitledPanel(styles theme.Theme, lines []string, width int, title string) string {
+	width = max(1, width)
+	title = ansi.Truncate(title, max(0, width-4), "…")
+	titleEdge := "━ " + title + " "
+	top := styles.DialogBorder.Render("┏━ ") + styles.Title.Render(title) + styles.DialogBorder.Render(" "+strings.Repeat("━", max(0, width-ansi.StringWidth(titleEdge)))+"┓")
+	bottom := styles.DialogBorder.Render("┗" + strings.Repeat("━", width) + "┛")
+	contentStyle := styles.Dialog.Padding(0).Width(width)
+	for i, line := range lines {
+		lines[i] = styles.DialogBorder.Render("┃") + contentStyle.Render(line) + styles.DialogBorder.Render("┃")
 	}
 	return top + "\n" + strings.Join(lines, "\n") + "\n" + bottom
 }

@@ -193,14 +193,14 @@ func TestHelpShowsBindingsForCurrentFocus(t *testing.T) {
 
 func TestRenderTableListUsesSchemaHeaderAndMarksViews(t *testing.T) {
 	var b strings.Builder
-	renderTableList(&b, theme.Default(), "public", []db.Table{
+	renderTableList(&b, theme.Default(), 50, "public", []db.Table{
 		{Schema: "public", Name: "categories", Type: "table"},
 		{Schema: "public", Name: "sales_summary", Type: "view"},
 	}, 0, 0, "")
 
 	out := ansi.Strip(b.String())
-	if !strings.Contains(out, "Tables: public") {
-		t.Fatalf("table list missing schema header: %q", out)
+	if !strings.Contains(out, "┏━ Tables: public") || !strings.Contains(out, "┗") {
+		t.Fatalf("table list missing titled border: %q", out)
 	}
 	if !strings.Contains(out, "> categories") {
 		t.Fatalf("table list missing bare table name: %q", out)
@@ -301,12 +301,12 @@ func TestHelpRendersAsModalOverCurrentView(t *testing.T) {
 	if !strings.Contains(out, "┏━ Keyboard shortcuts") {
 		t.Fatalf("help dialog missing titled border: %q", out)
 	}
+	dialogWidth := ansi.StringWidth(strings.Split(renderHelpDialog(m), "\n")[0])
 	for _, line := range strings.Split(out, "\n") {
 		plain := ansi.Strip(line)
-		if strings.Contains(plain, "┏") {
-			left := strings.Index(plain, "┏")
-			right := len(plain) - len(strings.TrimRight(plain, " "))
-			if left != right {
+		if strings.Contains(plain, "┏━ Keyboard shortcuts") {
+			left := ansi.StringWidth(plain[:strings.Index(plain, "┏")])
+			if left != (m.width-dialogWidth)/2 {
 				t.Fatalf("help dialog is not horizontally centered: %q", plain)
 			}
 		}
@@ -314,7 +314,7 @@ func TestHelpRendersAsModalOverCurrentView(t *testing.T) {
 	var borderWidths []int
 	for _, line := range strings.Split(out, "\n") {
 		plain := ansi.Strip(line)
-		if strings.Contains(plain, "┏") || strings.Contains(plain, "┗") {
+		if strings.Contains(plain, "┏━ Keyboard shortcuts") || strings.Index(plain, "┗") > 0 {
 			borderWidths = append(borderWidths, ansi.StringWidth(plain))
 		}
 	}

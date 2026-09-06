@@ -4,21 +4,25 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"sqvue/internal/db"
 	"sqvue/internal/theme"
 )
 
-func renderTableList(b *strings.Builder, styles theme.Theme, schema string, tables []db.Table, selected, offset int, filter string) {
-	header := fmt.Sprintf("Tables: %s", sanitizeText(schema))
+func renderTableList(b *strings.Builder, styles theme.Theme, terminalWidth int, schema string, tables []db.Table, selected, offset int, filter string) {
+	title := fmt.Sprintf("Tables: %s", sanitizeText(schema))
 	if filter != "" {
-		header += fmt.Sprintf(" [filter: %s]", sanitizeText(filter))
+		title += fmt.Sprintf(" [filter: %s]", sanitizeText(filter))
 	}
-	b.WriteString(styles.Title.Render(header) + "\n")
+	width := tableListWidth(terminalWidth, title)
+	lines := make([]string, 0, tableListHeight)
 	if len(tables) == 0 {
-		b.WriteString("  (no tables found)\n")
+		lines = append(lines, "  (no tables found)")
 		for i := 1; i < tableListHeight; i++ {
-			b.WriteByte('\n')
+			lines = append(lines, "")
 		}
+		b.WriteString(renderTitledPanel(styles, lines, width, title))
 		return
 	}
 	end := offset + tableListHeight
@@ -34,15 +38,24 @@ func renderTableList(b *strings.Builder, styles theme.Theme, schema string, tabl
 		if tables[i].Type != "" && tables[i].Type != "table" {
 			name += " [" + tables[i].Type + "]"
 		}
-		line := prefix + name
+		line := ansi.Truncate(prefix+name, width, "…")
 		if i == selected {
 			line = styles.Selected.Render(line)
 		}
-		b.WriteString(line + "\n")
+		lines = append(lines, line)
 	}
 	for i := end - offset; i < tableListHeight; i++ {
-		b.WriteByte('\n')
+		lines = append(lines, "")
 	}
+	b.WriteString(renderTitledPanel(styles, lines, width, title))
+}
+
+func tableListWidth(terminalWidth int, title string) int {
+	minimum := max(12, ansi.StringWidth(title)+2)
+	if terminalWidth <= 0 {
+		return minimum
+	}
+	return max(1, terminalWidth-2)
 }
 
 func renderSchemaList(b *strings.Builder, styles theme.Theme, schemas []db.Schema, selected, offset int) {

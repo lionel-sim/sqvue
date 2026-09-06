@@ -389,19 +389,19 @@ func TestRowsUseComputedPageSize(t *testing.T) {
 	}
 	m := New(Options{Client: f, Timeout: time.Second})
 
-	// Window size arrives first (height 20 -> page size 12), then tables load.
+	// Window size arrives first (height 20 -> page size 11), then tables load.
 	var cmd tea.Cmd
 	m, cmd = update(m, tea.WindowSizeMsg{Width: 100, Height: 20})
-	if m.pageSize != 12 {
-		t.Fatalf("want page size 12, got %d", m.pageSize)
+	if m.pageSize != 11 {
+		t.Fatalf("want page size 11, got %d", m.pageSize)
 	}
 	m, cmd = update(m, tablesLoadedMsg{tables: f.tables})
 	if msg := runCmd(cmd); msg != nil {
 		m, cmd = update(m, msg)
 		_ = cmd
 	}
-	if f.lastLimit != 13 {
-		t.Fatalf("table loaded after resize: want limit 13, got %d", f.lastLimit)
+	if f.lastLimit != 12 {
+		t.Fatalf("table loaded after resize: want limit 12, got %d", f.lastLimit)
 	}
 
 	// Reverse order: tables load with the default page size, then a resize
@@ -421,8 +421,8 @@ func TestRowsUseComputedPageSize(t *testing.T) {
 		t.Fatal("expected reload after resize")
 	}
 	_ = runCmd(cmd)
-	if f.lastLimit != 13 {
-		t.Fatalf("after resize: want limit 13, got %d", f.lastLimit)
+	if f.lastLimit != 12 {
+		t.Fatalf("after resize: want limit 12, got %d", f.lastLimit)
 	}
 }
 
@@ -597,8 +597,8 @@ func TestQueryResizeRepagesWithoutLoadingTableRows(t *testing.T) {
 	if cmd != nil {
 		t.Fatal("query resize should page local results without loading table rows")
 	}
-	if len(m.rows) != 2 {
-		t.Fatalf("query rows after resize = %d, want 2", len(m.rows))
+	if len(m.rows) != 1 {
+		t.Fatalf("query rows after resize = %d, want 1", len(m.rows))
 	}
 }
 

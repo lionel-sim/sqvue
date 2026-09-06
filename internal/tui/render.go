@@ -7,10 +7,11 @@ import (
 )
 
 const (
-	maxColWidth     = 40
-	minColWidth     = 2
-	colSep          = " | "
-	tableListHeader = 1
+	maxColWidth = 40
+	minColWidth = 2
+	colSep      = " | "
+	// The table selector has a titled top border and a bottom border.
+	tableListHeader = 2
 	tableListHeight = 4
 	gapAfterList    = 1
 	columnsHeader   = 1
@@ -56,7 +57,7 @@ func renderMain(m Model) string {
 	if m.activeOverlay == overlaySchemaPicker {
 		renderSchemaList(&b, m.theme, m.schemas, m.schemaCursor, m.schemaScroll)
 	} else {
-		renderTableList(&b, m.theme, m.currentSchema(), m.tables, m.selected, m.scroll, m.filterInput.Value())
+		renderTableList(&b, m.theme, m.width, m.currentSchema(), m.tables, m.selected, m.scroll, m.filterInput.Value())
 	}
 	b.WriteString("\n")
 	if m.activeOverlay == overlayColumnPicker {
