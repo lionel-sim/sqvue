@@ -5,8 +5,30 @@ set -eu
 repository=${SQVUE_REPOSITORY:-lionel-sim/sqvue}
 download_base=${SQVUE_DOWNLOAD_BASE_URL:-"https://github.com/$repository/releases/download"}
 
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+	bold=$(printf '\033[1m')
+	blue=$(printf '\033[34m')
+	green=$(printf '\033[32m')
+	red=$(printf '\033[31m')
+	reset=$(printf '\033[0m')
+else
+	bold=
+	blue=
+	green=
+	red=
+	reset=
+fi
+
+header() {
+	printf '\n%s==>%s %ssqvue%s installer\n\n' "$blue" "$reset" "$bold" "$reset"
+}
+
+step() {
+	printf '%s==>%s %s\n' "$blue" "$reset" "$*"
+}
+
 fail() {
-	printf '%s\n' "error: $*" >&2
+	printf '%serror:%s %s\n' "$red" "$reset" "$*" >&2
 	exit 1
 }
 
@@ -24,6 +46,8 @@ download() {
 	fail "curl or wget is required"
 }
 
+header
+
 if [ -n "${INSTALL_DIR:-}" ]; then
 	install_dir=$INSTALL_DIR
 else
@@ -34,6 +58,7 @@ fi
 if [ -n "${SQVUE_VERSION:-}" ]; then
 	version=$SQVUE_VERSION
 else
+	step "Resolving the latest stable release"
 	temporary_metadata=$(mktemp)
 	trap 'rm -f "$temporary_metadata"' 0
 	download "https://api.github.com/repos/$repository/releases/latest" "$temporary_metadata"
@@ -64,9 +89,11 @@ archive="sqvue_${version}_${os}_${arch}.tar.gz"
 temporary_directory=$(mktemp -d)
 trap 'rm -rf "$temporary_directory"' 0 HUP INT TERM
 
+step "Downloading sqvue $version for $os/$arch"
 download "$download_base/$version/$archive" "$temporary_directory/$archive"
 download "$download_base/$version/checksums.txt" "$temporary_directory/checksums.txt"
 
+step "Verifying SHA-256 checksum"
 expected_checksum=$(awk -v filename="$archive" '$NF == filename { print $1; exit }' "$temporary_directory/checksums.txt")
 [ -n "$expected_checksum" ] || fail "checksum for $archive was not found"
 
@@ -83,9 +110,10 @@ fi
 tar -xzf "$temporary_directory/$archive" -C "$temporary_directory"
 [ -f "$temporary_directory/sqvue" ] || fail "release archive did not contain sqvue"
 
+step "Installing to $install_dir"
 mkdir -p "$install_dir"
 install -m 0755 "$temporary_directory/sqvue" "$install_dir/sqvue"
-printf 'Installed sqvue %s to %s/sqvue\n' "$version" "$install_dir"
+printf '%sInstalled%s sqvue %s at %s/sqvue\n' "$green" "$reset" "$version" "$install_dir"
 
 case ":$PATH:" in
 	*":$install_dir:"*) ;;
