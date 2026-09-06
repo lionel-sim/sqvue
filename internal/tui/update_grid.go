@@ -52,6 +52,10 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 			m.status = "editing is unavailable for SQL results"
 			return m, nil
 		}
+		if !m.hasPrimaryKey() {
+			m.status = "editing requires a table with a primary key"
+			return m, nil
+		}
 		m.status = "cell editing is not available yet"
 		return m, nil
 	case key.Matches(msg, m.keys.OpenReference):

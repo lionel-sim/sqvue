@@ -81,6 +81,15 @@ func (m *Model) currentTable() *db.Table {
 	return &m.tables[m.selected]
 }
 
+func (m Model) hasPrimaryKey() bool {
+	for _, column := range m.columns {
+		if column.IsPrimary {
+			return true
+		}
+	}
+	return false
+}
+
 func (m Model) helpKeyMap() Map {
 	keys := m.keys
 	keys.Left.SetEnabled(m.focused)
@@ -91,7 +100,7 @@ func (m Model) helpKeyMap() Map {
 	keys.LastRow.SetEnabled(m.focused)
 	keys.CopyCell.SetEnabled(m.focused)
 	keys.CopyRow.SetEnabled(m.focused)
-	keys.EditCell.SetEnabled(m.focused && !m.queryActive)
+	keys.EditCell.SetEnabled(m.focused && !m.queryActive && m.hasPrimaryKey())
 	keys.OpenReference.SetEnabled(m.focused)
 	keys.BrowseFilter.SetEnabled(m.focused && !m.queryActive)
 	keys.ClearBrowseFilter.SetEnabled(m.focused && !m.queryActive && len(m.browseFilters) > 0)

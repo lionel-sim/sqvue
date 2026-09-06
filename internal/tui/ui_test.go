@@ -140,8 +140,26 @@ func TestEditCellKeyIsContextSensitive(t *testing.T) {
 	m = testModel()
 	m.focused = true
 	m, _ = update(m, keyMsg("e"))
-	if m.status != "cell editing is not available yet" {
+	if m.status != "editing requires a table with a primary key" {
 		t.Fatalf("table edit status = %q", m.status)
+	}
+
+	m.columns = []db.Column{{Name: "id", IsPrimary: true}}
+	m, _ = update(m, keyMsg("e"))
+	if m.status != "cell editing is not available yet" {
+		t.Fatalf("primary-key table edit status = %q", m.status)
+	}
+}
+
+func TestEditCellOnlyAppearsForPrimaryKeyTables(t *testing.T) {
+	m := testModel()
+	m.focused = true
+	if m.helpKeyMap().EditCell.Enabled() {
+		t.Fatal("cell editing is enabled without a primary key")
+	}
+	m.columns = []db.Column{{Name: "id", IsPrimary: true}}
+	if !m.helpKeyMap().EditCell.Enabled() {
+		t.Fatal("cell editing is disabled with a primary key")
 	}
 }
 
