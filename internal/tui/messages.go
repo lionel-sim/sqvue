@@ -44,6 +44,7 @@ type (
 	}
 	queryLoadedMsg struct {
 		requestID uint64
+		sql       string
 		result    db.Result
 		err       error
 	}

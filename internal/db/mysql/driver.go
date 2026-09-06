@@ -23,6 +23,7 @@ type Driver struct {
 
 var _ db.TableRowStreamer = (*Driver)(nil)
 var _ db.QueryRowStreamer = (*Driver)(nil)
+var _ db.QuerySorter = (*Driver)(nil)
 var _ db.CellUpdater = (*Driver)(nil)
 
 func New() *Driver                  { return &Driver{} }
@@ -200,7 +201,7 @@ func (d *Driver) BrowseRows(ctx context.Context, req db.BrowseRequest) ([]db.Col
 		return nil, nil, err
 	}
 	query := fmt.Sprintf("select * from %s", qualifiedName(req.Table.Schema, req.Table.Name)) + where
-	if orderBy := rowOrder(columns); orderBy != "" {
+	if orderBy := sortOrder(columns, req.Sort); orderBy != "" {
 		query += " order by " + orderBy
 	}
 	query += " limit ? offset ?"
@@ -310,7 +311,7 @@ func (d *Driver) OpenTableRowStream(ctx context.Context, req db.TableRowStreamRe
 		return nil, nil, err
 	}
 	query := fmt.Sprintf("select * from %s", qualifiedName(req.Table.Schema, req.Table.Name)) + where
-	if orderBy := rowOrder(columns); orderBy != "" {
+	if orderBy := sortOrder(columns, req.Sort); orderBy != "" {
 		query += " order by " + orderBy
 	}
 	rows, err := d.db.QueryContext(ctx, query, args...)
@@ -669,6 +670,38 @@ func rowOrder(columns []db.Column) string {
 		}
 	}
 	return strings.Join(primary, ", ")
+}
+
+func sortOrder(columns []db.Column, sort db.SortSpec) string {
+	if sort.Column == "" {
+		return rowOrder(columns)
+	}
+	for _, column := range columns {
+		if column.Name == sort.Column {
+			direction := "asc"
+			if sort.Descending {
+				direction = "desc"
+			}
+			return quoteIdent(column.Name) + " " + direction
+		}
+	}
+	return ""
+}
+
+// SortedQuery wraps a read-only SQL result with MySQL-safe ordering.
+func (*Driver) SortedQuery(query db.Query, sort db.SortSpec) (db.Query, error) {
+	if sort.Column == "" {
+		return query, nil
+	}
+	statement := strings.TrimSuffix(strings.TrimSpace(query.SQL), ";")
+	if statement == "" {
+		return db.Query{}, fmt.Errorf("SQL query is required")
+	}
+	direction := "asc"
+	if sort.Descending {
+		direction = "desc"
+	}
+	return db.Query{SQL: "select * from (" + statement + ") as sqvue_query order by " + quoteIdent(sort.Column) + " " + direction, Args: query.Args}, nil
 }
 
 func returnsRows(query string) bool {

@@ -100,6 +100,16 @@ func TestRowOrder(t *testing.T) {
 	}
 }
 
+func TestSortedQueryQuotesPostgresIdentifiers(t *testing.T) {
+	query, err := New().SortedQuery(db.Query{SQL: "select * from entries;"}, db.SortSpec{Column: `name" desc`, Descending: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `select * from (select * from entries) as sqvue_query order by "name"" desc" desc`; query.SQL != want {
+		t.Fatalf("SortedQuery() = %q, want %q", query.SQL, want)
+	}
+}
+
 func TestUpdateCellStatementUsesParametersAndPrimaryKey(t *testing.T) {
 	query, args, err := postgresUpdateCellStatement(db.CellUpdateRequest{
 		Table:      db.Table{Schema: "public", Name: "order items"},

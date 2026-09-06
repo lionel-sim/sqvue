@@ -24,6 +24,8 @@ func (m Model) handleGridKey(msg tea.KeyMsg) (Model, tea.Cmd) {
 		return m, nil
 	}
 	switch {
+	case key.Matches(msg, m.keys.Sort):
+		return m.sortActiveColumn()
 	case key.Matches(msg, m.keys.BrowseFilter):
 		if m.queryActive {
 			m.status = "row filters are unavailable for SQL results"
@@ -318,6 +320,7 @@ func (m Model) followActiveForeignKey() (Model, tea.Cmd) {
 			m.focused, m.selected = true, i
 			m.scroll = keepInView(m.selected, m.scroll, tableListHeight, len(m.tables))
 			m.resetBrowseContext()
+			m.browseSort = db.SortSpec{}
 			m.cellCursor, m.mode = 0, modeValues
 			m.browseFilters = []db.RowFilter{{Column: foreignKey.Column, Operator: db.FilterEqual, Value: value}}
 			return m.startLoadRows()

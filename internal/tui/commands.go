@@ -57,7 +57,7 @@ func openTableRowStreamCmd(ctx context.Context, cancel func(), client db.Driver,
 				err   error
 			)
 			if len(request.Filters) > 0 {
-				browse := db.BrowseRequest{Table: request.Table, Filters: request.Filters}
+				browse := db.BrowseRequest{Table: request.Table, Filters: request.Filters, Sort: request.Sort}
 				count, err = client.CountBrowseRows(ctx, browse)
 				browseKey = browseCountKey(browse)
 			} else {
@@ -135,7 +135,7 @@ func runQueryCmd(c db.Driver, sql string, timeout time.Duration, requestID uint6
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		result, err := c.Query(ctx, db.Query{SQL: sql})
-		return queryLoadedMsg{requestID: requestID, result: result, err: err}
+		return queryLoadedMsg{requestID: requestID, sql: sql, result: result, err: err}
 	}
 }
 
@@ -224,10 +224,10 @@ func (m Model) startLoadRows() (Model, tea.Cmd) {
 				_, loadCount = m.rowCounts[t.String()]
 				loadCount = !loadCount
 			}
-			return m, openTableRowStreamCmd(ctx, cancel, m.client, streamer, db.TableRowStreamRequest{Table: *t, Filters: append([]db.RowFilter(nil), m.browseFilters...)}, loadCount, m.pageSize, m.page*m.pageSize, requestID)
+			return m, openTableRowStreamCmd(ctx, cancel, m.client, streamer, db.TableRowStreamRequest{Table: *t, Filters: append([]db.RowFilter(nil), m.browseFilters...), Sort: m.browseSort}, loadCount, m.pageSize, m.page*m.pageSize, requestID)
 		}
 		offset := m.page * m.pageSize
-		if len(m.browseFilters) > 0 {
+		if len(m.browseFilters) > 0 || m.browseSort.Column != "" {
 			req := m.browseRequest(*t)
 			req.Limit = m.pageSize + 1
 			req.Offset = offset

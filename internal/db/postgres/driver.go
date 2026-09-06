@@ -25,6 +25,7 @@ type Driver struct {
 
 var _ db.TableRowStreamer = (*Driver)(nil)
 var _ db.QueryRowStreamer = (*Driver)(nil)
+var _ db.QuerySorter = (*Driver)(nil)
 var _ db.CellUpdater = (*Driver)(nil)
 
 const maxQueryRows = 1_000
@@ -385,7 +386,7 @@ func (d *Driver) BrowseRows(ctx context.Context, req db.BrowseRequest) ([]db.Col
 	}
 	ident := pgx.Identifier{req.Table.Schema, req.Table.Name}.Sanitize()
 	query := fmt.Sprintf("select * from %s as sqvue_row", ident) + where
-	if orderBy := rowOrder(req.Table, columns); orderBy != "" {
+	if orderBy := sortOrder(req.Table, columns, req.Sort); orderBy != "" {
 		query += " order by " + orderBy
 	}
 	query += fmt.Sprintf(" limit $%d offset $%d", len(args)+1, len(args)+2)
@@ -462,7 +463,7 @@ func (d *Driver) OpenTableRowStream(ctx context.Context, req db.TableRowStreamRe
 	}
 	ident := pgx.Identifier{req.Table.Schema, req.Table.Name}.Sanitize()
 	query := fmt.Sprintf("select * from %s as sqvue_row", ident) + where
-	if orderBy := rowOrder(req.Table, columns); orderBy != "" {
+	if orderBy := sortOrder(req.Table, columns, req.Sort); orderBy != "" {
 		query += " order by " + orderBy
 	}
 	rows, err := d.pool.Query(ctx, query, args...)
@@ -601,6 +602,38 @@ func rowOrder(tbl db.Table, cols []db.Column) string {
 		return "ctid"
 	}
 	return "row_to_json(sqvue_row)::text"
+}
+
+func sortOrder(table db.Table, columns []db.Column, sort db.SortSpec) string {
+	if sort.Column == "" {
+		return rowOrder(table, columns)
+	}
+	for _, column := range columns {
+		if column.Name == sort.Column {
+			direction := "asc"
+			if sort.Descending {
+				direction = "desc"
+			}
+			return pgx.Identifier{column.Name}.Sanitize() + " " + direction
+		}
+	}
+	return ""
+}
+
+// SortedQuery wraps a read-only SQL result with PostgreSQL-safe ordering.
+func (*Driver) SortedQuery(query db.Query, sort db.SortSpec) (db.Query, error) {
+	if sort.Column == "" {
+		return query, nil
+	}
+	statement := strings.TrimSuffix(strings.TrimSpace(query.SQL), ";")
+	if statement == "" {
+		return db.Query{}, fmt.Errorf("SQL query is required")
+	}
+	direction := "asc"
+	if sort.Descending {
+		direction = "desc"
+	}
+	return db.Query{SQL: "select * from (" + statement + ") as sqvue_query order by " + pgx.Identifier{sort.Column}.Sanitize() + " " + direction, Args: query.Args}, nil
 }
 
 func (d *Driver) CountRows(ctx context.Context, tbl db.Table) (int64, error) {

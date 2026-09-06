@@ -123,10 +123,10 @@ safer query execution, and richer relational navigation.
   - [x] Retain per-profile SQL history with previous/next navigation in the SQL prompt
   - [x] Save, list, run, rename, and delete named queries in the XDG config directory
   - [x] Preserve multi-line SQL and show saved-query failures inline without losing edits
-- [ ] Sort table and query results
-  - [ ] Add a driver-neutral sort specification to browse requests and implement dialect-safe identifier handling per driver
-  - [ ] Choose the active column and ascending/descending order from the data grid
-  - [ ] Show active sort order in the footer and preserve it through filtering, streaming, export, and pagination
+- [x] Sort table and query results
+  - [x] Add a driver-neutral sort specification to browse requests and implement dialect-safe identifier handling per driver
+  - [x] Choose the active column and ascending/descending order from the data grid
+  - [x] Show active sort order in the footer and preserve it through filtering, streaming, export, and pagination
 - [ ] Safe SQL execution mode
   - [ ] Default ad-hoc SQL sessions to read-only where each driver supports it
   - [ ] Add an explicit, clearly labelled session-level write-mode confirmation

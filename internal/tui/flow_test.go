@@ -70,6 +70,18 @@ func (f *queryStreamFakeDriver) OpenQueryRowStream(_ context.Context, query db.Q
 	return stream, nil
 }
 
+func (*queryStreamFakeDriver) SortedQuery(query db.Query, sort db.SortSpec) (db.Query, error) {
+	if sort.Column == "" {
+		return query, nil
+	}
+	direction := "asc"
+	if sort.Descending {
+		direction = "desc"
+	}
+	query.SQL += " order by " + sort.Column + " " + direction
+	return query, nil
+}
+
 func (s *fakeRowStream) Next() ([]string, error) {
 	if s.index >= len(s.rows) {
 		return nil, io.EOF

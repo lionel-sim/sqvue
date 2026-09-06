@@ -34,6 +34,7 @@ type exportRequest struct {
 	query          *db.Query
 	table          *db.Table
 	filters        []db.RowFilter
+	sort           db.SortSpec
 }
 
 // csvExportRequest remains an alias so the CSV writer can retain its focused API.
@@ -98,6 +99,7 @@ func (m Model) exportRequest(path string) (exportRequest, error) {
 		columns:        append([]db.Column(nil), m.columns...),
 		visibleColumns: append([]bool(nil), m.visibleColumns...),
 		filters:        append([]db.RowFilter(nil), m.browseFilters...),
+		sort:           m.browseSort,
 	}
 	if m.queryActive {
 		if m.queryStreaming {
@@ -300,7 +302,7 @@ func writeExportRows(client db.Driver, timeout time.Duration, request exportRequ
 		if streamer, ok := client.(db.TableRowStreamer); ok {
 			ctx, cancel := context.WithTimeout(context.Background(), timeout)
 			defer cancel()
-			_, stream, err := streamer.OpenTableRowStream(ctx, db.TableRowStreamRequest{Table: *request.table, Filters: request.filters})
+			_, stream, err := streamer.OpenTableRowStream(ctx, db.TableRowStreamRequest{Table: *request.table, Filters: request.filters, Sort: request.sort})
 			if err != nil {
 				return fmt.Errorf("open table stream: %w", err)
 			}
@@ -325,7 +327,7 @@ func writeExportRows(client db.Driver, timeout time.Duration, request exportRequ
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	for offset := 0; ; offset += exportBatchSize {
-		values, err := exportTableRows(ctx, client, *request.table, request.filters, offset)
+		values, err := exportTableRows(ctx, client, *request.table, request.filters, request.sort, offset)
 		if err != nil {
 			return fmt.Errorf("load rows: %w", err)
 		}
@@ -338,13 +340,13 @@ func writeExportRows(client db.Driver, timeout time.Duration, request exportRequ
 	}
 }
 
-func exportTableRows(ctx context.Context, client db.Driver, table db.Table, filters []db.RowFilter, offset int) ([][]string, error) {
-	if len(filters) == 0 {
+func exportTableRows(ctx context.Context, client db.Driver, table db.Table, filters []db.RowFilter, sort db.SortSpec, offset int) ([][]string, error) {
+	if len(filters) == 0 && sort.Column == "" {
 		_, rows, err := client.Rows(ctx, table, exportBatchSize, offset)
 		return rows, err
 	}
 	_, rows, err := client.BrowseRows(ctx, db.BrowseRequest{
-		Table: table, Limit: exportBatchSize, Offset: offset, Filters: filters,
+		Table: table, Limit: exportBatchSize, Offset: offset, Filters: filters, Sort: sort,
 	})
 	return rows, err
 }

@@ -21,6 +21,7 @@ type RowStream interface {
 type TableRowStreamRequest struct {
 	Table   Table
 	Filters []RowFilter
+	Sort    SortSpec
 }
 
 // TableRowStreamer is implemented by drivers that can keep a table browse

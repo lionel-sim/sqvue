@@ -48,6 +48,7 @@ func (m Model) runSQL(sql string) (Model, tea.Cmd) {
 		}
 	}
 	m.historyIndex = -1
+	m.querySort, m.querySourceSQL = db.SortSpec{}, sql
 	m.activeOverlay, m.loading, m.status = overlayNone, true, "running query..."
 	m.sqlInput.Blur()
 	requestID := m.nextRequestID()
@@ -155,6 +156,7 @@ func (m Model) moveSelection(delta int) (Model, tea.Cmd) {
 	m.selected = target
 	m.scroll = keepInView(m.selected, m.scroll, tableListHeight, len(m.tables))
 	m.resetBrowseContext()
+	m.browseSort = db.SortSpec{}
 	m.cellCursor = 0
 	m.browseFilters = nil
 	return m.startLoad()
@@ -205,6 +207,7 @@ func (m Model) handleTablesLoaded(msg tablesLoadedMsg) (Model, tea.Cmd) {
 		return m.fail("failed to load tables", msg.err)
 	}
 	m.allTables, m.lastErr = msg.tables, nil
+	m.browseSort = db.SortSpec{}
 	m.rowCounts, m.browseRowCounts = make(map[string]int64), make(map[string]int64)
 	m.applyFilter()
 	m.status = fmt.Sprintf("found %d tables", len(m.tables))
@@ -245,6 +248,7 @@ func (m *Model) applyFilter() {
 	}
 	m.selected, m.scroll = 0, 0
 	m.resetBrowseContext()
+	m.browseSort = db.SortSpec{}
 }
 func (m Model) currentSchema() string {
 	if m.schema < 0 || m.schema >= len(m.schemas) {

@@ -55,6 +55,16 @@ func TestRowOrderUsesPrimaryKeyColumns(t *testing.T) {
 	}
 }
 
+func TestSortedQueryQuotesMySQLIdentifiers(t *testing.T) {
+	query, err := New().SortedQuery(db.Query{SQL: "select * from entries;"}, db.SortSpec{Column: "name` desc", Descending: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "select * from (select * from entries) as sqvue_query order by `name`` desc` desc"; query.SQL != want {
+		t.Fatalf("SortedQuery() = %q, want %q", query.SQL, want)
+	}
+}
+
 func TestReturnsRows(t *testing.T) {
 	for _, query := range []string{"select 1", "-- comment\nselect 1", "/* comment */ select 1", " WITH data AS (SELECT 1) SELECT * FROM data", "show tables", "describe users", "explain select 1"} {
 		if !returnsRows(query) {

@@ -547,6 +547,80 @@ func TestGridFilterStatusAndClearAction(t *testing.T) {
 	}
 }
 
+func TestGridSortCyclesTableOrderAndUsesBrowseRequest(t *testing.T) {
+	m := testModel()
+	m.focused = true
+	m.pageSize = 2
+	m.columns = []db.Column{{Name: "name"}}
+	m.rows = [][]string{{"Ada"}, {"Zoe"}}
+	m.client = &fakeDriver{cols: m.columns, rows: m.rows}
+
+	m, cmd := update(m, keyMsg("S"))
+	if m.browseSort != (db.SortSpec{Column: "name"}) || m.page != 0 || cmd == nil {
+		t.Fatalf("ascending table sort = %#v, page %d, command %t", m.browseSort, m.page, cmd != nil)
+	}
+	if msg := runCmd(cmd); msg != nil {
+		m, _ = update(m, msg)
+	}
+	if got := m.client.(*fakeDriver).lastBrowse.Sort; got != (db.SortSpec{Column: "name"}) {
+		t.Fatalf("browse sort = %#v", got)
+	}
+
+	m, _ = update(m, keyMsg("S"))
+	if got := m.browseSort; got != (db.SortSpec{Column: "name", Descending: true}) {
+		t.Fatalf("descending table sort = %#v", got)
+	}
+	m, _ = update(m, keyMsg("S"))
+	if got := m.browseSort; got != (db.SortSpec{}) {
+		t.Fatalf("cleared table sort = %#v", got)
+	}
+}
+
+func TestGridSortOrdersMaterializedQueryResults(t *testing.T) {
+	m := testModel()
+	m.focused, m.queryActive = true, true
+	m.columns = []db.Column{{Name: "name"}}
+	m.queryBaseRows = [][]string{{"Zoe"}, {"Ada"}, {"Linus"}}
+	m.queryRows = append([][]string(nil), m.queryBaseRows...)
+	m.pageSize = 10
+	m.setQueryPage()
+
+	m, _ = update(m, keyMsg("S"))
+	if got := m.queryRows; got[0][0] != "Ada" || got[2][0] != "Zoe" || m.querySort != (db.SortSpec{Column: "name"}) {
+		t.Fatalf("ascending query sort = rows %#v, sort %#v", got, m.querySort)
+	}
+	m, _ = update(m, keyMsg("S"))
+	if got := m.queryRows; got[0][0] != "Zoe" || got[2][0] != "Ada" || !m.querySort.Descending {
+		t.Fatalf("descending query sort = rows %#v, sort %#v", got, m.querySort)
+	}
+	m, _ = update(m, keyMsg("S"))
+	if got := m.queryRows; got[0][0] != "Zoe" || got[2][0] != "Linus" || m.querySort != (db.SortSpec{}) {
+		t.Fatalf("cleared query sort = rows %#v, sort %#v", got, m.querySort)
+	}
+}
+
+func TestGridSortReopensStreamedQueryWithSafeDriverSort(t *testing.T) {
+	client := &queryStreamFakeDriver{fakeDriver: fakeDriver{rows: [][]string{{"Ada"}, {"Zoe"}}}}
+	m := testModel()
+	m.client = client
+	m.focused, m.queryActive, m.queryStreaming = true, true, true
+	m.querySourceSQL, m.querySQL = "select name from people", "select name from people"
+	m.columns = []db.Column{{Name: "name"}}
+	m.rows = [][]string{{"Ada"}, {"Zoe"}}
+	m.pageSize = 2
+
+	m, cmd := update(m, keyMsg("S"))
+	if m.querySort != (db.SortSpec{Column: "name"}) || cmd == nil {
+		t.Fatalf("stream query sort = %#v, command %t", m.querySort, cmd != nil)
+	}
+	if msg := runCmd(cmd); msg != nil {
+		m, _ = update(m, msg)
+	}
+	if len(client.queryRequests) != 1 || client.queryRequests[0].SQL != "select name from people order by name asc" {
+		t.Fatalf("stream query requests = %#v", client.queryRequests)
+	}
+}
+
 func TestGridFilterOperatorPickerSelectsOperator(t *testing.T) {
 	m := testModel()
 	m.focused = true

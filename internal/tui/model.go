@@ -58,6 +58,7 @@ type resultState struct {
 	hasNextPage                bool
 	rowCounts, browseRowCounts map[string]int64
 	browseFilters              []db.RowFilter
+	browseSort                 db.SortSpec
 	visibleColumns             []bool
 	visibleColumnKey           string
 	tableStream                tableStreamState
@@ -80,6 +81,9 @@ type queryState struct {
 	queryDuration, queryAffected int64
 	queryTruncated               bool
 	querySQL                     string
+	querySourceSQL               string
+	queryBaseRows                [][]string
+	querySort                    db.SortSpec
 	queryStreaming               bool
 	queryStream                  db.QueryRowStream
 	queryStreamCancel            func()

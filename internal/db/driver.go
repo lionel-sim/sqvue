@@ -104,12 +104,26 @@ type RowFilter struct {
 	Value    string
 }
 
+// SortSpec describes an optional ordered column in a structured table browse.
+// Column names are always validated and quoted by the selected driver.
+type SortSpec struct {
+	Column     string
+	Descending bool
+}
+
 // BrowseRequest describes a paginated, structured table browse operation.
 type BrowseRequest struct {
 	Table   Table
 	Limit   int
 	Offset  int
 	Filters []RowFilter
+	Sort    SortSpec
+}
+
+// QuerySorter lets a driver safely wrap a read-only query with an ORDER BY
+// clause. It is used only for streamed SQL results, which must be replayable.
+type QuerySorter interface {
+	SortedQuery(query Query, sort SortSpec) (Query, error)
 }
 
 type Result struct {

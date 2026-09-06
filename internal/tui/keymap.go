@@ -33,6 +33,7 @@ type Map struct {
 	ExportCSV         key.Binding
 	ExportJSON        key.Binding
 	Backup            key.Binding
+	Sort              key.Binding
 	SaveQuery         key.Binding
 	SavedQueries      key.Binding
 	Toggle            key.Binding
@@ -157,6 +158,10 @@ func Default() Map {
 			key.WithKeys("B"),
 			key.WithHelp("B", "back up database"),
 		),
+		Sort: key.NewBinding(
+			key.WithKeys("S"),
+			key.WithHelp("S", "sort active column"),
+		),
 		SaveQuery: key.NewBinding(
 			key.WithKeys("ctrl+s"),
 			key.WithHelp("Ctrl+s", "save query"),
@@ -173,9 +178,9 @@ func Default() Map {
 }
 
 func (m Map) ShortHelp() []key.Binding {
-	return []key.Binding{m.Help, m.SQL, m.Columns, m.EditCell, m.ExportCSV, m.ExportJSON, m.Backup, m.SaveQuery, m.SavedQueries, m.Schema, m.Filter, m.BrowseFilter, m.ClearBrowseFilter, m.Quit}
+	return []key.Binding{m.Help, m.SQL, m.Columns, m.EditCell, m.ExportCSV, m.ExportJSON, m.Backup, m.Sort, m.SaveQuery, m.SavedQueries, m.Schema, m.Filter, m.BrowseFilter, m.ClearBrowseFilter, m.Quit}
 }
 
 func (m Map) FullHelp() [][]key.Binding {
-	return [][]key.Binding{{m.Up, m.Down, m.Left, m.Right, m.PageUp, m.PageDown, m.HalfPageUp, m.HalfPageDown, m.FirstRow, m.LastRow}, {m.CopyCell, m.CopyRow, m.EditCell, m.OpenReference, m.BrowseFilter, m.ClearBrowseFilter, m.SQL, m.Columns, m.ExportCSV, m.ExportJSON, m.Backup, m.SaveQuery, m.SavedQueries, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
+	return [][]key.Binding{{m.Up, m.Down, m.Left, m.Right, m.PageUp, m.PageDown, m.HalfPageUp, m.HalfPageDown, m.FirstRow, m.LastRow}, {m.CopyCell, m.CopyRow, m.EditCell, m.OpenReference, m.BrowseFilter, m.ClearBrowseFilter, m.Sort, m.SQL, m.Columns, m.ExportCSV, m.ExportJSON, m.Backup, m.SaveQuery, m.SavedQueries, m.Schema, m.Filter, m.ShowDescriptions, m.ShowValues}, {m.Refresh, m.Quit}}
 }

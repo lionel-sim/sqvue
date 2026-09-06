@@ -69,12 +69,14 @@ func TestWriteCSVExportsAllFilteredTableRows(t *testing.T) {
 		client.rows[i] = []string{strconv.Itoa(i), "person"}
 	}
 	filter := db.RowFilter{Column: "name", Operator: db.FilterContains, Value: "a"}
+	sort := db.SortSpec{Column: "id", Descending: true}
 	rows, err := writeCSV(client, time.Second, csvExportRequest{
 		path:           path,
 		columns:        client.cols,
 		visibleColumns: []bool{true, true},
 		table:          &db.Table{Schema: "public", Name: "people"},
 		filters:        []db.RowFilter{filter},
+		sort:           sort,
 	})
 	if err != nil {
 		t.Fatalf("writeCSV() error = %v", err)
@@ -82,7 +84,7 @@ func TestWriteCSVExportsAllFilteredTableRows(t *testing.T) {
 	if rows != exportBatchSize+1 {
 		t.Fatalf("writeCSV() rows = %d, want %d", rows, exportBatchSize+1)
 	}
-	if got := client.lastBrowse; got.Table.Name != "people" || got.Limit != exportBatchSize || got.Offset != exportBatchSize || len(got.Filters) != 1 || got.Filters[0] != filter {
+	if got := client.lastBrowse; got.Table.Name != "people" || got.Limit != exportBatchSize || got.Offset != exportBatchSize || len(got.Filters) != 1 || got.Filters[0] != filter || got.Sort != sort {
 		t.Fatalf("BrowseRows() request = %#v", got)
 	}
 }

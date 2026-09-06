@@ -69,6 +69,11 @@ func TestDriverBrowsesAndQueriesSQLite(t *testing.T) {
 		t.Fatalf("BrowseRows() = columns %#v, rows %#v, error %v", columns, rows, err)
 	}
 
+	_, rows, err = driver.BrowseRows(ctx, db.BrowseRequest{Table: tables[0], Limit: 2, Sort: db.SortSpec{Column: "name", Descending: true}})
+	if err != nil || len(rows) != 2 || rows[0][2] != "music" || rows[1][2] != "games" {
+		t.Fatalf("sorted BrowseRows() = rows %#v, error %v", rows, err)
+	}
+
 	streamColumns, stream, err := driver.OpenTableRowStream(ctx, db.TableRowStreamRequest{Table: tables[0]})
 	if err != nil {
 		t.Fatalf("OpenTableRowStream() error = %v", err)
@@ -142,6 +147,16 @@ func TestDriverBrowsesAndQueriesSQLite(t *testing.T) {
 	result, err = driver.Query(ctx, db.Query{SQL: "select note from categories where id = 1"})
 	if err != nil || len(result.Rows) != 1 || result.Rows[0][0] != "edited" {
 		t.Fatalf("UpdateCell result = %#v, error = %v", result, err)
+	}
+}
+
+func TestSortedQueryQuotesSQLiteIdentifiers(t *testing.T) {
+	query, err := New().SortedQuery(db.Query{SQL: "select * from entries;"}, db.SortSpec{Column: `name" desc`, Descending: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `select * from (select * from entries) as sqvue_query order by "name"" desc" desc`; query.SQL != want {
+		t.Fatalf("SortedQuery() = %q, want %q", query.SQL, want)
 	}
 }
 

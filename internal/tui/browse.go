@@ -183,6 +183,7 @@ func (m Model) handleQueryLoaded(msg queryLoadedMsg) (Model, tea.Cmd) {
 	}
 	m.closeQueryStream()
 	m.queryActive, m.queryStreaming, m.lastErr, m.mode, m.page, m.rowCursor, m.cellCursor = true, false, nil, modeValues, 0, 0, 0
+	m.querySQL, m.querySourceSQL, m.querySort = msg.sql, msg.sql, db.SortSpec{}
 	m.queryDuration, m.queryAffected, m.queryTruncated = msg.result.DurationMs, msg.result.RowsAffected, msg.result.Truncated
 	m.columns = make([]db.Column, len(msg.result.Columns))
 	for i, name := range msg.result.Columns {
@@ -199,6 +200,7 @@ func (m Model) handleQueryLoaded(msg queryLoadedMsg) (Model, tea.Cmd) {
 			m.queryRows[i][j] = formatQueryValue(value)
 		}
 	}
+	m.queryBaseRows = append([][]string(nil), m.queryRows...)
 	m.setQueryPage()
 	m.sqlInput.SetValue("")
 	return m, nil
@@ -227,7 +229,7 @@ func (m Model) handleQueryStreamRowsLoaded(msg queryStreamRowsLoadedMsg) (Model,
 	}
 	if msg.initial {
 		m.queryActive, m.queryStreaming, m.lastErr, m.mode, m.page, m.rowCursor, m.cellCursor = true, true, nil, modeValues, 0, 0, 0
-		m.querySQL, m.queryRows, m.queryTruncated = msg.sql, nil, false
+		m.querySQL, m.queryRows, m.queryBaseRows, m.queryTruncated = msg.sql, nil, nil, false
 		m.columns = make([]db.Column, len(msg.columns))
 		for i, name := range msg.columns {
 			m.columns[i] = db.Column{Name: name}
@@ -296,6 +298,9 @@ func formatQueryValue(value any) string {
 func (m *Model) setQueryPage() {
 	if m.queryStreaming {
 		m.status = fmt.Sprintf("query page %d (%d rows, %d ms, %d affected)", m.page+1, len(m.rows), m.queryDuration, m.queryAffected)
+		if sort := formatSort(m.querySort); sort != "" {
+			m.status += " sort: " + sort
+		}
 		return
 	}
 	start := min(m.page*m.pageSize, len(m.queryRows))
@@ -304,6 +309,9 @@ func (m *Model) setQueryPage() {
 	m.status = fmt.Sprintf("query page %d (%d/%d rows, %d ms, %d affected)", m.page+1, len(m.rows), len(m.queryRows), m.queryDuration, m.queryAffected)
 	if m.queryTruncated {
 		m.status += " [limited to 1000 rows]"
+	}
+	if sort := formatSort(m.querySort); sort != "" {
+		m.status += " sort: " + sort
 	}
 }
 func (m *Model) setRowsStatus(t db.Table) {
@@ -318,6 +326,9 @@ func (m *Model) setRowsStatus(t db.Table) {
 	status += ")"
 	if len(m.browseFilters) > 0 {
 		status += " filters: " + formatBrowseFilters(m.browseFilters) + " (x clear)"
+	}
+	if sort := formatSort(m.browseSort); sort != "" {
+		status += " sort: " + sort
 	}
 	m.status = status
 }
@@ -342,9 +353,11 @@ func formatBrowseFilters(filters []db.RowFilter) string {
 	return strings.Join(parts, " AND ")
 }
 func (m Model) browseRequest(t db.Table) db.BrowseRequest {
-	return db.BrowseRequest{Table: t, Filters: append([]db.RowFilter(nil), m.browseFilters...)}
+	return db.BrowseRequest{Table: t, Filters: append([]db.RowFilter(nil), m.browseFilters...), Sort: m.browseSort}
 }
-func (m Model) browseStreamKey(t db.Table) string { return m.browseCountKey(t) }
+func (m Model) browseStreamKey(t db.Table) string {
+	return fmt.Sprintf("%s\x00sort\x00%s\x00%t", m.browseCountKey(t), m.browseSort.Column, m.browseSort.Descending)
+}
 func (m Model) browseStreamKeyForCurrentTable() string {
 	if t := m.currentTable(); t != nil {
 		return m.browseStreamKey(*t)

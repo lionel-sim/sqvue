@@ -10,6 +10,7 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 - Filter the table list and focused rows with parameterized comparisons; inspect column and foreign-key metadata; and choose visible columns
 - Page through row data with total-row counts, type-aware value rendering, and incremental loading for large results
 - Focus and navigate row data while preserving the selected row across pages and column visibility changes
+- Sort table and query results by the active column, with the selected order retained for filtering, paging, streams, and exports
 - Run ad-hoc SQL queries, recall profile-specific history, save named queries, and page through results
 - Export visible result columns to CSV or JSON
 - Back up PostgreSQL, SQLite, and MySQL databases or the currently selected table
@@ -181,6 +182,7 @@ does not include other tables referenced by foreign keys.
 | `o`              | Open the matching row in the focused cell's foreign-key table as a clearable equality filter |
 | `/`              | Add a focused-row filter for the active column (contains is literal and case-insensitive; choose LIKE, `>`, `<`, `>=`, `<=`, or null checks; PostgreSQL also offers ILIKE; null checks apply immediately; filters use AND) |
 | `x`              | Clear focused-row filters |
+| `S`              | Sort the focused active column (ascending, descending, then clear) |
 | `f` / `PgDn`     | Next page             |
 | `b` / `PgUp`     | Previous page         |
 | `d`              | Show column descriptions |
@@ -209,6 +211,11 @@ only for tables with declared primary keys (including composite keys), and SQL
 result grids stay read-only. Review the old and new values before confirming;
 enter `NULL` to set a database `NULL` value. sqvue refreshes the current page
 after a successful update.
+
+Press `S` in a focused row or SQL-result grid to sort the active column. Press
+it again for descending order, and a third time to restore the driver's normal
+table order or the original query order. The footer status shows the active
+sort; table filters, incremental streams, and CSV/JSON exports retain it.
 
 ## Testing
 
