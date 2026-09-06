@@ -78,6 +78,7 @@ to select one automatically:
 [settings]
 default_profile = "local"
 export_directory = "./exports"
+theme = "default"
 
 [connections.local]
 db_type = "postgres"
@@ -116,6 +117,13 @@ page. Other SQL results remain materialized to avoid replaying mutations.
 Press `e` for CSV or `E` for JSON. JSON exports are arrays of objects whose
 keys are the visible column names; duplicate labels receive stable numeric
 suffixes.
+
+### Themes
+
+Set `settings.theme` to one of `default`, `light`, or `high-contrast` in the
+config file. The default preserves sqvue's original dark ANSI-256 appearance.
+Themes apply when sqvue starts; an unknown theme name is reported as a
+configuration error.
 
 ### Backups
 
@@ -206,7 +214,7 @@ internal/
     sqlite/     SQLite implementation (pure Go)
     mysql/      MySQL implementation
   logging/      Log setup helpers
-  theme/        Shared Lip Gloss UI styles
+  theme/        Built-in Lip Gloss theme presets
   tui/          Bubble Tea model, key bindings, and rendering
 ```
 

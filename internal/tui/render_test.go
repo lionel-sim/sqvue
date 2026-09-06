@@ -1,11 +1,14 @@
 package tui
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/muesli/termenv"
 
 	"sqvue/internal/db"
 	"sqvue/internal/theme"
@@ -207,6 +210,38 @@ func TestRenderTableListUsesSchemaHeaderAndMarksViews(t *testing.T) {
 	}
 	if !strings.Contains(out, "sales_summary [view]") {
 		t.Fatalf("table list does not mark views: %q", out)
+	}
+}
+
+func TestHighContrastThemeRendersEverySurface(t *testing.T) {
+	previousProfile := lipgloss.ColorProfile()
+	lipgloss.SetColorProfile(termenv.ANSI256)
+	t.Cleanup(func() { lipgloss.SetColorProfile(previousProfile) })
+
+	styles, err := theme.ByName("high-contrast")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := testModel()
+	m.theme = styles
+	m.width, m.height = 100, 20
+	m.columns = []db.Column{{Name: "id"}}
+	m.rows = [][]string{{"1"}}
+	m.focused = true
+	m.lastErr = errors.New("failed")
+
+	main := m.View()
+	for _, want := range []string{"\x1b[1;97m", "\x1b[1;38;5;51m", "\x1b[1;30;48;5;226m", "\x1b[38;5;196m"} {
+		if !strings.Contains(main, want) {
+			t.Errorf("main view missing high-contrast style %q:\n%s", want, main)
+		}
+	}
+
+	if helpDialog := renderHelpDialog(m); !strings.Contains(helpDialog, "\x1b[48;5;16m") {
+		t.Errorf("help dialog missing themed background:\n%s", helpDialog)
+	}
+	if detailDialog := renderRowDetailDialog(m); !strings.Contains(detailDialog, "\x1b[48;5;16m") {
+		t.Errorf("row detail dialog missing themed background:\n%s", detailDialog)
 	}
 }
 
