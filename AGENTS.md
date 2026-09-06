@@ -12,3 +12,13 @@
 - Preserve terminal safety: render database text through the existing sanitization helpers and retain width-aware truncation/wrapping.
 - Use Conventional Commits for commit messages (for example, `feat(tui): add schema selection`). Commit independently testable sub-features separately.
 - Preserve user-authored, unrelated working-tree changes.
+
+## Working conventions
+
+- Before changing code, run `git status --short`; preserve unrelated user changes.
+- Keep each task narrowly scoped. Do not refactor adjacent code unless it is needed for correctness or the user asks.
+- For new user-facing behavior, update the README, roadmap, keyboard-help text, and tests in the same change.
+- Add focused tests for new behavior and run formatting, relevant narrow tests, then `go test ./...`; use race tests and `go vet ./...` for asynchronous or stateful TUI work.
+- Before handing off or committing, run `git diff --check` and review `git diff --stat`.
+- Commit completed, independently testable work after verification unless the user explicitly asks not to commit.
+- Treat `.codex/` as local machine configuration; do not add it to commits.

@@ -2,3 +2,4 @@ sqvue
 vendor/
 bin/
 scripts/db-setup.sh
+.codex/
