@@ -15,7 +15,8 @@ import (
 const maxQueryRows = 1_000
 
 type Driver struct {
-	db *sql.DB
+	db           *sql.DB
+	backupConfig *mysqldriver.Config
 }
 
 func New() *Driver                  { return &Driver{} }
@@ -38,7 +39,7 @@ func (d *Driver) Connect(ctx context.Context, cfg db.ConnectConfig) error {
 		return err
 	}
 	previous := d.db
-	d.db = client
+	d.db, d.backupConfig = client, parsed
 	if previous != nil {
 		return previous.Close()
 	}

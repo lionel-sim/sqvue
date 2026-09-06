@@ -12,14 +12,14 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 - Focus and navigate row data while preserving the selected row across pages and column visibility changes
 - Run ad-hoc SQL queries and page through their results
 - Export visible result columns to CSV
-- Back up PostgreSQL and SQLite databases or the currently selected table
+- Back up PostgreSQL, SQLite, and MySQL databases or the currently selected table
 - Use a discoverable keyboard-help modal and compact footer controls
 - Pluggable database driver abstraction with a registry pattern
 - Built on [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Cobra](https://github.com/spf13/cobra)
 
 ## Status
 
-Work in progress. PostgreSQL, SQLite, and MySQL are supported: sqvue can connect with a DSN or individual connection flags; browse schemas, tables, and views; inspect column and foreign-key metadata and paginated row data; and run ad-hoc SQL in the TUI. PostgreSQL and SQLite also support database backups.
+Work in progress. PostgreSQL, SQLite, and MySQL are supported: sqvue can connect with a DSN or individual connection flags; browse schemas, tables, and views; inspect column and foreign-key metadata and paginated row data; run ad-hoc SQL in the TUI; and create database backups.
 
 Streaming large results remains planned. See [roadmap.md](roadmap.md) for the current plan.
 
@@ -121,10 +121,12 @@ that already exists is never overwritten.
 
 PostgreSQL backups are plain `.sql` dumps produced by `pg_dump`; install the
 PostgreSQL client tools and ensure `pg_dump` is available on `PATH`. Restore a
-full dump with `psql`. SQLite backups are standalone `.db` files created with
-SQLite-native operations. A SQLite table backup preserves that table's rows,
-schema, indexes, triggers, and constraints, but does not include other tables
-referenced by foreign keys. MySQL backups are not available yet.
+full dump with `psql`. MySQL backups are plain `.sql` dumps produced by
+`mysqldump`; install MySQL client tools, ensure `mysqldump` is available on
+`PATH`, and restore a full dump with `mysql`. SQLite backups are standalone
+`.db` files created with SQLite-native operations. A SQLite table backup
+preserves that table's rows, schema, indexes, triggers, and constraints, but
+does not include other tables referenced by foreign keys.
 
 ### Flags
 
@@ -161,7 +163,7 @@ referenced by foreign keys. MySQL backups are not available yet.
 | `y`              | Show row values       |
 | `c`              | Choose visible columns |
 | `e`              | Export visible columns as CSV |
-| `B`              | Back up the database or current table (PostgreSQL and SQLite) |
+| `B`              | Back up the database or current table |
 | `s`              | Switch schema         |
 | `/`              | Filter table list     |
 | `:`              | Run an SQL query      |

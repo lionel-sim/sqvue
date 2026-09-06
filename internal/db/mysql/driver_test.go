@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	mysqldriver "github.com/go-sql-driver/mysql"
+
 	"sqvue/internal/db"
 )
 
@@ -82,5 +84,40 @@ func TestConnectRejectsInvalidDSN(t *testing.T) {
 	err := driver.Connect(context.Background(), db.ConnectConfig{DSN: "not a valid dsn"})
 	if err == nil || !strings.Contains(err.Error(), "parse MySQL") {
 		t.Fatalf("Connect() error = %v", err)
+	}
+}
+
+func TestMySQLDumpArgsUseSafeConnectionOptions(t *testing.T) {
+	config := &mysqldriver.Config{User: "backup_user", Passwd: "not-in-command-arguments", Net: "tcp", Addr: "db.example.com:3306", DBName: "warehouse"}
+	args, err := mySQLDumpArgs(config, db.BackupRequest{Scope: db.BackupScopeDatabase, Path: "backup.sql"}, "/tmp/credentials.cnf")
+	if err != nil {
+		t.Fatalf("mySQLDumpArgs() error = %v", err)
+	}
+	got := strings.Join(args, " ")
+	for _, want := range []string{"--defaults-extra-file=/tmp/credentials.cnf", "--single-transaction", "--routines", "--events", "--triggers", "--user=backup_user", "--host=db.example.com", "--port=3306", "--databases warehouse"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("mysqldump arguments = %q, missing %q", got, want)
+		}
+	}
+	if strings.Contains(got, config.Passwd) {
+		t.Fatalf("mysqldump arguments exposed password: %q", got)
+	}
+}
+
+func TestMySQLDumpArgsUseRequestedTableSchema(t *testing.T) {
+	config := &mysqldriver.Config{User: "backup_user", Net: "tcp", Addr: "127.0.0.1:3306", DBName: "default_schema"}
+	args, err := mySQLDumpArgs(config, db.BackupRequest{Scope: db.BackupScopeTable, Path: "backup.sql", Table: db.Table{Schema: "reporting", Name: "order items"}}, "/tmp/credentials.cnf")
+	if err != nil {
+		t.Fatalf("mySQLDumpArgs() error = %v", err)
+	}
+	if got := strings.Join(args, " "); !strings.HasSuffix(got, "reporting order items") {
+		t.Fatalf("mysqldump table arguments = %q", got)
+	}
+}
+
+func TestMySQLBackupCapabilities(t *testing.T) {
+	capabilities := New().BackupCapabilities()
+	if !capabilities.Database || !capabilities.Table || capabilities.Schema || capabilities.FileExtension != "sql" {
+		t.Fatalf("backup capabilities = %#v", capabilities)
 	}
 }

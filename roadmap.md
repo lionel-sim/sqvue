@@ -81,7 +81,7 @@ For each driver:
 - [ ] Configure themes through the config file
 - [x] Test coverage for drivers (integration tests against real Postgres and MySQL instances, plus SQLite temporary databases)
 - [x] CI: lint, build, and test matrix (GitHub Actions on Linux, macOS, and Windows)
-- [ ] Generate database backups
+- [x] Generate database backups
   - [x] Define a driver-specific backup interface so backups preserve database schema, data, indexes, and constraints without putting database-specific behavior in `internal/db`
   - [x] Add a `B` key binding and keyboard-help entry that opens a backup-scope picker
   - [x] Offer `Entire database` (the default) and `Current table`; add `Current schema` only for drivers that support schemas
@@ -90,7 +90,7 @@ For each driver:
   - [x] Implement SQLite full-database and table backups using SQLite-native mechanisms; document any intentional limits of table-level backups
   - [x] Add focused unit tests for picker state, path validation, command construction, and completion/error handling
   - [x] Document backup behavior, required external tools, output formats, and key bindings in the README
-  - [ ] Add MySQL full-database and table backups with `mysqldump` after the PostgreSQL and SQLite workflow is established
+  - [x] Add MySQL full-database and table backups with `mysqldump` after the PostgreSQL and SQLite workflow is established
 
 ## Phase 4 — Multi-DB / future
 
