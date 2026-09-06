@@ -89,7 +89,7 @@ For each driver:
   - [x] Implement PostgreSQL full-database and table backups with `pg_dump`, including a clear preflight error when the command is unavailable
   - [x] Implement SQLite full-database and table backups using SQLite-native mechanisms; document any intentional limits of table-level backups
   - [x] Add focused unit tests for picker state, path validation, command construction, and completion/error handling
-  - [ ] Document backup behavior, required external tools, output formats, and key bindings in the README
+  - [x] Document backup behavior, required external tools, output formats, and key bindings in the README
   - [ ] Add MySQL full-database and table backups with `mysqldump` after the PostgreSQL and SQLite workflow is established
 
 ## Phase 4 — Multi-DB / future

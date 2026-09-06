@@ -12,13 +12,14 @@ A terminal-based database viewer built with Go. sqvue gives you a lightweight TU
 - Focus and navigate row data while preserving the selected row across pages and column visibility changes
 - Run ad-hoc SQL queries and page through their results
 - Export visible result columns to CSV
+- Back up PostgreSQL and SQLite databases or the currently selected table
 - Use a discoverable keyboard-help modal and compact footer controls
 - Pluggable database driver abstraction with a registry pattern
 - Built on [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Cobra](https://github.com/spf13/cobra)
 
 ## Status
 
-Work in progress. PostgreSQL, SQLite, and MySQL are supported: sqvue can connect with a DSN or individual connection flags; browse schemas, tables, and views; inspect column and foreign-key metadata and paginated row data; and run ad-hoc SQL in the TUI.
+Work in progress. PostgreSQL, SQLite, and MySQL are supported: sqvue can connect with a DSN or individual connection flags; browse schemas, tables, and views; inspect column and foreign-key metadata and paginated row data; and run ad-hoc SQL in the TUI. PostgreSQL and SQLite also support database backups.
 
 Streaming large results remains planned. See [roadmap.md](roadmap.md) for the current plan.
 
@@ -104,11 +105,26 @@ Explicitly supplied connection flags override matching profile fields. Avoid
 storing passwords in the config file—use a connection URL, environment variable,
 or Postgres password file instead.
 
-`settings.export_directory` sets the directory prefilled when exporting CSV.
+`settings.export_directory` sets the directory prefilled when exporting CSV or
+creating a backup.
 It defaults to sqvue's current working directory; relative paths are resolved
-from that directory. The export prompt lets you change the final path, and
-sqvue will not overwrite an existing file. Table exports include every row
-matching the active filters; SQL exports include the query result held by sqvue.
+from that directory. Prompts let you change the final path, and sqvue will not
+overwrite an existing file. Table exports include every row matching the active
+filters; SQL exports include the query result held by sqvue.
+
+### Backups
+
+Press `B` to choose either the entire database or the currently selected table,
+then confirm the suggested path or enter another one. Backups run in the
+background and sqvue reports progress or an error in the footer. A destination
+that already exists is never overwritten.
+
+PostgreSQL backups are plain `.sql` dumps produced by `pg_dump`; install the
+PostgreSQL client tools and ensure `pg_dump` is available on `PATH`. Restore a
+full dump with `psql`. SQLite backups are standalone `.db` files created with
+SQLite-native operations. A SQLite table backup preserves that table's rows,
+schema, indexes, triggers, and constraints, but does not include other tables
+referenced by foreign keys. MySQL backups are not available yet.
 
 ### Flags
 
@@ -145,6 +161,7 @@ matching the active filters; SQL exports include the query result held by sqvue.
 | `y`              | Show row values       |
 | `c`              | Choose visible columns |
 | `e`              | Export visible columns as CSV |
+| `B`              | Back up the database or current table (PostgreSQL and SQLite) |
 | `s`              | Switch schema         |
 | `/`              | Filter table list     |
 | `:`              | Run an SQL query      |
