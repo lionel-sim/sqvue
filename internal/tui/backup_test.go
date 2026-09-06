@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -90,6 +91,21 @@ func TestBackupPathStartsAsyncBackupAndReportsCompletion(t *testing.T) {
 	}
 	if m.status != "database backed up to "+path {
 		t.Fatalf("status = %q, want completion", m.status)
+	}
+}
+
+func TestBackupCompletionReportsError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "backup.sql")
+	driver := &fakeDriver{backupErr: errors.New("backup tool failed")}
+	m := New(Options{Client: driver, Timeout: time.Second})
+	m, _ = update(m, keyMsg("B"))
+	m, _ = update(m, tea.KeyMsg{Type: tea.KeyEnter})
+	m.backupInput.SetValue(path)
+
+	m, cmd := update(m, tea.KeyMsg{Type: tea.KeyEnter})
+	m, _ = update(m, runCmd(cmd))
+	if !strings.Contains(m.status, "database backup failed: backup tool failed") {
+		t.Fatalf("status = %q, want backup failure", m.status)
 	}
 }
 
