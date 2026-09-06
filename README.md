@@ -43,7 +43,7 @@ curl -fsSL https://github.com/lionel-sim/sqvue/releases/latest/download/install.
 For a prerelease, use its tag explicitly:
 
 ```sh
-curl -fsSL https://github.com/lionel-sim/sqvue/releases/download/v0.1.0-beta.1/install.sh | SQVUE_VERSION=v0.1.0-beta.1 sh
+curl -fsSL https://github.com/lionel-sim/sqvue/releases/download/v0.1.0-beta.2/install.sh | SQVUE_VERSION=v0.1.0-beta.2 sh
 ```
 
 The installer downloads the matching archive, verifies its SHA-256 checksum,
@@ -57,6 +57,23 @@ Download the archive for your operating system and architecture from the
 release includes a `checksums.txt` file for verifying the downloaded archive.
 Extract the archive and place `sqvue` (or `sqvue.exe` on Windows) somewhere on
 your `PATH`.
+
+Starting with v0.1.0-beta.2, releases include a Sigstore bundle,
+`checksums.txt.sigstore.json`, that proves `checksums.txt` was signed by
+sqvue's GitHub release workflow. After downloading both files, verify the
+signature with [Cosign](https://docs.sigstore.dev/cosign/system_config/installation/):
+
+```sh
+version=v0.1.0-beta.2
+cosign verify-blob \
+  --certificate-identity "https://github.com/lionel-sim/sqvue/.github/workflows/release.yml@refs/heads/release/$version" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  --bundle checksums.txt.sigstore.json \
+  checksums.txt
+```
+
+After signature verification succeeds, compare the archive's SHA-256 digest
+with its entry in `checksums.txt`.
 
 ### Build from source
 

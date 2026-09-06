@@ -35,6 +35,16 @@ checksum:
   name_template: checksums.txt
   algorithm: sha256
 
+signs:
+  - artifacts: checksum
+    cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - --yes
+
 release:
   draft: true
   prerelease: auto
