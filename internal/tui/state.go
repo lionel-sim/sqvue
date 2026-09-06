@@ -110,9 +110,9 @@ func (m Model) helpKeyMap() Map {
 	keys.ExportCSV.SetEnabled(!m.focused && m.mode == modeValues && len(m.columns) > 0)
 	keys.ExportJSON.SetEnabled(m.mode == modeValues && len(m.columns) > 0)
 	keys.Backup.SetEnabled(m.backupDriver() != nil)
-	// Query save/list controls are only active while the SQL prompt is open.
-	keys.SaveQuery.SetEnabled(false)
-	keys.SavedQueries.SetEnabled(false)
+	// Saving and listing queries becomes available after opening the SQL editor.
+	keys.SaveQuery.SetEnabled(!m.focused)
+	keys.SavedQueries.SetEnabled(!m.focused)
 	keys.Schema.SetEnabled(!m.focused)
 	keys.Profiles.SetEnabled(!m.focused && len(m.profiles) > 0)
 	keys.Filter.SetEnabled(!m.focused)

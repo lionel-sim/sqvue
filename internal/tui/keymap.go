@@ -184,11 +184,11 @@ func Default() Map {
 		),
 		SaveQuery: key.NewBinding(
 			key.WithKeys("ctrl+s"),
-			key.WithHelp("Ctrl+s", "save query"),
+			key.WithHelp("Ctrl+s", "save query (editor)"),
 		),
 		SavedQueries: key.NewBinding(
 			key.WithKeys("ctrl+o"),
-			key.WithHelp("Ctrl+o", "saved queries"),
+			key.WithHelp("Ctrl+o", "saved queries (editor)"),
 		),
 		Toggle: key.NewBinding(
 			key.WithKeys(" "),

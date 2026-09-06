@@ -180,7 +180,7 @@ func TestHelpShowsBindingsForCurrentFocus(t *testing.T) {
 	m := testModel()
 	m.width = 100
 	tableHelp := ansi.Strip(renderHelpDialog(m))
-	if !strings.Contains(tableHelp, "show rows") || strings.Contains(tableHelp, "copy cell") || !strings.Contains(tableHelp, "run SQL editor") || !strings.Contains(tableHelp, "format SQL editor") || !strings.Contains(tableHelp, "explain SQL editor") {
+	if !strings.Contains(tableHelp, "show rows") || strings.Contains(tableHelp, "copy cell") || !strings.Contains(tableHelp, "run SQL editor") || !strings.Contains(tableHelp, "format SQL editor") || !strings.Contains(tableHelp, "explain SQL editor") || !strings.Contains(tableHelp, "save query") || !strings.Contains(tableHelp, "saved queries") {
 		t.Fatalf("table help has wrong bindings:\n%s", tableHelp)
 	}
 
@@ -251,6 +251,9 @@ func TestSQLInputUsesAvailableTerminalWidth(t *testing.T) {
 	m.activeOverlay = overlaySQL
 
 	out := ansi.Strip(m.View())
+	if !strings.Contains(out, "Ctrl+S save") || !strings.Contains(out, "Ctrl+O saved queries") {
+		t.Fatalf("SQL editor shortcuts missing: %q", out)
+	}
 	if !strings.Contains(out, "SQL>") || !strings.Contains(out, "SELECT * FROM ...") {
 		t.Fatalf("SQL input placeholder was truncated: %q", out)
 	}
