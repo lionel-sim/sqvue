@@ -24,13 +24,6 @@ func formatCell(s string, w int) string {
 	return s + strings.Repeat(" ", w-ansi.StringWidth(s))
 }
 
-func rightAlign(width int, s string) string {
-	if width <= ansi.StringWidth(s) {
-		return s
-	}
-	return strings.Repeat(" ", width-ansi.StringWidth(s)) + s
-}
-
 func sanitizeText(s string) string {
 	var b strings.Builder
 	for _, r := range s {

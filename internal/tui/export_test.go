@@ -45,7 +45,7 @@ func TestWriteCSVExportsVisibleQueryColumns(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open() error = %v", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	records, err := csv.NewReader(file).ReadAll()
 	if err != nil {
 		t.Fatalf("ReadAll() error = %v", err)
@@ -264,7 +264,7 @@ func TestWriteCSVExportsAllStreamedQueryRows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open() error = %v", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	records, err := csv.NewReader(file).ReadAll()
 	if err != nil {
 		t.Fatalf("ReadAll() error = %v", err)

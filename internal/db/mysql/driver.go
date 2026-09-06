@@ -79,7 +79,7 @@ func (d *Driver) ListSchemas(ctx context.Context) ([]db.Schema, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var schemas []db.Schema
 	for rows.Next() {
@@ -105,7 +105,7 @@ func (d *Driver) ListTables(ctx context.Context, schema string) ([]db.Table, err
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var tables []db.Table
 	for rows.Next() {
@@ -140,7 +140,7 @@ func (d *Driver) Rows(ctx context.Context, table db.Table, limit, offset int) ([
 	if err != nil {
 		return nil, nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	values := make([]any, len(columns))
 	scanTargets := make([]any, len(columns))
@@ -171,7 +171,7 @@ func (d *Driver) RowsByColumn(ctx context.Context, table db.Table, column, value
 	if err != nil {
 		return nil, nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	values := make([]any, len(columns))
 	scanTargets := make([]any, len(columns))
 	for i := range values {
@@ -210,7 +210,7 @@ func (d *Driver) BrowseRows(ctx context.Context, req db.BrowseRequest) ([]db.Col
 	if err != nil {
 		return nil, nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	values := make([]any, len(columns))
 	scanTargets := make([]any, len(columns))
 	for i := range values {
@@ -247,7 +247,7 @@ func (d *Driver) UpdateCell(ctx context.Context, request db.CellUpdateRequest) e
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	var found int
 	if err := tx.QueryRowContext(ctx, existsQuery, existsArgs...).Scan(&found); err != nil {
 		if err == sql.ErrNoRows {
@@ -463,7 +463,7 @@ func (d *Driver) Query(ctx context.Context, query db.Query) (db.Result, error) {
 	if err != nil {
 		return db.Result{}, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	columns, err := rows.Columns()
 	if err != nil {
 		return db.Result{}, err
@@ -607,7 +607,7 @@ func (d *Driver) columnMetadata(ctx context.Context, schema, table string) ([]db
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var columns []db.Column
 	for rows.Next() {
@@ -648,7 +648,7 @@ func (d *Driver) foreignKeyMetadata(ctx context.Context, schema, table string) (
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	foreignKeys := make(map[string]db.ForeignKey)
 	for rows.Next() {
@@ -737,7 +737,7 @@ func stripLeadingSQLComments(query string) string {
 
 func sqlKeyword(statement string) string {
 	for i, r := range statement {
-		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')) {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') {
 			return statement[:i]
 		}
 	}

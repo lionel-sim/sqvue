@@ -118,8 +118,6 @@ func (m Model) exportRequest(path string) (exportRequest, error) {
 	return request, nil
 }
 
-func (m Model) csvExportRequest(path string) (csvExportRequest, error) { return m.exportRequest(path) }
-
 func (m Model) defaultCSVExportPath(now time.Time) string {
 	return m.defaultExportPath(now, exportCSV)
 }
@@ -284,7 +282,7 @@ func writeExportRows(client db.Driver, timeout time.Duration, request exportRequ
 		if err != nil {
 			return fmt.Errorf("open query stream: %w", err)
 		}
-		defer stream.Close()
+		defer func() { _ = stream.Close() }()
 		for {
 			values, exhausted, err := db.ReadRowStream(stream, exportBatchSize)
 			if err != nil {
@@ -306,7 +304,7 @@ func writeExportRows(client db.Driver, timeout time.Duration, request exportRequ
 			if err != nil {
 				return fmt.Errorf("open table stream: %w", err)
 			}
-			defer stream.Close()
+			defer func() { _ = stream.Close() }()
 			for {
 				values, exhausted, err := db.ReadRowStream(stream, exportBatchSize)
 				if err != nil {

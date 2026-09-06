@@ -62,7 +62,9 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if created {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Created config file at %s\n", path)
+		if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "Created config file at %s\n", path); err != nil {
+			return fmt.Errorf("report config creation: %w", err)
+		}
 	}
 	queryStore, err := config.LoadQueryStore(config.QueryStorePath(path))
 	if err != nil {

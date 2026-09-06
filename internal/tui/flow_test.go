@@ -391,7 +391,7 @@ func TestRowsUseComputedPageSize(t *testing.T) {
 
 	// Window size arrives first (height 20 -> page size 11), then tables load.
 	var cmd tea.Cmd
-	m, cmd = update(m, tea.WindowSizeMsg{Width: 100, Height: 20})
+	m, _ = update(m, tea.WindowSizeMsg{Width: 100, Height: 20})
 	if m.pageSize != 11 {
 		t.Fatalf("want page size 11, got %d", m.pageSize)
 	}
@@ -416,7 +416,7 @@ func TestRowsUseComputedPageSize(t *testing.T) {
 	if f.lastLimit != maxPageSize+1 {
 		t.Fatalf("before resize: want limit %d, got %d", maxPageSize+1, f.lastLimit)
 	}
-	m2, cmd = update(m2, tea.WindowSizeMsg{Width: 100, Height: 20})
+	_, cmd = update(m2, tea.WindowSizeMsg{Width: 100, Height: 20})
 	if cmd == nil {
 		t.Fatal("expected reload after resize")
 	}

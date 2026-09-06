@@ -238,7 +238,7 @@ func (s *QueryStore) save() error {
 		return fmt.Errorf("create query store: %w", err)
 	}
 	tmpName := tmp.Name()
-	defer os.Remove(tmpName)
+	defer func() { _ = os.Remove(tmpName) }()
 	if err := tmp.Chmod(0o600); err != nil {
 		_ = tmp.Close()
 		return fmt.Errorf("set query store permissions: %w", err)

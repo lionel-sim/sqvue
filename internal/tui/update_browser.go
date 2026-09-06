@@ -94,7 +94,7 @@ func isStreamableQuery(sql string) bool {
 
 func firstSQLKeyword(sql string) string {
 	for i, r := range sql {
-		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')) {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') {
 			return sql[:i]
 		}
 	}

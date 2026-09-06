@@ -84,7 +84,7 @@ func (d *Driver) backupTable(ctx context.Context, request db.BackupRequest) (ret
 	if err != nil {
 		return fmt.Errorf("open SQLite backup connection: %w", err)
 	}
-	defer connection.Close()
+	defer func() { _ = connection.Close() }()
 	if _, err := connection.ExecContext(ctx, "attach database ? as "+quoteIdent(sqliteBackupSchema), request.Path); err != nil {
 		return fmt.Errorf("attach backup database: %w", err)
 	}
@@ -156,7 +156,7 @@ func sqliteTableObjects(ctx context.Context, connection interface {
 	if err != nil {
 		return nil, fmt.Errorf("load table indexes and triggers: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var objects []sqliteObject
 	for rows.Next() {
 		var object sqliteObject
