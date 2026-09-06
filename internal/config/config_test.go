@@ -67,6 +67,9 @@ func TestLoadOrCreate(t *testing.T) {
 	if !strings.Contains(string(contents), "[connections.local]") {
 		t.Fatalf("default config missing example profile:\n%s", contents)
 	}
+	if !strings.Contains(string(contents), "theme = \"default\"") {
+		t.Fatalf("default config missing theme setting:\n%s", contents)
+	}
 
 	_, created, err = LoadOrCreate(path)
 	if err != nil {
@@ -82,6 +85,7 @@ func TestLoadOrCreateLoadsProfile(t *testing.T) {
 	contents := `[settings]
 default_profile = "work"
 export_directory = "./exports"
+theme = "high-contrast"
 
 [connections.work]
 host = "db.example.com"
@@ -107,12 +111,37 @@ sslmode = "verify-full"
 	if file.Settings.ExportDirectory != "./exports" {
 		t.Fatalf("export directory = %q, want ./exports", file.Settings.ExportDirectory)
 	}
+	if file.Settings.Theme != "high-contrast" {
+		t.Fatalf("theme = %q, want high-contrast", file.Settings.Theme)
+	}
 	profile, err := file.Profile("work")
 	if err != nil {
 		t.Fatalf("Profile() error = %v", err)
 	}
 	if profile.Host != "db.example.com" || profile.Port != 5433 || profile.SSLMode != "verify-full" {
 		t.Fatalf("Profile() = %#v", profile)
+	}
+}
+
+func TestSettingsResolveThemeDefaultsAndValidates(t *testing.T) {
+	if _, err := (Settings{}).ResolveTheme(); err != nil {
+		t.Fatalf("default theme error = %v", err)
+	}
+	if _, err := (Settings{Theme: "light"}).ResolveTheme(); err != nil {
+		t.Fatalf("light theme error = %v", err)
+	}
+	if _, err := (Settings{Theme: "sepia"}).ResolveTheme(); err == nil || !strings.Contains(err.Error(), "unknown theme") {
+		t.Fatalf("invalid theme error = %v, want unknown theme", err)
+	}
+}
+
+func TestLoadOrCreateRejectsInvalidTheme(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(path, []byte("[settings]\ntheme = \"sepia\"\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	if _, _, err := LoadOrCreate(path); err == nil || !strings.Contains(err.Error(), "settings.theme") {
+		t.Fatalf("LoadOrCreate() error = %v, want theme validation error", err)
 	}
 }
 

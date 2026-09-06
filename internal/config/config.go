@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+
+	"sqvue/internal/theme"
 )
 
 type DBProfile struct {
@@ -33,6 +35,7 @@ type File struct {
 type Settings struct {
 	DefaultProfile  string `toml:"default_profile"`
 	ExportDirectory string `toml:"export_directory"`
+	Theme           string `toml:"theme"`
 }
 
 const defaultFile = `# sqvue configuration
@@ -43,6 +46,7 @@ const defaultFile = `# sqvue configuration
 [settings]
 # default_profile = "local"
 # export_directory = "." # Defaults to sqvue's current working directory.
+# theme = "default" # Available: default, light, high-contrast.
 
 # [connections.local]
 # db_type = "postgres"
@@ -122,7 +126,20 @@ func load(path string) (File, error) {
 		}
 		return File{}, fmt.Errorf("unknown configuration key(s): %s", strings.Join(keys, ", "))
 	}
+	if _, err := file.Settings.ResolveTheme(); err != nil {
+		return File{}, err
+	}
 	return file, nil
+}
+
+// ResolveTheme returns the selected built-in theme. An unset setting retains
+// the default appearance.
+func (s Settings) ResolveTheme() (theme.Theme, error) {
+	styles, err := theme.ByName(s.Theme)
+	if err != nil {
+		return theme.Theme{}, fmt.Errorf("settings.theme: %w", err)
+	}
+	return styles, nil
 }
 
 // Profile returns a named connection profile.
