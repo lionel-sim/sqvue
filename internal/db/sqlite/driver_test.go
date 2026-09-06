@@ -169,6 +169,14 @@ func TestBrowseWhereRejectsILike(t *testing.T) {
 	}
 }
 
+func TestReturnsRowsSupportsCommentsAndReturning(t *testing.T) {
+	for _, query := range []string{"-- comment\nselect 1", "/* comment */ select 1", "insert into items values (1) returning id"} {
+		if !returnsRows(query) {
+			t.Fatalf("returnsRows(%q) = false", query)
+		}
+	}
+}
+
 func TestDriverRejectsOperationsBeforeConnect(t *testing.T) {
 	driver := New()
 	if _, err := driver.Query(context.Background(), db.Query{SQL: "select 1"}); err == nil {

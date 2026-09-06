@@ -607,9 +607,50 @@ func rowOrder(table db.Table, columns []db.Column) string {
 }
 
 func returnsRows(query string) bool {
-	statement := strings.ToLower(strings.TrimSpace(query))
-	for _, prefix := range []string{"select", "with", "pragma", "explain", "values"} {
-		if strings.HasPrefix(statement, prefix) {
+	statement := strings.ToLower(stripLeadingSQLComments(query))
+	switch sqlKeyword(statement) {
+	case "select", "with", "pragma", "explain", "values":
+		return true
+	case "insert", "update", "delete":
+		return hasSQLKeyword(statement, "returning")
+	}
+	return false
+}
+
+func stripLeadingSQLComments(query string) string {
+	statement := strings.TrimSpace(query)
+	for {
+		switch {
+		case strings.HasPrefix(statement, "--"):
+			if end := strings.IndexByte(statement, '\n'); end >= 0 {
+				statement = strings.TrimSpace(statement[end+1:])
+			} else {
+				return ""
+			}
+		case strings.HasPrefix(statement, "/*"):
+			end := strings.Index(statement[2:], "*/")
+			if end < 0 {
+				return ""
+			}
+			statement = strings.TrimSpace(statement[end+4:])
+		default:
+			return statement
+		}
+	}
+}
+
+func sqlKeyword(statement string) string {
+	for i, r := range statement {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')) {
+			return statement[:i]
+		}
+	}
+	return statement
+}
+
+func hasSQLKeyword(statement, keyword string) bool {
+	for _, part := range strings.FieldsFunc(statement, func(r rune) bool { return !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')) }) {
+		if part == keyword {
 			return true
 		}
 	}

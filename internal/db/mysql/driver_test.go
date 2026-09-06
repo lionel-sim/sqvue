@@ -27,7 +27,7 @@ func TestRowOrderUsesPrimaryKeyColumns(t *testing.T) {
 }
 
 func TestReturnsRows(t *testing.T) {
-	for _, query := range []string{"select 1", " WITH data AS (SELECT 1) SELECT * FROM data", "show tables", "describe users", "explain select 1"} {
+	for _, query := range []string{"select 1", "-- comment\nselect 1", "/* comment */ select 1", " WITH data AS (SELECT 1) SELECT * FROM data", "show tables", "describe users", "explain select 1"} {
 		if !returnsRows(query) {
 			t.Fatalf("returnsRows(%q) = false", query)
 		}

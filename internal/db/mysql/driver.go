@@ -603,13 +603,43 @@ func rowOrder(columns []db.Column) string {
 }
 
 func returnsRows(query string) bool {
-	statement := strings.ToLower(strings.TrimSpace(query))
-	for _, prefix := range []string{"select", "with", "show", "describe", "desc", "explain", "values"} {
-		if strings.HasPrefix(statement, prefix) {
-			return true
-		}
+	statement := strings.ToLower(stripLeadingSQLComments(query))
+	switch sqlKeyword(statement) {
+	case "select", "with", "show", "describe", "desc", "explain", "values":
+		return true
 	}
 	return false
+}
+
+func stripLeadingSQLComments(query string) string {
+	statement := strings.TrimSpace(query)
+	for {
+		switch {
+		case strings.HasPrefix(statement, "--"):
+			if end := strings.IndexByte(statement, '\n'); end >= 0 {
+				statement = strings.TrimSpace(statement[end+1:])
+			} else {
+				return ""
+			}
+		case strings.HasPrefix(statement, "/*"):
+			end := strings.Index(statement[2:], "*/")
+			if end < 0 {
+				return ""
+			}
+			statement = strings.TrimSpace(statement[end+4:])
+		default:
+			return statement
+		}
+	}
+}
+
+func sqlKeyword(statement string) string {
+	for i, r := range statement {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')) {
+			return statement[:i]
+		}
+	}
+	return statement
 }
 
 func qualifiedName(schema, name string) string {
