@@ -92,6 +92,7 @@ type overlayState struct {
 	exportInput                              textinput.Model
 	help                                     help.Model
 	columnCursor, columnScroll, detailScroll int
+	backupScopeCursor                        int
 }
 type viewportState struct{ width, height int }
 type loadState struct {

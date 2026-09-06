@@ -27,6 +27,7 @@ type fakeDriver struct {
 	count         int64
 	queryResult   db.Result
 	lastQuery     string
+	backupCaps    db.BackupCapabilities
 }
 
 func (f *fakeDriver) DbType() db.DbType {
@@ -76,6 +77,9 @@ func (f *fakeDriver) CountBrowseRows(context.Context, db.BrowseRequest) (int64, 
 }
 func (f *fakeDriver) CountRows(context.Context, db.Table) (int64, error) { return f.count, nil }
 func (f *fakeDriver) BackupCapabilities() db.BackupCapabilities {
+	if f.backupCaps != (db.BackupCapabilities{}) {
+		return f.backupCaps
+	}
 	return db.BackupCapabilities{Database: true, FileExtension: "sql"}
 }
 func (f *fakeDriver) Backup(context.Context, db.BackupRequest) error { return nil }
